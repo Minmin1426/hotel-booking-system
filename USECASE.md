@@ -2,6 +2,7 @@
 
 Tài liệu này tổng hợp chi tiết các nghiệp vụ (Use Case) của hệ thống đặt phòng khách sạn. Nhằm đáp ứng nguyên tắc thiết kế hệ thống, tài liệu tuân thủ nghiêm ngặt điều kiện:
 **Mỗi nghiệp vụ chỉ được thực hiện bởi duy nhất một vai trò chính (Primary Actor)** đóng vai trò khởi tạo luồng xử lý.
+
 ---
 
 ## 1. Role: Guest (Khách vãng lai - Chưa đăng nhập)
