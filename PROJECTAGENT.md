@@ -151,7 +151,7 @@ AI chịu trách nhiệm:
 | API Style | RESTful API |
 | Frontend | React (future phase) |
 | Version Control | Git + GitHub |
-| AI Tools | Cursor / Claude Code / Roo Code / Cline |
+| AI Tools | Codex |
 
 ---
 
