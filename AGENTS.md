@@ -1,5 +1,5 @@
 # AGENTS.md — Hotel Booking System
-# Version: 1.2.0 | Updated: 2026-05-26 | Author: HUNGND
+# Version: 1.2.0 | Updated: 2026-05-26 | 
 
 > **Treat this file like a security policy.**
 > Any change must be reviewed, tested, and version-controlled before merging.
