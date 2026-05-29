@@ -40,7 +40,7 @@ Frontend future phase:
 
 Dự án áp dụng mô hình:
 
-## Hybrid SDD + ADD
+## SDD + ADD
 
 ```text
 SDD = Spec-Driven Development
