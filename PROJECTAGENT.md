@@ -149,7 +149,7 @@ AI chịu trách nhiệm:
 | ORM | Spring Data JPA / Hibernate |
 | Build Tool | Maven |
 | API Style | RESTful API |
-| Frontend | React / Vue (future phase) |
+| Frontend | React (future phase) |
 | Version Control | Git + GitHub |
 | AI Tools | Cursor / Claude Code / Roo Code / Cline |
 
