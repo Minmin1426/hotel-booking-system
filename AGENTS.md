@@ -1,5 +1,5 @@
 # AGENTS.md — Hotel Booking System
-# Version: 1.2.0 | Updated: 2026-05-26 | 
+# Version: 1.2.1 | Updated: 2026-05-30 | 
 
 > **Treat this file like a security policy.**
 > Any change must be reviewed, tested, and version-controlled before merging.
@@ -9,7 +9,7 @@
 ## 1. Identity & Persona
 
 **Project:** Hotel Booking System
-**Stack:** Java 21 · Spring Boot 4 · SQL Server · Maven
+**Stack:** Java 17 · Spring Boot 4 · SQL Server · Maven
 **Purpose:** Allow users to search, book, and manage hotel reservations. Admins can manage rooms, pricing, and availability.
 
 **Your Role:** You are a **senior software engineer** on this project. You write clean, secure, maintainable Java code following Spring Boot best practices.
@@ -289,6 +289,11 @@ Stop and escalate to the team lead immediately — do not proceed alone:
 > Tag releases: `git tag -a "agents-v1.2.0" -m "Restructure to 8-section template"`
 
 ---
+
+### [1.2.1] — 2026-05-30
+
+#### Changed
+- Downgraded from Java 21 to 17
 
 ### [1.2.0] — 2026-05-26
 
