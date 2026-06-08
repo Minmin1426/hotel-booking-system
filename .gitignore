@@ -1,0 +1,32 @@
+# Maven build directory
+target/
+
+# IDE directories
+.idea/
+*.iml
+.classpath
+.project
+.settings/
+bin/
+
+# Local properties / secrets
+src/main/resources/application-dev.properties
+.env
+*.secret
+*.env
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Frontend dependencies and builds
+frontend/node_modules/
+frontend/dist/
+frontend/.env
+frontend/.env.local
+frontend/.env.development.local
+frontend/.env.test.local
+frontend/.env.production.local
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
