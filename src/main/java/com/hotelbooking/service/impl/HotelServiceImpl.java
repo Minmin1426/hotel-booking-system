@@ -48,7 +48,24 @@ public class HotelServiceImpl implements HotelService {
     @Override
     @Transactional(readOnly = true)
     public List<HotelResponse> getHotels(HotelFilterRequest request) {
-        log.info("Filtering hotels with criteria");
+        log.info("Filtering hotels with criteria. Name: {}, Location: {}, Keyword: {}", 
+                request.getName(), request.getLocation(), request.getKeyword());
+
+        if (request.getKeyword() != null) {
+            String normalized = request.getKeyword().replace(" ", "");
+            request.setKeyword(normalized.isEmpty() ? null : normalized);
+        }
+
+        if (request.getName() != null) {
+            String normalized = request.getName().replace(" ", "");
+            request.setName(normalized.isEmpty() ? null : normalized);
+        }
+
+        if (request.getLocation() != null) {
+            String normalized = request.getLocation().replace(" ", "");
+            request.setLocation(normalized.isEmpty() ? null : normalized);
+        }
+
         Specification<Hotel> specification = HotelSpecification.filter(request);
         List<Hotel> hotels = hotelRepository.findAll(specification);
 

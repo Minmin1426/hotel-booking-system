@@ -175,6 +175,66 @@ class HotelServiceImplTest {
     }
 
     @Test
+    void getHotels_WithKeyword_ShouldTrimAndNormalizeWhitespace() {
+        when(hotelRepository.findAll(any(Specification.class)))
+                .thenReturn(List.of(activeHotel));
+
+        HotelFilterRequest request = new HotelFilterRequest();
+        request.setKeyword("   InterContinental    Hanoi   ");
+
+        List<HotelResponse> result = hotelService.getHotels(request);
+
+        assertThat(result).hasSize(1);
+        assertThat(request.getKeyword()).isEqualTo("InterContinentalHanoi");
+    }
+
+    @Test
+    void getHotels_WithBlankKeyword_ShouldNormalizeToNull() {
+        when(hotelRepository.findAll(any(Specification.class)))
+                .thenReturn(List.of(activeHotel));
+
+        HotelFilterRequest request = new HotelFilterRequest();
+        request.setKeyword("     ");
+
+        List<HotelResponse> result = hotelService.getHotels(request);
+
+        assertThat(result).hasSize(1);
+        assertThat(request.getKeyword()).isNull();
+    }
+
+    @Test
+    void getHotels_WithNameAndLocation_ShouldTrimAndNormalizeWhitespace() {
+        when(hotelRepository.findAll(any(Specification.class)))
+                .thenReturn(List.of(activeHotel));
+
+        HotelFilterRequest request = new HotelFilterRequest();
+        request.setName("   InterContinental    Landmark   ");
+        request.setLocation("   Hanoi    Vietnam   ");
+
+        List<HotelResponse> result = hotelService.getHotels(request);
+
+        assertThat(result).hasSize(1);
+        assertThat(request.getName()).isEqualTo("InterContinentalLandmark");
+        assertThat(request.getLocation()).isEqualTo("HanoiVietnam");
+    }
+
+    @Test
+    void getHotels_WithBlankNameAndLocation_ShouldNormalizeToNull() {
+        when(hotelRepository.findAll(any(Specification.class)))
+                .thenReturn(List.of(activeHotel));
+
+        HotelFilterRequest request = new HotelFilterRequest();
+        request.setName("   ");
+        request.setLocation("     ");
+
+        List<HotelResponse> result = hotelService.getHotels(request);
+
+        assertThat(result).hasSize(1);
+        assertThat(request.getName()).isNull();
+        assertThat(request.getLocation()).isNull();
+    }
+
+    @Test
     void getHotelDetail_success() {
         when(hotelRepository.findByHotelIdAndIsActiveTrue(eq(1L)))
                 .thenReturn(Optional.of(activeHotel));

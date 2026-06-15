@@ -12,12 +12,15 @@ const HERO_BACKGROUNDS = [
 
 function HotelsPage() {
   const [hotels, setHotels] = useState([]);
+  const [searchedHotels, setSearchedHotels] = useState([]);
+  const [searchName, setSearchName] = useState('');
   const [searchLocation, setSearchLocation] = useState('');
   const [filters, setFilters] = useState({
     name: '',
     location: '',
     sortBy: 'rating',
-    sortDirection: 'desc'
+    sortDirection: 'desc',
+    isActive: undefined
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -26,13 +29,13 @@ function HotelsPage() {
   const navigate = useNavigate();
   const isAuthenticated = !!sessionStorage.getItem("accessToken");
 
-  // Fetch hotels using filter/sort API
-  const fetchFilteredHotels = async () => {
+  // Fetch hotels using name and location search API
+  const performSearch = async (name = '', location = '') => {
     setLoading(true);
     setError('');
     try {
-      const data = await HotelService.getHotels(filters);
-      setHotels(data);
+      const data = await HotelService.getHotels({ name, location });
+      setSearchedHotels(data);
     } catch (err) {
       setError(err.message || "Failed to load hotels.");
     } finally {
@@ -40,9 +43,57 @@ function HotelsPage() {
     }
   };
 
+  // On mount: load all hotels
   useEffect(() => {
-    fetchFilteredHotels();
-  }, [filters]);
+    performSearch('', '');
+  }, []);
+
+  // Local filter & sort on searchedHotels
+  useEffect(() => {
+    let result = [...searchedHotels];
+
+    // Filter by name (case-insensitive, space-insensitive)
+    if (filters.name && filters.name.trim() !== '') {
+      const term = filters.name.toLowerCase().replace(/\s+/g, '');
+      result = result.filter(h => h.name && h.name.toLowerCase().replace(/\s+/g, '').includes(term));
+    }
+
+    // Filter by location (case-insensitive, space-insensitive)
+    if (filters.location && filters.location.trim() !== '') {
+      const term = filters.location.toLowerCase().replace(/\s+/g, '');
+      result = result.filter(h => h.location && h.location.toLowerCase().replace(/\s+/g, '').includes(term));
+    }
+
+    // Filter by isActive
+    if (filters.isActive !== undefined) {
+      result = result.filter(h => h.isActive === filters.isActive);
+    }
+
+    // Sort logic
+    if (filters.sortBy) {
+      const isAsc = filters.sortDirection === 'asc';
+      result.sort((a, b) => {
+        let valA, valB;
+
+        if (filters.sortBy === 'price') {
+          valA = a.minPrice !== null && a.minPrice !== undefined ? a.minPrice : (isAsc ? Infinity : -Infinity);
+          valB = b.minPrice !== null && b.minPrice !== undefined ? b.minPrice : (isAsc ? Infinity : -Infinity);
+        } else if (filters.sortBy === 'rating') {
+          valA = a.rating !== null && a.rating !== undefined ? a.rating : 0;
+          valB = b.rating !== null && b.rating !== undefined ? b.rating : 0;
+        } else if (filters.sortBy === 'location') {
+          valA = a.location ? a.location.toLowerCase() : '';
+          valB = b.location ? b.location.toLowerCase() : '';
+        }
+
+        if (valA < valB) return isAsc ? -1 : 1;
+        if (valA > valB) return isAsc ? 1 : -1;
+        return 0;
+      });
+    }
+
+    setHotels(result);
+  }, [searchedHotels, filters]);
 
   // Rotate hero background images
   useEffect(() => {
@@ -55,10 +106,22 @@ function HotelsPage() {
   // Handle Search Submission
   const handleSearchSubmit = (e) => {
     e.preventDefault();
+    const normName = searchName.replace(/\s+/g, '');
+    const normLoc = searchLocation.replace(/\s+/g, '');
+    if (normName === '' && normLoc === '') {
+      // Cả hai ô tìm kiếm đều rỗng thì không thực hiện tìm kiếm
+      return;
+    }
+    // Update input box values visually
+    setSearchName(normName);
+    setSearchLocation(normLoc);
+    // Fill sidebar filters with search values
     setFilters(prev => ({
       ...prev,
-      location: searchLocation
+      name: normName,
+      location: normLoc
     }));
+    performSearch(normName, normLoc);
   };
 
   const handleSortChange = (e) => {
@@ -68,6 +131,19 @@ function HotelsPage() {
       sortBy,
       sortDirection
     }));
+  };
+
+  const handleClearFilters = () => {
+    setSearchName('');
+    setSearchLocation('');
+    setFilters({
+      name: '',
+      location: '',
+      sortBy: 'rating',
+      sortDirection: 'desc',
+      isActive: undefined
+    });
+    performSearch('', '');
   };
 
   const handleLogout = () => {
@@ -149,22 +225,40 @@ function HotelsPage() {
           </p>
 
           {/* Search bar */}
-          <form onSubmit={handleSearchSubmit} className="mt-8 flex flex-col sm:flex-row gap-3 max-w-2xl mx-auto p-2 rounded-2xl bg-white border border-slate-200/80 shadow-xl shadow-slate-200/20 hover:border-cyan-400/50 transition-all duration-300">
-            <div className="flex-1 flex items-center px-4 py-2 gap-3">
+          <form onSubmit={handleSearchSubmit} className="mt-8 flex flex-col md:flex-row items-center gap-2 max-w-3xl mx-auto p-2 rounded-2xl md:rounded-full bg-white border border-slate-200 shadow-xl shadow-slate-900/5 hover:border-cyan-500/30 transition-all duration-350">
+            {/* Input 1: Hotel Name */}
+            <div className="flex-1 w-full flex items-center px-4 py-2 gap-3">
+              <span className="text-cyan-600 text-lg">🔍</span>
+              <input 
+                type="text" 
+                placeholder="Hotel name (e.g. Marriott...)" 
+                value={searchName}
+                onChange={(e) => setSearchName(e.target.value)}
+                className="w-full bg-transparent text-slate-800 placeholder-slate-400 text-sm font-semibold focus:outline-none"
+              />
+            </div>
+            
+            {/* Vertical Divider */}
+            <div className="hidden md:block h-6 w-[1px] bg-slate-200" />
+            
+            {/* Input 2: Location */}
+            <div className="flex-1 w-full flex items-center px-4 py-2 gap-3">
               <span className="text-cyan-600 text-lg">📍</span>
               <input 
                 type="text" 
-                placeholder="Where are you traveling to? (e.g. Hanoi, Da Nang...)" 
+                placeholder="Location (e.g. Hanoi...)" 
                 value={searchLocation}
                 onChange={(e) => setSearchLocation(e.target.value)}
                 className="w-full bg-transparent text-slate-800 placeholder-slate-400 text-sm font-semibold focus:outline-none"
               />
             </div>
+            
+            {/* Search Button */}
             <button 
               type="submit" 
-              className="px-6 py-3 rounded-xl bg-gradient-to-r from-cyan-500 to-indigo-600 text-white font-bold text-sm tracking-wide shadow-md hover:brightness-105 hover:shadow-lg hover:shadow-cyan-400/20 active:scale-[0.98] transition-all duration-200"
+              className="w-full md:w-auto px-6 py-2.5 rounded-xl md:rounded-full bg-gradient-to-r from-cyan-500 to-indigo-650 text-white font-extrabold text-sm tracking-wide shadow-md hover:brightness-105 hover:shadow-lg hover:shadow-cyan-400/25 active:scale-[0.98] transition-all duration-200"
             >
-              Search Hotels
+              Search
             </button>
           </form>
         </div>
@@ -265,7 +359,7 @@ function HotelsPage() {
             <div className="p-6 rounded-2xl bg-red-50 border border-red-100 text-center space-y-3">
               <p className="text-red-600 text-sm font-medium">⚠️ {error}</p>
               <button 
-                onClick={fetchFilteredHotels}
+                onClick={() => performSearch(searchName, searchLocation)}
                 className="px-4 py-2 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-xs font-bold text-red-650 transition-colors"
               >
                 Try Again
@@ -279,10 +373,7 @@ function HotelsPage() {
                 <p className="text-slate-500 text-xs max-w-sm">No active hotels matched your searching location or filters. Try adjusting your keywords.</p>
               </div>
               <button 
-                onClick={() => {
-                  setSearchLocation('');
-                  setFilters({ name: '', location: '', sortBy: 'rating', sortDirection: 'desc' });
-                }}
+                onClick={handleClearFilters}
                 className="px-4 py-2 rounded-xl bg-slate-50 border border-slate-200 hover:bg-slate-100 text-xs font-bold text-slate-600 transition-colors"
               >
                 Clear Filters

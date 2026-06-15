@@ -32,6 +32,7 @@ export const HotelService = {
     if (filters.isActive !== undefined) queryParams.append("isActive", filters.isActive);
     if (filters.sortBy) queryParams.append("sortBy", filters.sortBy);
     if (filters.sortDirection) queryParams.append("sortDirection", filters.sortDirection);
+    if (filters.keyword) queryParams.append("keyword", filters.keyword);
 
     const response = await fetch(`${API_BASE_URL}/hotels?${queryParams.toString()}`, {
       method: "GET",

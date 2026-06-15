@@ -11,4 +11,5 @@ public class HotelFilterRequest {
     private Boolean isActive;
     private String sortBy; // price, rating, location
     private String sortDirection; // asc, desc
+    private String keyword;
 }
