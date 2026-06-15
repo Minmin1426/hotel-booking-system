@@ -1,0 +1,7 @@
+com\hotelbooking\service\HotelServiceImplTest.class
+com\hotelbooking\controller\AdminUserControllerTest.class
+com\hotelbooking\service\AdminUserServiceTest.class
+com\hotelbooking\controller\RoomControllerTest.class
+com\hotelbooking\service\RoomServiceImplTest.class
+com\hotelbooking\controller\HotelControllerTest.class
+com\hotelbooking\service\AuthServiceImplTest.class
