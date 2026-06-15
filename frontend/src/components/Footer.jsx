@@ -9,7 +9,7 @@ export default function Footer() {
         <div className="flex flex-col gap-4">
           <div className="flex items-center gap-2">
             <span className="text-lg">✨</span>
-            <span className="text-sm font-extrabold tracking-[0.2em] text-[#1d1d1f]">HOTEL BOOKING SYSTEM</span>
+            <span className="text-sm font-extrabold tracking-[0.2em] text-[#1d1d1f]">LUXURY STAY</span>
           </div>
           <p className="text-xs text-[#86868b] leading-relaxed max-w-[280px]">
             Experience curated hotel bookings. Our system aggregates premium rooms and suites, blending upscale choices with seamless online reservations.
@@ -39,7 +39,7 @@ export default function Footer() {
       </div>
 
       <div className="max-w-[1200px] mx-auto pt-6 flex flex-col sm:flex-row justify-between items-center text-[10px] text-[#86868b] gap-4">
-        <span>© 2026 Hotel Booking System. All rights reserved.</span>
+        <span>© 2026 LuxuryStay. All rights reserved.</span>
         <div className="flex gap-4">
           <span className="font-semibold text-[#1d1d1f]">Facebook</span>
           <span className="font-semibold text-[#1d1d1f]">Instagram</span>

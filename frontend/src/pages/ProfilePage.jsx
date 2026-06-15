@@ -22,6 +22,8 @@ export default function ProfilePage() {
   const [error, setError] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
 
+  const isAdmin = profile.role === 'ADMIN';
+
   const mockBookings = [
     {
       id: "HB-9821",

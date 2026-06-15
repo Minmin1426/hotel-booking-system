@@ -20,7 +20,7 @@ export default function RegisterPage() {
   const handleGoogleLogin = async () => {
     const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
     if (!clientId || clientId.includes("your-google-client-id")) {
-      const email = prompt("Chưa cấu hình Google Client ID trong frontend/.env.\n\nNhập email Google bạn muốn dùng để ĐĂNG NHẬP MÔ PHỎNG (kiểm thử):", "test.google@gmail.com");
+      const email = prompt("Google Client ID is not configured in frontend/.env.\n\nEnter the Google email you want to use for MOCK LOGIN (testing):", "test.google@gmail.com");
       if (email && email.trim()) {
         setIsLoading(true);
         setError(null);
@@ -43,7 +43,7 @@ export default function RegisterPage() {
   const handleFacebookLogin = async () => {
     const appId = import.meta.env.VITE_FACEBOOK_APP_ID;
     if (!appId || appId.includes("your-facebook-app-id")) {
-      const email = prompt("Chưa cấu hình Facebook App ID trong frontend/.env.\n\nNhập email Facebook bạn muốn dùng để ĐĂNG NHẬP MÔ PHỎNG (kiểm thử):", "test.facebook@gmail.com");
+      const email = prompt("Facebook App ID is not configured in frontend/.env.\n\nEnter the Facebook email you want to use for MOCK LOGIN (testing):", "test.facebook@gmail.com");
       if (email && email.trim()) {
         setIsLoading(true);
         setError(null);
@@ -74,17 +74,17 @@ export default function RegisterPage() {
     // Complexity validation: min 8 chars, uppercase, lowercase, digit, special character
     const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*(),.?":{}|<>]).{8,}$/;
     if (!passwordRegex.test(formData.password)) {
-      setError("Mật khẩu phải chứa ít nhất 8 ký tự, bao gồm chữ hoa, chữ thường, số và ký tự đặc biệt.");
+      setError("Password must contain at least 8 characters, including uppercase, lowercase, digits, and special characters.");
       return;
     }
     
     if (formData.password !== formData.confirmPassword) {
-      setError("Mật khẩu xác nhận không khớp.");
+      setError("Confirm password does not match.");
       return;
     }
 
     if (!agreeTerms) {
-      setError("Bạn phải đồng ý với Điều khoản Dịch vụ để đăng ký.");
+      setError("You must agree to the Terms of Service to register.");
       return;
     }
 
@@ -118,7 +118,7 @@ export default function RegisterPage() {
           <div className="z-10 flex flex-col gap-2">
             <div className="flex items-center gap-2 mb-8">
               <span className="text-xl">✨</span>
-              <span className="text-xs uppercase tracking-[0.2em] font-extrabold text-[#d4af37]">HOTEL BOOKING SYSTEM</span>
+              <span className="text-xs uppercase tracking-[0.2em] font-extrabold text-[#d4af37]">LUXURY STAY</span>
             </div>
             
             <h2 className="text-4xl font-semibold leading-tight tracking-tight mb-4 font-serif">
@@ -156,7 +156,7 @@ export default function RegisterPage() {
           </div>
 
           <div className="z-10 border-t border-white/10 pt-4 flex justify-between items-center text-[10px] text-white/50 tracking-wider uppercase font-semibold">
-            <span>© 2026 Hotel Booking System</span>
+            <span>© 2026 LuxuryStay</span>
             <span className="text-[#d4af37]">★ Voted #1 Booking App</span>
           </div>
         </div>
@@ -263,7 +263,7 @@ export default function RegisterPage() {
                   required
                 />
                 <label htmlFor="agreeTerms" className="text-[10px] text-[#86868b] leading-tight select-none">
-                  Tôi đồng ý với các <a href="/terms" className="text-[#0066cc] hover:underline font-medium">Điều khoản Dịch vụ</a> và <a href="/privacy" className="text-[#0066cc] hover:underline font-medium">Chính sách Bảo mật</a>.
+                  I agree to the <a href="/terms" className="text-[#0066cc] hover:underline font-medium">Terms of Service</a> and <a href="/privacy" className="text-[#0066cc] hover:underline font-medium">Privacy Policy</a>.
                 </label>
               </div>
 
@@ -318,7 +318,7 @@ export default function RegisterPage() {
 
             <div className="mt-4 border-t border-[#e3e3e8]/70 pt-3">
               <p className="text-[10px] text-[#86868b] leading-relaxed text-left">
-                Bằng cách tiếp tục, bạn đồng ý với <a href="/terms" className="text-[#0066cc] hover:underline font-medium">Điều khoản & Điều kiện</a> và <a href="/privacy" className="text-[#0066cc] hover:underline font-medium">Chính sách bảo vệ dữ liệu</a> của chúng tôi.
+                By continuing, you agree to our <a href="/terms" className="text-[#0066cc] hover:underline font-medium">Terms & Conditions</a> and <a href="/privacy" className="text-[#0066cc] hover:underline font-medium">Data Privacy Policy</a>.
               </p>
             </div>
           </div>

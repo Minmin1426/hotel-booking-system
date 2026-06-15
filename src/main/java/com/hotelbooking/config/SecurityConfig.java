@@ -44,6 +44,7 @@ public class SecurityConfig {
                 // Allow public auth endpoints
                 .requestMatchers("/api/v1/auth/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/v1/rooms/search").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/v1/hotels/**").permitAll()
                 // Require auth for everything else
                 .anyRequest().authenticated()
             )
