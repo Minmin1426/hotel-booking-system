@@ -124,6 +124,26 @@ function HotelsPage() {
     performSearch(normName, normLoc);
   };
 
+  const handleSidebarKeyDown = (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      const normName = (filters.name || '').replace(/\s+/g, '');
+      const normLoc = (filters.location || '').replace(/\s+/g, '');
+      
+      // Update sidebar inputs and Hero search inputs
+      setFilters(prev => ({
+        ...prev,
+        name: normName,
+        location: normLoc
+      }));
+      setSearchName(normName);
+      setSearchLocation(normLoc);
+      
+      // Execute backend database search
+      performSearch(normName, normLoc);
+    }
+  };
+
   const handleSortChange = (e) => {
     const [sortBy, sortDirection] = e.target.value.split('-');
     setFilters(prev => ({
@@ -298,6 +318,7 @@ function HotelsPage() {
                 placeholder="Search name..."
                 value={filters.name}
                 onChange={(e) => setFilters(prev => ({ ...prev, name: e.target.value }))}
+                onKeyDown={handleSidebarKeyDown}
                 className="w-full px-4 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-700 placeholder-slate-400 text-sm focus:outline-none focus:border-cyan-500 focus:bg-white transition-all"
               />
             </div>
@@ -310,6 +331,7 @@ function HotelsPage() {
                 placeholder="Filter by city/address..."
                 value={filters.location}
                 onChange={(e) => setFilters(prev => ({ ...prev, location: e.target.value }))}
+                onKeyDown={handleSidebarKeyDown}
                 className="w-full px-4 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-700 placeholder-slate-400 text-sm focus:outline-none focus:border-cyan-500 focus:bg-white transition-all"
               />
             </div>
