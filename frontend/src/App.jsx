@@ -8,6 +8,8 @@ import ProfilePage from './pages/ProfilePage';
 import AdminDashboardPage from './pages/AdminDashboardPage';
 import TermsPage from './pages/TermsPage';
 import PrivacyPage from './pages/PrivacyPage';
+import HotelsPage from './pages/HotelsPage';
+import HotelDetailPage from './pages/HotelDetailPage';
 
 function App() {
   const isAuthenticated = !!sessionStorage.getItem("accessToken");
@@ -16,8 +18,9 @@ function App() {
   return (
     <Router>
       <Routes>
-        {/* Default route redirects to profile or admin users */}
-        <Route path="/" element={isAuthenticated ? (isAdmin ? <Navigate to="/admin/users" replace /> : <Navigate to="/profile" replace />) : <Navigate to="/login" replace />} />
+        {/* Landing page is hotels list search catalog */}
+        <Route path="/" element={<HotelsPage />} />
+        <Route path="/hotels/:id" element={<HotelDetailPage />} />
         
         {/* Auth routes */}
         <Route path="/login" element={isAuthenticated ? (isAdmin ? <Navigate to="/admin/users" replace /> : <Navigate to="/profile" replace />) : <LoginPage />} />
@@ -26,15 +29,15 @@ function App() {
         <Route path="/reset-password" element={<ResetPasswordPage />} />
         
         {/* Protected routes */}
-        <Route path="/profile" element={<ProfilePage />} />
+        <Route path="/profile" element={isAuthenticated ? <ProfilePage /> : <Navigate to="/login" replace />} />
         <Route path="/admin/users" element={isAuthenticated && isAdmin ? <AdminDashboardPage /> : <Navigate to="/login" replace />} />
 
         {/* Public info routes */}
         <Route path="/terms" element={<TermsPage />} />
         <Route path="/privacy" element={<PrivacyPage />} />
 
-        {/* Fallback */}
-        <Route path="*" element={isAuthenticated ? <Navigate to="/profile" replace /> : <Navigate to="/login" replace />} />
+        {/* Fallback redirects to landing */}
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Router>
   );

@@ -11,7 +11,7 @@ export default function Header({ fullName, role }) {
       console.error("Logout error:", err);
     }
     sessionStorage.clear();
-    window.location.href = '/login';
+    window.location.href = '/';
   };
 
   const getInitials = (name) => {
@@ -26,14 +26,8 @@ export default function Header({ fullName, role }) {
       <div className="max-w-[1200px] mx-auto px-6 h-[72px] flex items-center justify-between">
         
         {/* Brand Logo & Name */}
-        <a href="/" className="flex items-center gap-2.5 group">
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-[#0066cc] to-[#0088ff] flex items-center justify-center text-white text-base shadow-md group-hover:scale-105 transition-transform">
-            ✨
-          </div>
-          <div className="flex flex-col text-left">
-            <span className="text-sm font-extrabold tracking-[0.2em] text-[#1d1d1f] font-sans">HOTEL BOOKING</span>
-            <span className="text-[9px] uppercase tracking-[0.25em] text-[#86868b] font-medium mt-[-2px]">Management System</span>
-          </div>
+        <a href="/" className="flex items-center gap-2 text-xl font-bold tracking-tight bg-gradient-to-r from-cyan-600 to-indigo-600 bg-clip-text text-transparent hover:opacity-90 transition-opacity">
+          <span>✨</span> LuxuryStay
         </a>
 
         {/* Navigation Links */}

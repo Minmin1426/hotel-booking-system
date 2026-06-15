@@ -34,12 +34,12 @@ export default function ResetPasswordPage() {
     // Complexity validation: min 8 chars, uppercase, lowercase, digit, special character
     const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*(),.?":{}|<>]).{8,}$/;
     if (!passwordRegex.test(formData.newPassword)) {
-      setError("Mật khẩu mới phải chứa ít nhất 8 ký tự, bao gồm chữ hoa, chữ thường, số và ký tự đặc biệt.");
+      setError("New password must contain at least 8 characters, including uppercase, lowercase, digits, and special characters.");
       return;
     }
 
     if (formData.newPassword !== formData.confirmPassword) {
-      setError("Mật khẩu xác nhận không khớp.");
+      setError("Confirm password does not match.");
       return;
     }
 

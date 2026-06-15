@@ -9,56 +9,56 @@ export default function TermsPage() {
           onClick={() => window.history.back()}
           className="mb-8 px-4 py-2 rounded-full border border-[#d2d2d7] text-xs font-semibold hover:bg-[#f5f5f7] active:scale-95 transition-all text-[#1d1d1f]"
         >
-          ← Quay lại
+          ← Back
         </button>
 
-        <h1 className="text-3xl font-extrabold tracking-tight text-[#1d1d1f] mb-2">Điều khoản và Điều kiện sử dụng</h1>
-        <p className="text-xs text-[#86868b] mb-8 pb-6 border-b border-[#e3e3e8]">Cập nhật lần cuối: ngày 08 tháng 06 năm 2026</p>
+        <h1 className="text-3xl font-extrabold tracking-tight text-[#1d1d1f] mb-2">Terms and Conditions of Use</h1>
+        <p className="text-xs text-[#86868b] mb-8 pb-6 border-b border-[#e3e3e8]">Last updated: June 08, 2026</p>
 
         <div className="space-y-6 text-sm text-[#1d1d1f] leading-relaxed">
           <section>
-            <h2 className="text-base font-bold text-[#1d1d1f] mb-2">1. Quy định chung</h2>
+            <h2 className="text-base font-bold text-[#1d1d1f] mb-2">1. General Provisions</h2>
             <p className="text-xs text-[#86868b]">
-              Chào mừng bạn đến với hệ thống đặt phòng trực tuyến của chúng tôi (Hệ Thống Đặt Phòng Khách Sạn). Bằng việc đăng ký tài khoản, đăng nhập và sử dụng hệ thống này, bạn đã đồng ý tuân thủ toàn bộ các điều khoản và điều kiện được nêu tại đây. Nếu bạn không đồng ý với bất kỳ phần nào của điều khoản này, vui lòng ngừng sử dụng dịch vụ của hệ thống.
+              Welcome to our online reservation system (LuxuryStay). By registering an account, logging in, and using this system, you agree to comply with all terms and conditions stated herein. If you do not agree with any part of these terms, please stop using our services.
             </p>
           </section>
 
           <section>
-            <h2 className="text-base font-bold text-[#1d1d1f] mb-2">2. Đăng ký & Bảo mật tài khoản</h2>
+            <h2 className="text-base font-bold text-[#1d1d1f] mb-2">2. Registration & Account Security</h2>
             <ul className="list-disc list-inside text-xs text-[#86868b] space-y-1">
-              <li>Người dùng cần cung cấp đầy đủ và chính xác thông tin cá nhân bắt buộc khi đăng ký (bao gồm Họ tên, Email, Số điện thoại và số CCCD/Hộ chiếu).</li>
-              <li>Bạn có trách nhiệm bảo mật mật khẩu của mình và mọi hoạt động diễn ra dưới tài khoản cá nhân.</li>
-              <li><strong>⚠️ Quy định khóa bảo mật:</strong> Nhằm bảo vệ tài khoản khỏi truy cập trái phép, hệ thống sẽ tự động khóa tài khoản tạm thời nếu nhập sai mật khẩu liên tiếp quá 5 lần. Để mở khóa tài khoản, vui lòng liên hệ bộ phận hỗ trợ khách hàng.</li>
+              <li>Users must provide complete and accurate required personal information when registering (including Full Name, Email, Phone Number, and ID/Passport number).</li>
+              <li>You are responsible for maintaining the confidentiality of your password and for all activities that occur under your personal account.</li>
+              <li><strong>⚠️ Security Lock Rule:</strong> To protect accounts from unauthorized access, the system will automatically lock the account temporarily if the password is typed incorrectly more than 5 times consecutively. To unlock your account, please contact customer support.</li>
             </ul>
           </section>
 
           <section>
-            <h2 className="text-base font-bold text-[#1d1d1f] mb-2">3. Quy trình đặt phòng và hủy phòng</h2>
+            <h2 className="text-base font-bold text-[#1d1d1f] mb-2">3. Booking and Cancellation Process</h2>
             <ul className="list-disc list-inside text-xs text-[#86868b] space-y-1">
-              <li>Mọi yêu cầu đặt phòng phải tuân theo giá phòng hiện hành hiển thị trên hệ thống tại thời điểm đặt phòng.</li>
-              <li>Thông tin phòng và tình trạng phòng trống luôn được cập nhật theo thời gian thực.</li>
-              <li>Các chính sách về hủy phòng, phụ phí phát sinh hoặc thay đổi ngày ở sẽ được nêu chi tiết tại từng hạng phòng cụ thể trước khi người dùng xác nhận đặt phòng.</li>
+              <li>All booking requests must comply with the current room rates displayed on the system at the time of booking.</li>
+              <li>Room details and vacancy status are always updated in real-time.</li>
+              <li>Policies regarding cancellations, additional charges, or changes to check-in/out dates will be detailed for each specific room category before the user confirms the booking.</li>
             </ul>
           </section>
 
           <section>
-            <h2 className="text-base font-bold text-[#1d1d1f] mb-2">4. Trách nhiệm của người dùng</h2>
+            <h2 className="text-base font-bold text-[#1d1d1f] mb-2">4. User Responsibilities</h2>
             <p className="text-xs text-[#86868b]">
-              Người dùng cam kết không sử dụng hệ thống vào bất kỳ mục đích bất hợp pháp nào, không can thiệp làm gián đoạn hệ thống, không giả mạo thông tin cá nhân hay thông tin thẻ thanh toán, và tuân thủ các quy tắc ứng xử của khách sạn trong suốt quá trình lưu trú.
+              Users commit not to use the system for any illegal purposes, not to interfere with or disrupt the system, not to forge personal details or payment info, and to comply with hotel code of conduct rules during their stay.
             </p>
           </section>
 
           <section>
-            <h2 className="text-base font-bold text-[#1d1d1f] mb-2">5. Quyền hạn của Quản trị viên (Admin)</h2>
+            <h2 className="text-base font-bold text-[#1d1d1f] mb-2">5. Administrator (Admin) Authority</h2>
             <p className="text-xs text-[#86868b]">
-              Admin và nhân viên quản trị (Staff) có quyền giám sát hệ thống, khóa tài khoản vi phạm chính sách, từ chối cung cấp dịch vụ nếu phát hiện thông tin giả mạo hoặc hành vi trục lợi hệ thống đặt phòng mà không cần báo trước.
+              Administrators (Admins) and management staff have the right to monitor the system, lock accounts that violate policies, and refuse services if they detect forged details or abusive booking behaviors without prior notice.
             </p>
           </section>
 
           <section>
-            <h2 className="text-base font-bold text-[#1d1d1f] mb-2">6. Thay đổi điều khoản</h2>
+            <h2 className="text-base font-bold text-[#1d1d1f] mb-2">6. Changes to Terms</h2>
             <p className="text-xs text-[#86868b]">
-              Chúng tôi có quyền sửa đổi các điều khoản sử dụng này bất cứ lúc nào để phù hợp với quy định pháp luật và nâng cao chất lượng dịch vụ. Các thay đổi sẽ có hiệu lực ngay khi được đăng tải công khai trên hệ thống.
+              We reserve the right to modify these terms of use at any time to align with legal regulations and improve service quality. Changes will take effect immediately upon being publicly posted on the system.
             </p>
           </section>
         </div>

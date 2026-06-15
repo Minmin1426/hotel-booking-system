@@ -16,7 +16,7 @@ export default function ForgotPasswordPage() {
 
     try {
       await AuthService.forgotPassword(email);
-      setMessage("Nếu email đã đăng ký trên hệ thống, một đường dẫn đặt lại mật khẩu đã được gửi đến hòm thư của bạn. Vui lòng kiểm tra hộp thư.");
+      setMessage("If this email is registered in the system, a password reset link has been sent to your inbox. Please check your email.");
       setEmail('');
     } catch (err) {
       setError(err.message);
