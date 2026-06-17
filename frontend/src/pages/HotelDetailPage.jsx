@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { HotelService } from '../services/HotelService';
+import { BookingService } from '../services/BookingService';
+import { AuthService } from '../services/AuthService';
+import Header from '../components/Header';
 
 function HotelDetailPage() {
   const { id } = useParams();
@@ -26,6 +29,22 @@ function HotelDetailPage() {
 
   const isAuthenticated = !!sessionStorage.getItem("accessToken");
 
+  // Booking states
+  const [selectedRoom, setSelectedRoom] = useState(null);
+  const [showBookingModal, setShowBookingModal] = useState(false);
+  const [isBookingInProgress, setIsBookingInProgress] = useState(false);
+  const [bookingDetails, setBookingDetails] = useState(null);
+  const [bookingStatus, setBookingStatus] = useState(''); // 'PENDING', 'CONFIRMED', 'CANCELLED', 'EXPIRED'
+  const [timeLeft, setTimeLeft] = useState(0); // in seconds
+  const [paymentMethod, setPaymentMethod] = useState('ONLINE');
+  const [bookingError, setBookingError] = useState('');
+
+  // Guest details verification states
+  const [guestName, setGuestName] = useState('');
+  const [guestEmail, setGuestEmail] = useState('');
+  const [guestPhone, setGuestPhone] = useState('');
+  const [guestIdNumber, setGuestIdNumber] = useState('');
+
   // Fetch hotel details on load
   useEffect(() => {
     const fetchDetail = async () => {
@@ -44,6 +63,51 @@ function HotelDetailPage() {
     fetchDetail();
   }, [id]);
 
+  // Handle room lock countdown timer
+  useEffect(() => {
+    if (timeLeft <= 0) {
+      if (bookingStatus === 'PENDING') {
+        setBookingStatus('EXPIRED');
+      }
+      return;
+    }
+
+    const timer = setInterval(() => {
+      setTimeLeft(prev => prev - 1);
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [timeLeft, bookingStatus]);
+
+  const formatTime = (seconds) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  const parseLocalDateTime = (dateTimeStr) => {
+    if (!dateTimeStr) return null;
+    const parts = dateTimeStr.split(/[T:\-\.]/);
+    if (parts.length >= 6) {
+      const year = parseInt(parts[0], 10);
+      const month = parseInt(parts[1], 10) - 1;
+      const day = parseInt(parts[2], 10);
+      const hour = parseInt(parts[3], 10);
+      const minute = parseInt(parts[4], 10);
+      const second = parseInt(parts[5], 10);
+      return new Date(year, month, day, hour, minute, second);
+    }
+    return new Date(dateTimeStr);
+  };
+
+  const calculateNights = (inDate, outDate) => {
+    const checkInDate = new Date(inDate);
+    const checkOutDate = new Date(outDate);
+    const diffTime = Math.abs(checkOutDate - checkInDate);
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    return isNaN(diffDays) ? 0 : diffDays;
+  };
+
   // Handle checking room vacancies
   const handleCheckAvailability = async (e) => {
     if (e) e.preventDefault();
@@ -60,7 +124,7 @@ function HotelDetailPage() {
     }
   };
 
-  const handleBookRoom = (room) => {
+  const handleBookRoom = async (room) => {
     if (!isAuthenticated) {
       // Redirect to login page as per security standards
       sessionStorage.setItem("redirectAfterLogin", `/hotels/${id}`);
@@ -68,7 +132,132 @@ function HotelDetailPage() {
       return;
     }
 
-    setBookingSuccess(`Successfully selected Room ${room.roomNumber} (${room.roomType}) for booking! Booking service integration will follow in Phase 3.`);
+    setSelectedRoom(room);
+    setBookingDetails(null);
+    setBookingStatus('');
+    setBookingError('');
+    setPaymentMethod('ONLINE');
+    setBookingSuccess('');
+    
+    // Fetch live user profile details to verify (confirm user info)
+    setIsBookingInProgress(true);
+    try {
+      const profileData = await AuthService.getProfile();
+      setGuestName(profileData.fullName || '');
+      setGuestEmail(profileData.email || '');
+      setGuestPhone(profileData.phoneNumber || '');
+      setGuestIdNumber(profileData.identificationNumber || '');
+      setShowBookingModal(true);
+      setBookingError('');
+    } catch (err) {
+      setBookingError("Failed to retrieve your profile details. Please try again.");
+      setShowBookingModal(true);
+    } finally {
+      setIsBookingInProgress(false);
+    }
+  };
+
+  const handleConfirmBookingCreation = async () => {
+    if (!guestName.trim()) {
+      setBookingError("Full Name is required.");
+      return;
+    }
+    if (!guestPhone.trim()) {
+      setBookingError("Phone Number is required.");
+      return;
+    }
+    if (!guestIdNumber.trim()) {
+      setBookingError("ID / Passport Number is required.");
+      return;
+    }
+
+    setIsBookingInProgress(true);
+    setBookingError('');
+    try {
+      // 1. Confirm and save user profile changes
+      await AuthService.updateProfile(guestName, guestEmail, guestPhone, guestIdNumber);
+      sessionStorage.setItem("userFullName", guestName);
+
+      // 2. Validate stay dates with backend (UC-10)
+      await BookingService.validateDates(checkIn, checkOut);
+
+      // 3. Create booking & lock room (UC-11 & UC-33)
+      const res = await BookingService.createBooking(
+        Number(id),
+        checkIn,
+        checkOut,
+        [selectedRoom.roomId],
+        paymentMethod
+      );
+      setBookingDetails(res);
+      setBookingStatus(res.status);
+
+      const expires = parseLocalDateTime(res.lockExpiresAt);
+      if (expires) {
+        const now = new Date();
+        const diff = Math.max(0, Math.floor((expires - now) / 1000));
+        setTimeLeft(diff > 0 ? diff : 600);
+      } else {
+        setTimeLeft(600);
+      }
+    } catch (err) {
+      setBookingError(err.message || "Failed to confirm details and initiate reservation.");
+    } finally {
+      setIsBookingInProgress(false);
+    }
+  };
+
+  const handleSimulatePayment = async () => {
+    setIsBookingInProgress(true);
+    setBookingError('');
+    try {
+      const txnId = "TXN-" + Math.random().toString(36).substring(2, 11).toUpperCase();
+      await BookingService.confirmBooking(
+        bookingDetails.bookingCode,
+        txnId,
+        bookingDetails.totalAmount,
+        "ONLINE"
+      );
+      setBookingStatus('CONFIRMED');
+      setTimeLeft(0);
+      setBookingSuccess(`Room ${selectedRoom.roomNumber} booked successfully! Booking Code: ${bookingDetails.bookingCode}`);
+      // Refresh room list
+      handleCheckAvailability();
+    } catch (err) {
+      setBookingError(err.message || "Failed to confirm payment.");
+    } finally {
+      setIsBookingInProgress(false);
+    }
+  };
+
+  const handleRenewLock = async () => {
+    setIsBookingInProgress(true);
+    setBookingError('');
+    try {
+      await BookingService.renewLock(bookingDetails.bookingId);
+      setTimeLeft(600);
+      setBookingError('');
+    } catch (err) {
+      setBookingError(err.message || "Failed to extend locking time.");
+    } finally {
+      setIsBookingInProgress(false);
+    }
+  };
+
+  const handleCancelBooking = async () => {
+    setIsBookingInProgress(true);
+    setBookingError('');
+    try {
+      await BookingService.cancelBooking(bookingDetails.bookingId);
+      setBookingStatus('CANCELLED');
+      setTimeLeft(0);
+      // Refresh room list
+      handleCheckAvailability();
+    } catch (err) {
+      setBookingError(err.message || "Failed to cancel reservation.");
+    } finally {
+      setIsBookingInProgress(false);
+    }
   };
 
   const handleLogout = () => {
@@ -97,44 +286,8 @@ function HotelDetailPage() {
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-800 font-sans selection:bg-cyan-500 selection:text-slate-900">
-      
       {/* Navigation Header */}
-      <header className="sticky top-0 z-50 backdrop-blur-md bg-white/90 border-b border-slate-200/80">
-        <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
-          <Link to="/" className="flex items-center gap-2 text-xl font-bold tracking-tight bg-gradient-to-r from-cyan-600 to-indigo-600 bg-clip-text text-transparent">
-            <span>✨</span> LuxuryStay
-          </Link>
-          <nav className="flex items-center gap-6">
-            <Link to="/" className="text-sm font-semibold text-slate-600 hover:text-slate-900 transition-colors">Find Hotels</Link>
-            {isAuthenticated ? (
-              <>
-                <Link to="/profile" className="text-sm font-semibold text-slate-600 hover:text-slate-900 transition-colors">Profile</Link>
-                <button 
-                  onClick={handleLogout}
-                  className="px-4 py-1.5 rounded-full text-xs font-semibold bg-red-50 text-red-650 border border-red-100 hover:bg-red-100 transition-all duration-300"
-                >
-                  Logout
-                </button>
-              </>
-            ) : (
-              <div className="flex items-center gap-4">
-                <Link 
-                  to="/register" 
-                  className="text-sm font-semibold text-slate-650 hover:text-cyan-600 transition-colors"
-                >
-                  Register
-                </Link>
-                <Link 
-                  to="/login" 
-                  className="px-5 py-2 rounded-full text-xs font-bold bg-gradient-to-r from-cyan-500 to-indigo-600 text-white hover:brightness-105 active:scale-95 transition-all"
-                >
-                  Sign In
-                </Link>
-              </div>
-            )}
-          </nav>
-        </div>
-      </header>
+      <Header />
 
       {/* Hero Detail Panel */}
       <main className="max-w-7xl mx-auto px-6 py-12 space-y-12">
@@ -318,6 +471,307 @@ function HotelDetailPage() {
         </section>
 
       </main>
+
+      {/* Booking Checkout Modal */}
+      {showBookingModal && selectedRoom && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
+          <div className="relative w-full max-w-lg bg-white rounded-3xl shadow-2xl border border-slate-100 overflow-hidden flex flex-col max-h-[90vh]">
+            
+            {/* Header */}
+            <div className="p-6 bg-gradient-to-r from-cyan-600 to-indigo-600 text-white flex justify-between items-center">
+              <div>
+                <h3 className="text-lg font-bold">Confirm Your Reservation</h3>
+                <p className="text-xs text-white/80">Securing your stay at {hotel.name}</p>
+              </div>
+              {!isBookingInProgress && bookingStatus !== 'PENDING' && (
+                <button 
+                  onClick={() => setShowBookingModal(false)}
+                  className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white font-bold transition-all cursor-pointer"
+                >
+                  ✕
+                </button>
+              )}
+            </div>
+
+            {/* Modal Content */}
+            <div className="p-6 overflow-y-auto space-y-6 flex-1 text-left">
+              
+              {bookingStatus === '' && (
+                // Screen 1: Summary and checkout details
+                <div className="space-y-6">
+                  {/* Room Summary Card */}
+                  <div className="p-4 rounded-2xl bg-slate-50 border border-slate-100 space-y-2">
+                    <span className="px-2 py-0.5 rounded text-[10px] font-extrabold bg-cyan-50 text-cyan-600 border border-cyan-100 uppercase tracking-widest">{selectedRoom.roomType}</span>
+                    <h4 className="text-base font-bold text-slate-800">Room {selectedRoom.roomNumber}</h4>
+                    <div className="grid grid-cols-2 gap-4 pt-2 text-xs text-slate-600 border-t border-slate-200/50">
+                      <div>
+                        <span className="block text-[10px] text-slate-400 font-bold uppercase">Check-In</span>
+                        <span className="font-semibold text-slate-700">{checkIn}</span>
+                      </div>
+                      <div>
+                        <span className="block text-[10px] text-slate-400 font-bold uppercase">Check-Out</span>
+                        <span className="font-semibold text-slate-700">{checkOut}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Calculations */}
+                  <div className="space-y-2 text-xs text-slate-600">
+                    <div className="flex justify-between">
+                      <span>Room Rate</span>
+                      <span>${selectedRoom.pricePerNight} / night</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Nights</span>
+                      <span>{calculateNights(checkIn, checkOut)} nights</span>
+                    </div>
+                    <div className="flex justify-between pt-2 border-t border-slate-100 text-sm font-extrabold text-slate-900">
+                      <span>Total Amount</span>
+                      <span className="text-cyan-600">${calculateNights(checkIn, checkOut) * selectedRoom.pricePerNight}</span>
+                    </div>
+                  </div>
+
+                  {/* Confirm Guest Details Form */}
+                  <div className="space-y-3 p-4 bg-slate-50 rounded-2xl border border-slate-100/80">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Verify Guest Information</span>
+                    <div className="space-y-3">
+                      <div>
+                        <label className="text-[9px] font-bold text-slate-400 uppercase block mb-1">Full Name</label>
+                        <input
+                          type="text"
+                          className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs bg-white text-slate-700 focus:outline-none focus:border-cyan-500 transition-all"
+                          value={guestName}
+                          onChange={(e) => setGuestName(e.target.value)}
+                          required
+                          placeholder="Enter your full name"
+                        />
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="text-[9px] font-bold text-slate-400 uppercase block mb-1">Phone Number</label>
+                          <input
+                            type="text"
+                            className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs bg-white text-slate-700 focus:outline-none focus:border-cyan-500 transition-all"
+                            value={guestPhone}
+                            onChange={(e) => setGuestPhone(e.target.value)}
+                            required
+                            placeholder="e.g. +84 912345678"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-[9px] font-bold text-slate-400 uppercase block mb-1">ID / Passport Number</label>
+                          <input
+                            type="text"
+                            className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs bg-white text-slate-700 focus:outline-none focus:border-cyan-500 transition-all"
+                            value={guestIdNumber}
+                            onChange={(e) => setGuestIdNumber(e.target.value)}
+                            required
+                            placeholder="e.g. 001206123456"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Payment Method */}
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold text-slate-400 uppercase tracking-wider block">Payment Method</label>
+                    <div className="grid grid-cols-2 gap-3">
+                      <button
+                        type="button"
+                        onClick={() => setPaymentMethod('ONLINE')}
+                        className={`p-3 rounded-xl border text-left flex flex-col justify-between transition-all cursor-pointer ${paymentMethod === 'ONLINE' ? 'border-cyan-500 bg-cyan-50/30' : 'border-slate-200 hover:border-slate-300'}`}
+                      >
+                        <span className="text-xs font-bold text-slate-800">Online Payment</span>
+                        <span className="text-[10px] text-slate-400 mt-1">Locks room for 10 mins</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setPaymentMethod('CASH')}
+                        className={`p-3 rounded-xl border text-left flex flex-col justify-between transition-all cursor-pointer ${paymentMethod === 'CASH' ? 'border-slate-200 hover:border-slate-300' : 'border-slate-200 hover:border-slate-350'}`}
+                      >
+                        <span className="text-xs font-bold text-slate-800">Pay at Hotel</span>
+                        <span className="text-[10px] text-slate-400 mt-1">No instant locking</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {bookingError && (
+                    <p className="text-xs font-semibold text-red-650 bg-red-50 p-3 rounded-lg border border-red-100">⚠️ {bookingError}</p>
+                  )}
+
+                  {/* CTA */}
+                  <button
+                    onClick={handleConfirmBookingCreation}
+                    disabled={isBookingInProgress}
+                    className="w-full py-3 rounded-xl bg-gradient-to-r from-cyan-500 to-indigo-600 text-white font-bold text-sm tracking-wide shadow-md hover:brightness-105 active:scale-95 disabled:opacity-50 transition-all cursor-pointer"
+                  >
+                    {isBookingInProgress ? "Processing..." : "Lock Room & Proceed"}
+                  </button>
+                </div>
+              )}
+
+              {bookingStatus === 'PENDING' && bookingDetails && (
+                // Screen 2: Room Locked, Payment pending, Countdown Timer
+                <div className="space-y-6 text-center py-4">
+                  
+                  {/* Locking Header */}
+                  <div className="w-16 h-16 bg-amber-50 border border-amber-200 rounded-full flex items-center justify-center text-3xl mx-auto animate-pulse">
+                    🔒
+                  </div>
+
+                  <div className="space-y-2">
+                    <h4 className="text-lg font-bold text-slate-800">Room locked successfully!</h4>
+                    <p className="text-xs text-slate-500">Your room is reserved for you. Please complete payment within the timeframe to secure it.</p>
+                  </div>
+
+                  {/* Live Timer Card */}
+                  <div className="p-4 rounded-2xl bg-amber-50/50 border border-amber-100 max-w-xs mx-auto space-y-1">
+                    <span className="text-[10px] font-bold text-amber-600 uppercase tracking-wider">Remaining Time</span>
+                    <div className="text-3xl font-black text-slate-800 font-mono tracking-tight">{formatTime(timeLeft)}</div>
+                    
+                    {/* Progress bar */}
+                    <div className="w-full h-1.5 bg-slate-200 rounded-full overflow-hidden mt-2">
+                      <div 
+                        className={`h-full transition-all duration-1000 ${timeLeft < 120 ? 'bg-red-500' : 'bg-amber-500'}`}
+                        style={{ width: `${(timeLeft / 600) * 100}%` }}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Price breakdown */}
+                  <div className="p-4 rounded-xl bg-slate-50 text-xs text-slate-600 text-left space-y-2">
+                    <div className="flex justify-between">
+                      <span>Booking Code:</span>
+                      <span className="font-bold text-slate-800">{bookingDetails.bookingCode}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Total Amount Due:</span>
+                      <span className="font-bold text-cyan-600">${bookingDetails.totalAmount}</span>
+                    </div>
+                  </div>
+
+                  {bookingError && (
+                    <p className="text-xs font-semibold text-red-650 bg-red-50 p-3 rounded-lg border border-red-100 text-left">⚠️ {bookingError}</p>
+                  )}
+
+                  {/* Actions */}
+                  <div className="space-y-3 pt-2">
+                    <button
+                      onClick={handleSimulatePayment}
+                      disabled={isBookingInProgress}
+                      className="w-full py-3 rounded-xl bg-emerald-500 text-white font-bold text-sm tracking-wide shadow-md hover:bg-emerald-600 active:scale-95 disabled:opacity-50 transition-all cursor-pointer"
+                    >
+                      {isBookingInProgress ? "Processing..." : "💰 Simulate Card Payment"}
+                    </button>
+                    
+                    <div className="grid grid-cols-2 gap-3">
+                      <button
+                        onClick={handleRenewLock}
+                        disabled={isBookingInProgress}
+                        className="py-2.5 rounded-xl border border-slate-200 text-slate-700 font-bold text-xs hover:bg-slate-50 transition-all cursor-pointer"
+                      >
+                        🔄 Renew 10-Min Lock
+                      </button>
+                      <button
+                        onClick={handleCancelBooking}
+                        disabled={isBookingInProgress}
+                        className="py-2.5 rounded-xl bg-red-50 border border-red-100 text-red-655 font-bold text-xs hover:bg-red-100 transition-all cursor-pointer"
+                      >
+                        ✕ Cancel Booking
+                      </button>
+                    </div>
+                  </div>
+
+                </div>
+              )}
+
+              {bookingStatus === 'CONFIRMED' && bookingDetails && (
+                // Screen 3: Booking Confirmed
+                <div className="space-y-6 text-center py-6">
+                  <div className="w-16 h-16 bg-emerald-50 border border-emerald-200 rounded-full flex items-center justify-center text-3xl mx-auto">
+                    ✅
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <h4 className="text-xl font-bold text-slate-800">Booking Confirmed!</h4>
+                    <p className="text-xs text-slate-500">Your reservation has been secured and payment verified.</p>
+                  </div>
+
+                  {/* Code summary */}
+                  <div className="p-5 rounded-2xl bg-slate-50 border border-slate-200 max-w-sm mx-auto text-left space-y-3">
+                    <div className="flex justify-between items-center pb-2 border-b border-slate-200/50">
+                      <span className="text-xs text-slate-400 font-bold uppercase">Booking Code</span>
+                      <span className="text-sm font-bold text-slate-800">{bookingDetails.bookingCode}</span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 text-xs text-slate-600">
+                      <div>
+                        <span className="block text-[10px] text-slate-400 font-semibold uppercase">Check-In</span>
+                        <span>{checkIn}</span>
+                      </div>
+                      <div>
+                        <span className="block text-[10px] text-slate-400 font-semibold uppercase">Check-Out</span>
+                        <span>{checkOut}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={() => setShowBookingModal(false)}
+                    className="w-full py-3 rounded-xl bg-slate-800 text-white font-bold text-sm tracking-wide shadow-md hover:bg-slate-900 active:scale-95 transition-all cursor-pointer"
+                  >
+                    Back to Hotel Details
+                  </button>
+                </div>
+              )}
+
+              {bookingStatus === 'CANCELLED' && (
+                // Screen 4: Booking Cancelled
+                <div className="space-y-6 text-center py-6">
+                  <div className="w-16 h-16 bg-red-50 border border-red-200 rounded-full flex items-center justify-center text-3xl mx-auto">
+                    🚫
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <h4 className="text-xl font-bold text-slate-800">Booking Cancelled</h4>
+                    <p className="text-xs text-slate-500">Your booking has been successfully cancelled and any room locks released.</p>
+                  </div>
+
+                  <button
+                    onClick={() => setShowBookingModal(false)}
+                    className="w-full py-3 rounded-xl bg-slate-800 text-white font-bold text-sm tracking-wide shadow-md hover:bg-slate-900 active:scale-95 transition-all cursor-pointer"
+                  >
+                    Close Window
+                  </button>
+                </div>
+              )}
+
+              {bookingStatus === 'EXPIRED' && (
+                // Screen 5: Booking Expired
+                <div className="space-y-6 text-center py-6">
+                  <div className="w-16 h-16 bg-rose-50 border border-rose-200 rounded-full flex items-center justify-center text-3xl mx-auto">
+                    ⏰
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <h4 className="text-xl font-bold text-slate-800">Lock Expired</h4>
+                    <p className="text-xs text-slate-500">The 10-minute hold on this room has expired. The room has been released for other customers.</p>
+                  </div>
+
+                  <button
+                    onClick={() => setShowBookingModal(false)}
+                    className="w-full py-3 rounded-xl bg-slate-800 text-white font-bold text-sm tracking-wide shadow-md hover:bg-slate-900 active:scale-95 transition-all cursor-pointer"
+                  >
+                    Try Booking Again
+                  </button>
+                </div>
+              )}
+
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }

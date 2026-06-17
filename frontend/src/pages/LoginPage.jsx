@@ -169,9 +169,9 @@ export default function LoginPage() {
         {/* Right Side: Form Panel */}
         <div className="w-full lg:w-[48%] bg-white/95 p-8 md:p-12 flex flex-col justify-center relative">
           <div className="w-full max-w-[340px] mx-auto text-center">
-            <h1 className="text-3xl font-bold tracking-tight text-[#1d1d1f] mb-1.5">Sign in</h1>
+            <h1 className="text-3xl font-bold tracking-tight text-[#1d1d1f] mb-1.5">Đăng nhập</h1>
             <p className="text-xs text-[#86868b] mb-8">
-              Enter your details to access your account.
+              Nhập thông tin chi tiết của bạn để truy cập tài khoản.
             </p>
 
             <form onSubmit={handleSubmit} className="flex flex-col gap-4 text-left">
@@ -184,7 +184,7 @@ export default function LoginPage() {
               <div className="flex flex-col gap-1.5">
                 <input
                   type="email"
-                  placeholder="Email address"
+                  placeholder="Địa chỉ Email"
                   className="w-full h-[46px] px-[20px] py-[12px] rounded-2xl border border-[#e3e3e8] bg-white text-[#1d1d1f] text-sm focus:outline-none focus:border-[#0066cc] focus:ring-1 focus:ring-[#0066cc] transition-all placeholder:text-[#a1a1a6]"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
@@ -195,7 +195,7 @@ export default function LoginPage() {
               <div className="relative flex flex-col gap-1.5">
                 <input
                   type={showPassword ? "text" : "password"}
-                  placeholder="Password"
+                  placeholder="Mật khẩu"
                   className="w-full h-[46px] pl-[20px] pr-[60px] py-[12px] rounded-2xl border border-[#e3e3e8] bg-white text-[#1d1d1f] text-sm focus:outline-none focus:border-[#0066cc] focus:ring-1 focus:ring-[#0066cc] transition-all placeholder:text-[#a1a1a6]"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
@@ -206,27 +206,27 @@ export default function LoginPage() {
                   onClick={() => setShowPassword(!showPassword)}
                   className="absolute right-[20px] top-[14px] text-[#86868b] hover:text-[#1d1d1f] transition-colors text-xs font-semibold z-10"
                 >
-                  {showPassword ? "Hide" : "Show"}
+                  {showPassword ? "Ẩn" : "Hiện"}
                 </button>
               </div>
 
               <p className="text-[10px] text-[#86868b] text-center leading-normal">
-                ⚠️ Account will be locked automatically if password is incorrect more than 5 times.
+                ⚠️ Tài khoản sẽ bị tự động khóa nếu nhập sai mật khẩu quá 5 lần.
               </p>
 
               <div className="flex justify-center mt-3">
                 <button
                   type="submit"
                   disabled={isLoading}
-                  className="w-full h-[46px] rounded-2xl bg-[#0066cc] hover:bg-[#0055b3] text-[#ffffff] font-semibold text-sm shadow-md active:scale-[0.98] hover:scale-[1.01] transition-all duration-150 disabled:opacity-50"
+                  className="w-full h-[46px] rounded-2xl bg-[#0066cc] hover:bg-[#0055b3] text-[#ffffff] font-semibold text-sm shadow-md active:scale-[0.98] hover:scale-[1.01] transition-all duration-150 disabled:opacity-50 cursor-pointer"
                 >
-                  {isLoading ? 'Signing in...' : 'Sign In'}
+                  {isLoading ? 'Đang đăng nhập...' : 'Đăng nhập'}
                 </button>
               </div>
 
               <div className="flex items-center my-3">
                 <div className="flex-1 border-t border-[#e3e3e8]"></div>
-                <span className="px-3 text-[10px] text-[#86868b] uppercase tracking-wider font-semibold">Or connect via</span>
+                <span className="px-3 text-[10px] text-[#86868b] uppercase tracking-wider font-semibold">Hoặc kết nối qua</span>
                 <div className="flex-1 border-t border-[#e3e3e8]"></div>
               </div>
 
@@ -234,7 +234,7 @@ export default function LoginPage() {
                 <button
                   type="button"
                   onClick={handleGoogleLogin}
-                  className="flex-1 h-[40px] flex items-center justify-center gap-2 rounded-2xl border border-[#e3e3e8] bg-white text-[#1d1d1f] hover:bg-[#f5f5f7] active:scale-[0.97] transition-all text-xs font-semibold"
+                  className="flex-1 h-[40px] flex items-center justify-center gap-2 rounded-2xl border border-[#e3e3e8] bg-white text-[#1d1d1f] hover:bg-[#f5f5f7] active:scale-[0.97] transition-all text-xs font-semibold cursor-pointer"
                 >
                   <svg className="w-4 h-4" viewBox="0 0 24 24">
                     <path fill="#EA4335" d="M12.24 10.285V14.4h6.887c-.648 2.41-2.519 4.2-5.127 4.2a5.99 5.99 0 0 1-6-6 5.99 5.99 0 0 1 6-6c1.64 0 3.09.67 4.14 1.77l3.12-3.12A10.15 10.15 0 0 0 12.24 2a9.99 9.99 0 0 0-10 10 9.99 9.99 0 0 0 10 10c5.3 0 9.76-3.83 9.76-9.76 0-.64-.06-1.22-.17-1.95H12.24z"/>
@@ -245,7 +245,7 @@ export default function LoginPage() {
                 <button
                   type="button"
                   onClick={handleFacebookLogin}
-                  className="flex-1 h-[40px] flex items-center justify-center gap-2 rounded-2xl border border-[#e3e3e8] bg-white text-[#1d1d1f] hover:bg-[#f5f5f7] active:scale-[0.97] transition-all text-xs font-semibold"
+                  className="flex-1 h-[40px] flex items-center justify-center gap-2 rounded-2xl border border-[#e3e3e8] bg-white text-[#1d1d1f] hover:bg-[#f5f5f7] active:scale-[0.97] transition-all text-xs font-semibold cursor-pointer"
                 >
                   <svg className="w-4 h-4" viewBox="0 0 24 24" fill="#1877F2">
                     <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
@@ -257,26 +257,26 @@ export default function LoginPage() {
 
             <div className="mt-8 border-t border-[#e3e3e8] pt-6 flex flex-col gap-2">
               <p className="text-xs text-[#86868b]">
-                Don't have an account?{' '}
+                Chưa có tài khoản?{' '}
                 <a href="/register" className="text-[#0066cc] hover:underline font-semibold">
-                  Create yours now.
+                  Đăng ký ngay tại đây.
                 </a>
               </p>
               <p className="text-xs">
-                <a href="/forgot-password" className="text-[#0066cc] hover:underline">
-                  Forgot password?
+                <a href="/forgot-password" className="text-[#0066cc] hover:underline font-medium">
+                  Quên mật khẩu?
                 </a>
               </p>
               <p className="mt-3">
                 <a href="/" className="text-[#86868b] hover:text-[#1d1d1f] hover:underline flex items-center justify-center gap-1.5 text-xs font-medium">
-                  ← Back to homepage
+                  ← Quay lại trang chủ
                 </a>
               </p>
             </div>
 
             <div className="mt-6 border-t border-[#e3e3e8]/70 pt-4">
               <p className="text-[10px] text-[#86868b] leading-relaxed text-left">
-                By continuing, you agree to our <a href="/terms" className="text-[#0066cc] hover:underline font-medium">Terms & Conditions</a> and <a href="/privacy" className="text-[#0066cc] hover:underline font-medium">Data Privacy Policy</a>.
+                Bằng cách tiếp tục, bạn đồng ý với <a href="/terms" className="text-[#0066cc] hover:underline font-medium">Điều khoản & Điều kiện</a> và <a href="/privacy" className="text-[#0066cc] hover:underline font-medium">Chính sách bảo mật</a> của chúng tôi.
               </p>
             </div>
           </div>

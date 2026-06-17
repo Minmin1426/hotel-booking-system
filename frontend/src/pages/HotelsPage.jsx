@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { HotelService } from '../services/HotelService';
+import Header from '../components/Header';
 
 const HERO_BACKGROUNDS = [
   'https://images.unsplash.com/photo-1542314831-068cd1dbfeeb?auto=format&fit=crop&w=1920&q=80', // Luxury Lobby
@@ -174,42 +175,7 @@ function HotelsPage() {
   return (
     <div className="min-h-screen bg-slate-50 text-slate-800 font-sans selection:bg-cyan-500 selection:text-slate-900">
       {/* Navigation Header */}
-      <header className="sticky top-0 z-50 backdrop-blur-md bg-white/90 border-b border-slate-200/80 transition-all duration-300">
-        <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
-          <Link to="/" className="flex items-center gap-2 text-xl font-bold tracking-tight bg-gradient-to-r from-cyan-600 to-indigo-600 bg-clip-text text-transparent hover:opacity-90 transition-opacity">
-            <span>✨</span> LuxuryStay
-          </Link>
-          <nav className="flex items-center gap-6">
-            <Link to="/" className="text-sm font-semibold text-cyan-600 hover:text-cyan-500 transition-colors">Find Hotels</Link>
-            {isAuthenticated ? (
-              <>
-                <Link to="/profile" className="text-sm font-semibold text-slate-600 hover:text-slate-900 transition-colors">Profile</Link>
-                <button 
-                  onClick={handleLogout}
-                  className="px-4 py-1.5 rounded-full text-xs font-semibold bg-red-50 text-red-650 border border-red-100 hover:bg-red-100 transition-all duration-300"
-                >
-                  Logout
-                </button>
-              </>
-            ) : (
-              <div className="flex items-center gap-4">
-                <Link 
-                  to="/register" 
-                  className="text-sm font-semibold text-slate-650 hover:text-cyan-600 transition-colors"
-                >
-                  Register
-                </Link>
-                <Link 
-                  to="/login" 
-                  className="px-5 py-2 rounded-full text-xs font-bold bg-gradient-to-r from-cyan-500 to-indigo-600 text-white hover:brightness-105 hover:shadow-lg hover:shadow-cyan-500/20 active:scale-95 transition-all duration-300"
-                >
-                  Sign In
-                </Link>
-              </div>
-            )}
-          </nav>
-        </div>
-      </header>
+      <Header />
 
       {/* Hero Search Section */}
       <section className="relative py-28 px-6 overflow-hidden flex flex-col items-center justify-center border-b border-slate-200/60 min-h-[520px]">
