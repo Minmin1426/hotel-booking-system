@@ -9,10 +9,13 @@ Dự án áp dụng quy trình phát triển dựa trên đặc tả (**Specific
 Tất cả các tài liệu đặc tả chi tiết của hệ thống nằm trong thư mục `docs/`:
 
 1. **[Đặc tả Toàn diện Hệ thống (System Specification)](file:///c:/Users/Minmin/Documents/GitHub/hotel-booking-system/docs/specs/system_specification.md)**: Chứa toàn bộ đặc tả cơ sở dữ liệu, phân quyền RBAC, chi tiết API Endpoints, luồng xử lý và quy tắc nghiệp vụ (Business Rules) cho 35 Use Cases thuộc 6 phân hệ chức năng.
-2. **[Thiết kế & Đặc tả Cơ sở dữ liệu (Database Design Document)](file:///c:/Users/Minmin/Documents/GitHub/hotel-booking-system/docs/database/database_design.md)**: Thiết kế chi tiết cấu trúc 16 bảng dữ liệu, chỉ mục (Indexes) tối ưu hóa truy vấn, ràng buộc toàn vẹn dữ liệu, sơ đồ ERD Mermaid, và lịch sử Flyway migrations (V1 - V12).
-3. **[Phân cấp Chức năng (Functional Decomposition)](file:///c:/Users/Minmin/Documents/GitHub/hotel-booking-system/FUNCTIONALDECOMPOSITION.md)**: Danh sách tổng hợp và phân loại các nghiệp vụ hệ thống theo từng module.
-4. **[Đặc tả Use Cases (Use Case Specification)](file:///c:/Users/Minmin/Documents/GitHub/hotel-booking-system/USECASE.md)**: Phân rã nghiệp vụ chi tiết theo vai trò người dùng (Guest, Customer, Admin, Director, System).
-5. **[Quy tắc phát triển cho Agent (AGENTS.md)](file:///c:/Users/Minmin/Documents/GitHub/hotel-booking-system/AGENTS.md)**: Quy tắc về kiến trúc, bảo mật, xử lý lỗi và quản lý thông tin mật dành cho các AI Code Agent.
+2. **[Thiết kế & Đặc tả Cơ sở dữ liệu (Database Design Document)](file:///c:/Users/Minmin/Documents/GitHub/hotel-booking-system/docs/database/database_design.md)**: Thiết kế chi tiết cấu trúc 16 bảng dữ liệu, chỉ mục (Indexes) tối ưu hóa truy vấn, sơ đồ ERD, và lịch sử Flyway migrations (V1 - V12).
+3. **[Tài liệu Thiết kế Kiến trúc (Architecture Design)](file:///c:/Users/Minmin/Documents/GitHub/hotel-booking-system/docs/architecture/architecture_design.md)**: Đặc tả mô hình N-Tier, cấu trúc package mã nguồn, vòng đời xử lý request/response, thiết kế bảo mật JWT, và hệ thống tác vụ ngầm scheduler.
+4. **[Quy tắc Nghiệp vụ Hệ thống (Business Rules)](file:///c:/Users/Minmin/Documents/GitHub/hotel-booking-system/docs/business-rules/business_rules.md)**: Ràng buộc logic chi tiết ở Service và Database đối với tài khoản, lưu trú, tạm giữ phòng (room locks), vouchers, hủy phòng & hoàn tiền, xóa mềm và kiểm duyệt.
+5. **[Phân cấp Chức năng (Functional Decomposition)](file:///c:/Users/Minmin/Documents/GitHub/hotel-booking-system/FUNCTIONALDECOMPOSITION.md)**: Danh sách tổng hợp và phân loại các nghiệp vụ hệ thống theo từng module.
+6. **[Đặc tả Use Cases (Use Case Specification)](file:///c:/Users/Minmin/Documents/GitHub/hotel-booking-system/USECASE.md)**: Phân rã nghiệp vụ chi tiết theo vai trò người dùng (Guest, Customer, Admin, Director, System).
+7. **[Quy tắc phát triển cho Agent (AGENTS.md)](file:///c:/Users/Minmin/Documents/GitHub/hotel-booking-system/AGENTS.md)**: Quy tắc về kiến trúc, bảo mật, xử lý lỗi và quản lý thông tin mật dành cho các AI Code Agent.
+
 
 
 ## Hướng dẫn cài đặt & Chạy ứng dụng
