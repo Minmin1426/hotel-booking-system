@@ -12,9 +12,11 @@ Tất cả các tài liệu đặc tả chi tiết của hệ thống nằm tron
 2. **[Thiết kế & Đặc tả Cơ sở dữ liệu (Database Design Document)](file:///c:/Users/Minmin/Documents/GitHub/hotel-booking-system/docs/database/database_design.md)**: Thiết kế chi tiết cấu trúc 16 bảng dữ liệu, chỉ mục (Indexes) tối ưu hóa truy vấn, sơ đồ ERD, và lịch sử Flyway migrations (V1 - V12).
 3. **[Tài liệu Thiết kế Kiến trúc (Architecture Design)](file:///c:/Users/Minmin/Documents/GitHub/hotel-booking-system/docs/architecture/architecture_design.md)**: Đặc tả mô hình N-Tier, cấu trúc package mã nguồn, vòng đời xử lý request/response, thiết kế bảo mật JWT, và hệ thống tác vụ ngầm scheduler.
 4. **[Quy tắc Nghiệp vụ Hệ thống (Business Rules)](file:///c:/Users/Minmin/Documents/GitHub/hotel-booking-system/docs/business-rules/business_rules.md)**: Ràng buộc logic chi tiết ở Service và Database đối với tài khoản, lưu trú, tạm giữ phòng (room locks), vouchers, hủy phòng & hoàn tiền, xóa mềm và kiểm duyệt.
-5. **[Phân cấp Chức năng (Functional Decomposition)](file:///c:/Users/Minmin/Documents/GitHub/hotel-booking-system/FUNCTIONALDECOMPOSITION.md)**: Danh sách tổng hợp và phân loại các nghiệp vụ hệ thống theo từng module.
-6. **[Đặc tả Use Cases (Use Case Specification)](file:///c:/Users/Minmin/Documents/GitHub/hotel-booking-system/USECASE.md)**: Phân rã nghiệp vụ chi tiết theo vai trò người dùng (Guest, Customer, Admin, Director, System).
-7. **[Quy tắc phát triển cho Agent (AGENTS.md)](file:///c:/Users/Minmin/Documents/GitHub/hotel-booking-system/AGENTS.md)**: Quy tắc về kiến trúc, bảo mật, xử lý lỗi và quản lý thông tin mật dành cho các AI Code Agent.
+5. **[Đặc tả REST API (REST API Specification)](file:///c:/Users/Minmin/Documents/GitHub/hotel-booking-system/docs/api/api_specification.md)**: Chi tiết toàn bộ các API Endpoints, cấu trúc JSON Request/Response DTO, cơ chế phân quyền bảo mật API, và các lỗi phản hồi tiêu chuẩn.
+6. **[Phân cấp Chức năng (Functional Decomposition)](file:///c:/Users/Minmin/Documents/GitHub/hotel-booking-system/FUNCTIONALDECOMPOSITION.md)**: Danh sách tổng hợp và phân loại các nghiệp vụ hệ thống theo từng module.
+7. **[Đặc tả Use Cases (Use Case Specification)](file:///c:/Users/Minmin/Documents/GitHub/hotel-booking-system/USECASE.md)**: Phân rã nghiệp vụ chi tiết theo vai trò người dùng (Guest, Customer, Admin, Director, System).
+8. **[Quy tắc phát triển cho Agent (AGENTS.md)](file:///c:/Users/Minmin/Documents/GitHub/hotel-booking-system/AGENTS.md)**: Quy tắc về kiến trúc, bảo mật, xử lý lỗi và quản lý thông tin mật dành cho các AI Code Agent.
+
 
 
 
