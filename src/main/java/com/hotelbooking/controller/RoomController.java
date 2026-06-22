@@ -1,17 +1,18 @@
 package com.hotelbooking.controller;
 
 import com.hotelbooking.dto.ApiResponse;
+import com.hotelbooking.dto.CreateRoomRequest;
+import com.hotelbooking.dto.UpdateRoomRequest;
 import com.hotelbooking.dto.request.RoomSearchRequest;
 import com.hotelbooking.dto.response.RoomAvailabilityResponse;
+import com.hotelbooking.model.Room;
 import com.hotelbooking.service.RoomService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.ModelAttribute;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
@@ -37,5 +38,53 @@ public class RoomController {
         return ResponseEntity.ok(
                 ApiResponse.success("Available rooms retrieved successfully", rooms)
         );
+    }
+
+    /**
+     * Create room (Admin only)
+     */
+    @PostMapping
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<Room>> createRoom(@Valid @RequestBody CreateRoomRequest request) {
+        log.info("Received admin request to create room in hotel: {}", request.getHotelId());
+        Room room = roomService.createRoom(request);
+        return ResponseEntity.ok(ApiResponse.success("Room created successfully", room));
+    }
+
+    /**
+     * Update room details (Admin only)
+     */
+    @PutMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<Room>> updateRoom(
+            @PathVariable("id") Long id,
+            @Valid @RequestBody UpdateRoomRequest request) {
+        log.info("Received admin request to update room ID: {}", id);
+        Room room = roomService.updateRoom(id, request);
+        return ResponseEntity.ok(ApiResponse.success("Room updated successfully", room));
+    }
+
+    /**
+     * Delete room (Admin only)
+     */
+    @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<Void>> deleteRoom(@PathVariable("id") Long id) {
+        log.info("Received admin request to delete room ID: {}", id);
+        roomService.deleteRoom(id);
+        return ResponseEntity.ok(ApiResponse.success("Room deleted successfully", null));
+    }
+
+    /**
+     * Update room availability (Admin only)
+     */
+    @PutMapping("/{id}/availability")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<Void>> updateAvailability(
+            @PathVariable("id") Long id,
+            @RequestParam("available") boolean available) {
+        log.info("Received admin request to update availability of room ID: {} to {}", id, available);
+        roomService.updateAvailability(id, available);
+        return ResponseEntity.ok(ApiResponse.success("Room availability updated successfully", null));
     }
 }

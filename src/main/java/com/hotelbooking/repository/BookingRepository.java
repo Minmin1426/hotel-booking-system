@@ -41,4 +41,32 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
                                      @Param("paymentMethod") String paymentMethod,
                                      @Param("search") String search,
                                      Pageable pageable);
+
+    @Query("SELECT b.status, COUNT(b) FROM Booking b " +
+           "WHERE b.createdAt >= :startDate AND b.createdAt <= :endDate " +
+           "GROUP BY b.status")
+    List<Object[]> countBookingsByStatus(
+            @Param("startDate") LocalDateTime startDate,
+            @Param("endDate") LocalDateTime endDate
+    );
+
+    @Query("SELECT new com.hotelbooking.dto.response.DailyBookingStats(" +
+           "CAST(b.createdAt AS LocalDate), " +
+           "COUNT(b), " +
+           "SUM(CASE WHEN b.status = 'CONFIRMED' THEN 1L ELSE 0L END), " +
+           "SUM(CASE WHEN b.status = 'CANCELLED' THEN 1L ELSE 0L END)) " +
+           "FROM Booking b " +
+           "WHERE b.createdAt >= :startDate AND b.createdAt <= :endDate " +
+           "GROUP BY CAST(b.createdAt AS LocalDate) " +
+           "ORDER BY CAST(b.createdAt AS LocalDate) ASC")
+    List<com.hotelbooking.dto.response.DailyBookingStats> findDailyStats(
+            @Param("startDate") LocalDateTime startDate,
+            @Param("endDate") LocalDateTime endDate
+    );
+
+    @Query("SELECT COUNT(b) > 0 FROM Booking b WHERE b.hotel.hotelId = :hotelId AND b.status = :status")
+    boolean existsByHotel_HotelIdAndStatus(@Param("hotelId") Long hotelId, @Param("status") String status);
+
+    @Query("SELECT COUNT(b) > 0 FROM Booking b JOIN b.bookingRooms br WHERE br.room.roomId = :roomId AND b.status IN :statuses")
+    boolean existsByRoomIdAndStatusIn(@Param("roomId") Long roomId, @Param("statuses") List<String> statuses);
 }

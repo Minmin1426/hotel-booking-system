@@ -53,6 +53,19 @@ public class Booking {
     @Column(columnDefinition = "NVARCHAR(MAX)")
     private String notes;
 
+    @Column(name = "payment_status")
+    private String paymentStatus;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "voucher_id")
+    private Voucher voucher;
+
+    @Column(name = "discount_amount", precision = 18, scale = 2)
+    private BigDecimal discountAmount;
+
+    @Column(name = "final_price", precision = 18, scale = 2)
+    private BigDecimal finalPrice;
+
     @OneToMany(mappedBy = "booking", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
     private List<BookingRoom> bookingRooms = new java.util.ArrayList<>();

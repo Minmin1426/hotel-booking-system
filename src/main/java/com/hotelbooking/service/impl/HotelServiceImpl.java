@@ -1,15 +1,16 @@
 package com.hotelbooking.service.impl;
 
-import com.hotelbooking.dto.HotelDetailResponse;
-import com.hotelbooking.dto.HotelFilterRequest;
-import com.hotelbooking.dto.HotelImageDTO;
-import com.hotelbooking.dto.HotelResponse;
-import com.hotelbooking.dto.HotelSearchResponseDTO;
+import com.hotelbooking.dto.*;
+import com.hotelbooking.exception.BusinessException;
 import com.hotelbooking.exception.ResourceNotFoundException;
 import com.hotelbooking.model.Hotel;
+import com.hotelbooking.model.HotelImage;
 import com.hotelbooking.model.Room;
+import org.springframework.web.multipart.MultipartFile;
+import com.hotelbooking.repository.BookingRepository;
 import com.hotelbooking.repository.HotelRepository;
 import com.hotelbooking.repository.HotelSpecification;
+import com.hotelbooking.repository.RoomRepository;
 import com.hotelbooking.service.HotelService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -23,6 +24,7 @@ import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
@@ -31,6 +33,8 @@ import java.util.stream.Collectors;
 public class HotelServiceImpl implements HotelService {
 
     private final HotelRepository hotelRepository;
+    private final RoomRepository roomRepository;
+    private final BookingRepository bookingRepository;
 
     @Override
     @Transactional(readOnly = true)
@@ -166,5 +170,101 @@ public class HotelServiceImpl implements HotelService {
                                 .build())
                         .collect(Collectors.toList()))
                 .build();
+    }
+
+    @Override
+    @Transactional
+    public HotelResponse createHotel(HotelCreateRequest request) {
+        log.info("Creating new hotel: {}", request.getName());
+        Hotel hotel = Hotel.builder()
+                .name(request.getName())
+                .location(request.getLocation())
+                .description(request.getDescription())
+                .isActive(true)
+                .build();
+        
+        Hotel saved = hotelRepository.save(hotel);
+        return convertToFilterResponse(saved);
+    }
+
+    @Override
+    @Transactional
+    public HotelResponse updateHotel(Long id, HotelUpdateRequest request) {
+        log.info("Updating hotel ID: {}", id);
+        Hotel hotel = hotelRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Hotel", "id", id.toString()));
+
+        hotel.setName(request.getName());
+        hotel.setLocation(request.getLocation());
+        hotel.setDescription(request.getDescription());
+        hotel.setIsActive(request.getIsActive());
+
+        Hotel saved = hotelRepository.save(hotel);
+        return convertToFilterResponse(saved);
+    }
+
+    @Override
+    @Transactional
+    public void deleteHotel(Long id) {
+        log.info("Deleting hotel. Hotel ID: {}", id);
+        Hotel hotel = hotelRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Hotel", "id", id.toString()));
+
+        // Check if there are active bookings
+        boolean hasActiveBookings = bookingRepository.existsByHotel_HotelIdAndStatus(id, "CONFIRMED") 
+                || bookingRepository.existsByHotel_HotelIdAndStatus(id, "PENDING");
+        
+        if (hasActiveBookings) {
+            throw new BusinessException("Cannot delete hotel because active bookings exist");
+        }
+
+        // Soft delete hotel
+        hotel.setIsActive(false);
+        hotelRepository.save(hotel);
+
+        // Disable all rooms
+        List<Room> rooms = roomRepository.findByHotel_HotelId(id);
+        for (Room room : rooms) {
+            room.setStatus("UNAVAILABLE");
+        }
+        roomRepository.saveAll(rooms);
+    }
+
+    @Override
+    @Transactional
+    public String uploadImage(Long hotelId, MultipartFile file) throws java.io.IOException {
+        log.info("Uploading image for hotelId: {}", hotelId);
+        Hotel hotel = hotelRepository.findById(hotelId)
+                .orElseThrow(() -> new ResourceNotFoundException("Hotel", "id", hotelId.toString()));
+
+        String filename = file.getOriginalFilename();
+        if (filename == null || filename.isBlank()) {
+            throw new BusinessException("Invalid file name");
+        }
+
+        String lower = filename.toLowerCase();
+        if (!(lower.endsWith(".jpg") || lower.endsWith(".jpeg") || lower.endsWith(".png") || lower.endsWith(".webp"))) {
+            throw new BusinessException("Only JPG, PNG, and WEBP formats are allowed");
+        }
+
+        java.io.File uploadDir = new java.io.File("uploads/hotels");
+        if (!uploadDir.exists()) {
+            uploadDir.mkdirs();
+        }
+
+        String savedName = UUID.randomUUID().toString() + "_" + filename;
+        java.io.File destination = new java.io.File(uploadDir, savedName);
+        file.transferTo(destination);
+
+        HotelImage img = HotelImage.builder()
+                .hotel(hotel)
+                .imageUrl(destination.getPath().replace("\\", "/"))
+                .imageFormat(file.getContentType())
+                .build();
+        
+        hotel.getImages().add(img);
+        hotelRepository.save(hotel);
+
+        return destination.getPath().replace("\\", "/");
     }
 }

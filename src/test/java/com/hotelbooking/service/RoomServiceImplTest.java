@@ -1,11 +1,14 @@
 package com.hotelbooking.service;
 
+import com.hotelbooking.dto.CreateRoomRequest;
+import com.hotelbooking.dto.UpdateRoomRequest;
 import com.hotelbooking.dto.request.RoomSearchRequest;
 import com.hotelbooking.dto.response.RoomAvailabilityResponse;
 import com.hotelbooking.exception.BusinessException;
 import com.hotelbooking.exception.ResourceNotFoundException;
 import com.hotelbooking.model.Hotel;
 import com.hotelbooking.model.Room;
+import com.hotelbooking.repository.BookingRepository;
 import com.hotelbooking.repository.HotelRepository;
 import com.hotelbooking.repository.RoomRepository;
 import com.hotelbooking.service.impl.RoomServiceImpl;
@@ -28,9 +31,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoInteractions;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 @DisplayName("UC-09: View Available Rooms")
@@ -41,6 +42,9 @@ class RoomServiceImplTest {
 
     @Mock
     private HotelRepository hotelRepository;
+
+    @Mock
+    private BookingRepository bookingRepository;
 
     @InjectMocks
     private RoomServiceImpl roomService;
@@ -264,5 +268,94 @@ class RoomServiceImplTest {
         request.setCheckIn(checkIn);
         request.setCheckOut(checkOut);
         return request;
+    }
+
+    @Test
+    @DisplayName("Create room successfully")
+    void createRoom_Success() {
+        CreateRoomRequest request = new CreateRoomRequest();
+        request.setHotelId(1L);
+        request.setRoomNumber("201");
+        request.setPrice(new BigDecimal("600000"));
+        request.setRoomType("SINGLE");
+
+        when(hotelRepository.findById(1L)).thenReturn(Optional.of(activeHotel));
+        when(roomRepository.existsByHotel_HotelIdAndRoomNumber(1L, "201")).thenReturn(false);
+        when(roomRepository.save(any(Room.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        Room room = roomService.createRoom(request);
+
+        assertThat(room).isNotNull();
+        assertThat(room.getRoomNumber()).isEqualTo("201");
+        assertThat(room.getStatus()).isEqualTo("AVAILABLE");
+        verify(roomRepository, times(1)).save(any(Room.class));
+    }
+
+    @Test
+    @DisplayName("Create room throws exception when room number exists")
+    void createRoom_ExistedNumber_ThrowsException() {
+        CreateRoomRequest request = new CreateRoomRequest();
+        request.setHotelId(1L);
+        request.setRoomNumber("101");
+
+        when(hotelRepository.findById(1L)).thenReturn(Optional.of(activeHotel));
+        when(roomRepository.existsByHotel_HotelIdAndRoomNumber(1L, "101")).thenReturn(true);
+
+        assertThatThrownBy(() -> roomService.createRoom(request))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("Room number already exists");
+    }
+
+    @Test
+    @DisplayName("Update room successfully")
+    void updateRoom_Success() {
+        UpdateRoomRequest request = new UpdateRoomRequest();
+        request.setPrice(new BigDecimal("700000"));
+        request.setRoomType("DOUBLE");
+
+        when(roomRepository.findById(101L)).thenReturn(Optional.of(singleRoom));
+        when(roomRepository.save(any(Room.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        Room room = roomService.updateRoom(101L, request);
+
+        assertThat(room).isNotNull();
+        assertThat(room.getPrice()).isEqualTo(new BigDecimal("700000"));
+        assertThat(room.getRoomType()).isEqualTo("DOUBLE");
+    }
+
+    @Test
+    @DisplayName("Delete room successfully")
+    void deleteRoom_Success() {
+        when(roomRepository.findById(101L)).thenReturn(Optional.of(singleRoom));
+        when(bookingRepository.existsByRoomIdAndStatusIn(eq(101L), any())).thenReturn(false);
+        when(roomRepository.save(any(Room.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        roomService.deleteRoom(101L);
+
+        assertThat(singleRoom.getStatus()).isEqualTo("UNAVAILABLE");
+        verify(roomRepository, times(1)).save(singleRoom);
+    }
+
+    @Test
+    @DisplayName("Delete room throws exception when active booking exists")
+    void deleteRoom_ActiveBooking_ThrowsException() {
+        when(roomRepository.findById(101L)).thenReturn(Optional.of(singleRoom));
+        when(bookingRepository.existsByRoomIdAndStatusIn(eq(101L), any())).thenReturn(true);
+
+        assertThatThrownBy(() -> roomService.deleteRoom(101L))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("Room has active booking");
+    }
+
+    @Test
+    @DisplayName("Update room availability successfully")
+    void updateAvailability_Success() {
+        when(roomRepository.findById(101L)).thenReturn(Optional.of(singleRoom));
+        when(roomRepository.save(any(Room.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        roomService.updateAvailability(101L, false);
+
+        assertThat(singleRoom.getStatus()).isEqualTo("UNAVAILABLE");
+        verify(roomRepository, times(1)).save(singleRoom);
     }
 }

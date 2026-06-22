@@ -13,7 +13,16 @@ import HotelDetailPage from './pages/HotelDetailPage';
 
 function App() {
   const isAuthenticated = !!sessionStorage.getItem("accessToken");
-  const isAdmin = sessionStorage.getItem("userRole") === "ADMIN";
+  const userRole = sessionStorage.getItem("userRole");
+  const isAdmin = userRole === "ADMIN";
+  const isDirector = userRole === "DIRECTOR";
+  const isAdminOrDirector = isAdmin || isDirector;
+
+  const getRedirectPath = () => {
+    if (isAdmin) return "/admin/users?tab=users";
+    if (isDirector) return "/admin/users?tab=reports";
+    return "/profile";
+  };
 
   return (
     <Router>
@@ -23,14 +32,14 @@ function App() {
         <Route path="/hotels/:id" element={<HotelDetailPage />} />
         
         {/* Auth routes */}
-        <Route path="/login" element={isAuthenticated ? (isAdmin ? <Navigate to="/admin/users" replace /> : <Navigate to="/profile" replace />) : <LoginPage />} />
-        <Route path="/register" element={isAuthenticated ? (isAdmin ? <Navigate to="/admin/users" replace /> : <Navigate to="/profile" replace />) : <RegisterPage />} />
+        <Route path="/login" element={isAuthenticated ? <Navigate to={getRedirectPath()} replace /> : <LoginPage />} />
+        <Route path="/register" element={isAuthenticated ? <Navigate to={getRedirectPath()} replace /> : <RegisterPage />} />
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
         <Route path="/reset-password" element={<ResetPasswordPage />} />
         
         {/* Protected routes */}
         <Route path="/profile" element={isAuthenticated ? <ProfilePage /> : <Navigate to="/login" replace />} />
-        <Route path="/admin/users" element={isAuthenticated && isAdmin ? <AdminDashboardPage /> : <Navigate to="/login" replace />} />
+        <Route path="/admin/users" element={isAuthenticated && isAdminOrDirector ? <AdminDashboardPage /> : <Navigate to="/login" replace />} />
 
         {/* Public info routes */}
         <Route path="/terms" element={<TermsPage />} />

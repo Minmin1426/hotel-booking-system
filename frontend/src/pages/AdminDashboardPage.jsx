@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { AuthService } from '../services/AuthService';
 import { BookingService } from '../services/BookingService';
+import { ReportService } from '../services/ReportService';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
 
@@ -10,7 +11,12 @@ export default function AdminDashboardPage() {
   const location = useLocation();
   const navigate = useNavigate();
   const queryParams = new URLSearchParams(location.search);
-  const activeTab = queryParams.get('tab') || 'users';
+  
+  const userRole = sessionStorage.getItem("userRole");
+  const isAdmin = userRole === 'ADMIN';
+  const isDirector = userRole === 'DIRECTOR';
+  
+  const activeTab = isDirector ? 'reports' : (queryParams.get('tab') || 'users');
 
   // State for Users
   const [users, setUsers] = useState([]);
@@ -23,6 +29,27 @@ export default function AdminDashboardPage() {
   const [bookingsPage, setBookingsPage] = useState(0);
   const [bookingsTotalPages, setBookingsTotalPages] = useState(0);
   const [bookingsTotalElements, setBookingsTotalElements] = useState(0);
+
+  // State for Reports
+  const [reportFrom, setReportFrom] = useState(() => {
+    const d = new Date();
+    d.setDate(d.getDate() - 30);
+    return d.toISOString().split('T')[0];
+  });
+  const [reportTo, setReportTo] = useState(() => new Date().toISOString().split('T')[0]);
+  const [roomUsage, setRoomUsage] = useState([]);
+  const [bookingStats, setBookingStats] = useState(null);
+  const [revenueReport, setRevenueReport] = useState(null);
+  const [revenuePeriod, setRevenuePeriod] = useState("MONTH");
+  const [isExporting, setIsExporting] = useState(false);
+
+  // State for Reviews
+  const [reviews, setReviews] = useState([]);
+  const [reviewsPage, setReviewsPage] = useState(0);
+  const [reviewsTotalPages, setReviewsTotalPages] = useState(0);
+  const [reviewsTotalElements, setReviewsTotalElements] = useState(0);
+  const [reviewsFilter, setReviewsFilter] = useState('ALL');
+  const [modifyingReviewId, setModifyingReviewId] = useState(null);
 
   // Loading and error states
   const [isLoading, setIsLoading] = useState(false);
@@ -73,11 +100,25 @@ export default function AdminDashboardPage() {
     }
   }, [activeTab]);
 
+  // 5. Fetch Reports when tab, dates, or revenue grouping changes
+  useEffect(() => {
+    if (activeTab === 'reports') {
+      loadReports();
+    }
+  }, [activeTab, reportFrom, reportTo, revenuePeriod]);
+
+  // 6. Fetch Reviews when tab, page, or review filter changes
+  useEffect(() => {
+    if (activeTab === 'reviews') {
+      loadReviews();
+    }
+  }, [activeTab, reviewsPage, reviewsFilter]);
+
   useEffect(() => {
     const token = sessionStorage.getItem("accessToken");
     const role = sessionStorage.getItem("userRole");
     
-    if (!token || role !== 'ADMIN') {
+    if (!token || (role !== 'ADMIN' && role !== 'DIRECTOR')) {
       window.location.href = '/login';
       return;
     }
@@ -146,6 +187,42 @@ export default function AdminDashboardPage() {
     }
   };
 
+  const loadReports = async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const usage = await ReportService.getRoomUsageReport(reportFrom, reportTo);
+      setRoomUsage(usage || []);
+
+      if (isDirector) {
+        const rev = await ReportService.getRevenueReport(reportFrom, reportTo, revenuePeriod);
+        setRevenueReport(rev || null);
+      } else {
+        const stats = await ReportService.getBookingStatistics(reportFrom, reportTo);
+        setBookingStats(stats || null);
+      }
+    } catch (err) {
+      setError("Failed to load operations report data: " + err.message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const loadReviews = async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const data = await ReportService.getReviewsForModeration(reviewsFilter, reviewsPage, 10);
+      setReviews(data.content || []);
+      setReviewsTotalPages(data.totalPages || 0);
+      setReviewsTotalElements(data.totalElements || 0);
+    } catch (err) {
+      setError("Failed to load reviews for moderation: " + err.message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const handleToggleStatus = async (userId, currentStatus) => {
     const newStatus = currentStatus === 'ACTIVE' ? 'LOCKED' : 'ACTIVE';
     setActionLoadingId(userId);
@@ -174,7 +251,6 @@ export default function AdminDashboardPage() {
 
     try {
       await BookingService.processBooking(bookingId, status);
-      // Refresh database records to reflect correct updated status and payments
       loadBookings();
     } catch (err) {
       setError("Xử lý booking thất bại: " + err.message);
@@ -198,6 +274,52 @@ export default function AdminDashboardPage() {
     }
   };
 
+  const handleExportRoomUsage = async () => {
+    setIsExporting(true);
+    setError(null);
+    try {
+      const blob = await ReportService.exportRoomUsageToExcel(reportFrom, reportTo);
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `room-usage-${reportFrom}-to-${reportTo}.xlsx`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    } catch (err) {
+      setError("Failed to export Excel report: " + err.message);
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  const handleModerateReview = async (reviewId, currentStatus) => {
+    const action = currentStatus === 'VISIBLE' ? 'HIDE' : 'SHOW';
+    let reason = "";
+    if (action === 'HIDE') {
+      reason = window.prompt("Nhập lý do ẩn đánh giá này:");
+      if (reason === null) return;
+      if (!reason.trim()) {
+        alert("Lý do ẩn không được để trống!");
+        return;
+      }
+    } else {
+      const confirmed = window.confirm("Bạn có muốn hiển thị lại đánh giá này?");
+      if (!confirmed) return;
+    }
+
+    setModifyingReviewId(reviewId);
+    setError(null);
+    try {
+      await ReportService.moderateReview(reviewId, action, reason);
+      loadReviews();
+    } catch (err) {
+      setError("Moderate review failed: " + err.message);
+    } finally {
+      setModifyingReviewId(null);
+    }
+  };
+
   // Client-side users filter
   const filteredUsers = users.filter(user => {
     const fullNameMatches = (user.fullName || '').toLowerCase().includes(searchQuery.toLowerCase());
@@ -212,7 +334,7 @@ export default function AdminDashboardPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-tr from-[#f4f3f0] via-[#f5f7fa] to-[#eef1f6] flex flex-col">
-      <Header fullName={adminName} role="ADMIN" />
+      <Header fullName={adminName} role={userRole} />
       
       <main className="w-full max-w-[1200px] mx-auto px-6 py-10 flex-1 flex flex-col justify-start">
         <div className="w-full bg-white p-[32px] md:p-[48px] rounded-[24px] border border-[#e3e3e8]/50 shadow-[0_10px_40px_rgba(0,0,0,0.02)]">
@@ -221,33 +343,67 @@ export default function AdminDashboardPage() {
           <div className="mb-[32px] border-b border-[#f5f5f7] pb-6 flex flex-col sm:flex-row sm:items-center justify-between text-left gap-4">
             <div>
               <h1 className="text-3xl font-bold tracking-tight text-[#1d1d1f]">
-                {activeTab === 'users' ? 'User Management' : 'Booking Management'}
+                {activeTab === 'users' && 'User Management'}
+                {activeTab === 'bookings' && 'Booking Management'}
+                {activeTab === 'reports' && 'Operations & Reports'}
+                {activeTab === 'reviews' && 'Review Moderation'}
               </h1>
               <p className="text-xs text-[#86868b] mt-1">
-                {activeTab === 'users' 
-                  ? 'Admin console to manage registered user accounts' 
-                  : 'Manage hotel reservations, payments, and offline manual booking processing'}
+                {activeTab === 'users' && 'Admin console to manage registered user accounts'}
+                {activeTab === 'bookings' && 'Manage hotel reservations, payments, and offline manual booking processing'}
+                {activeTab === 'reports' && 'Operational statistics, room occupancy reports, and Excel exporting'}
+                {activeTab === 'reviews' && 'Moderate customer comments and audit review visibility'}
               </p>
             </div>
             
             {/* Tab Toggler */}
             <div className="flex bg-[#f5f5f7] p-1 rounded-xl">
+              {isAdmin && (
+                <button
+                  onClick={() => navigate('/admin/users?tab=users')}
+                  className={`px-4 py-2 text-xs font-bold rounded-lg transition-all ${
+                    activeTab === 'users' 
+                      ? 'bg-white text-[#1d1d1f] shadow-sm' 
+                      : 'text-[#86868b] hover:text-[#1d1d1f]'
+                  }`}
+                >
+                  Users
+                </button>
+              )}
+              {isAdmin && (
+                <button
+                  onClick={() => navigate('/admin/users?tab=bookings')}
+                  className={`px-4 py-2 text-xs font-bold rounded-lg transition-all ${
+                    activeTab === 'bookings' 
+                      ? 'bg-white text-[#1d1d1f] shadow-sm' 
+                      : 'text-[#86868b] hover:text-[#1d1d1f]'
+                  }`}
+                >
+                  Bookings
+                </button>
+              )}
               <button
-                onClick={() => navigate('/admin/users?tab=users')}
+                onClick={() => navigate('/admin/users?tab=reports')}
                 className={`px-4 py-2 text-xs font-bold rounded-lg transition-all ${
-                  activeTab === 'users' 
+                  activeTab === 'reports' 
                     ? 'bg-white text-[#1d1d1f] shadow-sm' 
                     : 'text-[#86868b] hover:text-[#1d1d1f]'
                 }`}
               >
-                Users
+                Reports
               </button>
-              <button
-                onClick={() => navigate('/admin/users?tab=bookings')}
-                className="px-4 py-2 text-xs font-bold rounded-lg transition-all text-[#86868b] hover:text-[#1d1d1f]"
-              >
-                Bookings
-              </button>
+              {isAdmin && (
+                <button
+                  onClick={() => navigate('/admin/users?tab=reviews')}
+                  className={`px-4 py-2 text-xs font-bold rounded-lg transition-all ${
+                    activeTab === 'reviews' 
+                      ? 'bg-white text-[#1d1d1f] shadow-sm' 
+                      : 'text-[#86868b] hover:text-[#1d1d1f]'
+                  }`}
+                >
+                  Reviews
+                </button>
+              )}
             </div>
           </div>
 
@@ -319,7 +475,7 @@ export default function AdminDashboardPage() {
                   </div>
                 ) : (
                   <table className="w-full text-left border-collapse">
-                    <thead>
+                     <thead>
                       <tr className="bg-[#f5f5f7] border-b border-[#e8e8ed]">
                         <th className="p-4 text-xs font-semibold uppercase text-[#86868b] tracking-wider w-[80px]">User ID</th>
                         <th className="p-4 text-xs font-semibold uppercase text-[#86868b] tracking-wider">Full Name</th>
@@ -370,7 +526,7 @@ export default function AdminDashboardPage() {
                                   user.status === 'ACTIVE'
                                     ? 'bg-red-50 text-red-600 hover:bg-red-100'
                                     : 'bg-green-50 text-green-600 hover:bg-green-100'
-                                }`}
+                                  }`}
                               >
                                 {actionLoadingId === user.userId 
                                   ? 'Processing...' 
@@ -629,6 +785,362 @@ export default function AdminDashboardPage() {
                 </div>
               )}
             </>
+          )}
+
+          {/* Tab Content: Reports */}
+          {activeTab === 'reports' && (
+            <div className="text-left animate-fadeIn">
+              {/* Date Filters */}
+              <div className="flex flex-col sm:flex-row gap-4 items-center justify-between mb-8 pb-6 border-b border-[#f5f5f7]">
+                <div className="flex flex-wrap items-center gap-4">
+                  <div className="flex flex-col">
+                    <label className="text-[10px] text-[#86868b] font-bold uppercase tracking-wider mb-1">From Date</label>
+                    <input
+                      type="date"
+                      className="h-[40px] px-4 rounded-xl border border-[#e8e8ed] text-sm focus:outline-none focus:border-[#0066cc] font-medium bg-[#f5f5f7] focus:bg-white"
+                      value={reportFrom}
+                      onChange={(e) => setReportFrom(e.target.value)}
+                    />
+                  </div>
+                  <div className="flex flex-col">
+                    <label className="text-[10px] text-[#86868b] font-bold uppercase tracking-wider mb-1">To Date</label>
+                    <input
+                      type="date"
+                      className="h-[40px] px-4 rounded-xl border border-[#e8e8ed] text-sm focus:outline-none focus:border-[#0066cc] font-medium bg-[#f5f5f7] focus:bg-white"
+                      value={reportTo}
+                      onChange={(e) => setReportTo(e.target.value)}
+                    />
+                  </div>
+                  {isDirector && (
+                    <div className="flex flex-col">
+                      <label className="text-[10px] text-[#86868b] font-bold uppercase tracking-wider mb-1">Revenue Grouping</label>
+                      <select
+                        className="h-[40px] px-4 rounded-xl border border-[#e8e8ed] text-xs font-semibold bg-white focus:outline-none focus:border-[#0066cc]"
+                        value={revenuePeriod}
+                        onChange={(e) => setRevenuePeriod(e.target.value)}
+                      >
+                        <option value="DAY">Daily</option>
+                        <option value="MONTH">Monthly</option>
+                        <option value="QUARTER">Quarterly</option>
+                        <option value="YEAR">Yearly</option>
+                      </select>
+                    </div>
+                  )}
+                </div>
+
+                <button
+                  onClick={handleExportRoomUsage}
+                  disabled={isExporting || roomUsage.length === 0}
+                  className="mt-4 sm:mt-0 px-5 h-[40px] rounded-xl bg-green-600 text-white text-xs font-bold hover:brightness-105 active:scale-95 disabled:opacity-50 transition-all shadow-sm flex items-center gap-2"
+                >
+                  {isExporting ? 'Exporting...' : 'Export Room Occupancy to Excel'}
+                </button>
+              </div>
+
+              {isDirector && revenueReport && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+                  <div className="bg-[#f5f5f7] p-5 rounded-[12px] text-left border border-[#e8e8ed]">
+                    <span className="text-xs text-[#86868b] uppercase tracking-wider block font-semibold">Total Revenue</span>
+                    <span className="text-3xl font-extrabold text-green-700 mt-1 block font-mono">
+                      ${revenueReport.totalRevenue ? revenueReport.totalRevenue.toFixed(2) : "0.00"}
+                    </span>
+                  </div>
+                  <div className="bg-[#f5f5f7] p-5 rounded-[12px] text-left border border-[#e8e8ed]">
+                    <span className="text-xs text-[#86868b] uppercase tracking-wider block font-semibold">Reporting Role</span>
+                    <span className="text-sm font-bold text-blue-600 mt-2 inline-block px-3 py-1 bg-blue-50 rounded-full">
+                      BOARD DIRECTOR
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              {isLoading ? (
+                <div className="text-center py-20 text-[#86868b] apple-body">
+                  Loading report statistics...
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                  
+                  {/* Left Column: Room Occupancy Table & Revenue Trends */}
+                  <div className="lg:col-span-2 flex flex-col justify-start">
+                    <h2 className="text-lg font-bold text-[#1d1d1f] mb-4">Room Occupancy & Utilisation</h2>
+                    <div className="overflow-x-auto border border-[#e8e8ed] rounded-xl">
+                      <table className="w-full text-left border-collapse">
+                        <thead>
+                          <tr className="bg-[#f5f5f7] border-b border-[#e8e8ed]">
+                            <th className="p-4 text-xs font-semibold uppercase text-[#86868b] tracking-wider">Room Type</th>
+                            <th className="p-4 text-xs font-semibold uppercase text-[#86868b] tracking-wider text-center">Bookings</th>
+                            <th className="p-4 text-xs font-semibold uppercase text-[#86868b] tracking-wider text-center">Nights Booked</th>
+                            <th className="p-4 text-xs font-semibold uppercase text-[#86868b] tracking-wider text-right">Occupancy Rate</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-[#e8e8ed]">
+                          {roomUsage.length === 0 ? (
+                            <tr>
+                              <td colSpan="4" className="p-8 text-center text-xs text-[#86868b] italic">
+                                No room usage records for this period.
+                              </td>
+                            </tr>
+                          ) : (
+                            roomUsage.map((usage, idx) => (
+                              <tr key={idx} className="hover:bg-[#fafafc] transition-colors">
+                                <td className="p-4 text-sm font-semibold text-[#1d1d1f]">{usage.roomType}</td>
+                                <td className="p-4 text-sm text-[#1d1d1f] text-center font-mono">{usage.totalBookings}</td>
+                                <td className="p-4 text-sm text-[#1d1d1f] text-center font-mono">{usage.totalNights}</td>
+                                <td className="p-4 text-right">
+                                  <div className="flex items-center justify-end gap-2">
+                                    <span className="text-sm font-bold text-[#1d1d1f] font-mono">{usage.occupancyRate}%</span>
+                                    <div className="w-[60px] bg-slate-100 h-2 rounded-full overflow-hidden">
+                                      <div 
+                                        className="bg-blue-600 h-full rounded-full" 
+                                        style={{ width: `${Math.min(100, parseFloat(usage.occupancyRate))}%` }}
+                                      />
+                                    </div>
+                                  </div>
+                                </td>
+                              </tr>
+                            ))
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+
+                    {isDirector && revenueReport && (
+                      <div className="mt-8 flex flex-col justify-start">
+                        <h2 className="text-lg font-bold text-[#1d1d1f] mb-4">Revenue Trend ({revenuePeriod})</h2>
+                        <div className="overflow-x-auto border border-[#e8e8ed] rounded-xl">
+                          <table className="w-full text-left border-collapse">
+                            <thead>
+                              <tr className="bg-[#f5f5f7] border-b border-[#e8e8ed]">
+                                <th className="p-4 text-xs font-semibold uppercase text-[#86868b] tracking-wider">Period</th>
+                                <th className="p-4 text-xs font-semibold uppercase text-[#86868b] tracking-wider text-center">Bookings Count</th>
+                                <th className="p-4 text-xs font-semibold uppercase text-[#86868b] tracking-wider text-right">Revenue</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-[#e8e8ed]">
+                              {(!revenueReport.periodRevenue || revenueReport.periodRevenue.length === 0) ? (
+                                <tr>
+                                  <td colSpan="3" className="p-8 text-center text-xs text-[#86868b] italic">
+                                    No revenue data for this period.
+                                  </td>
+                                </tr>
+                              ) : (
+                                revenueReport.periodRevenue.map((p, idx) => (
+                                  <tr key={idx} className="hover:bg-[#fafafc] transition-colors">
+                                    <td className="p-4 text-sm font-semibold text-[#1d1d1f]">{p.periodLabel}</td>
+                                    <td className="p-4 text-sm text-[#1d1d1f] text-center font-mono">{p.bookingCount}</td>
+                                    <td className="p-4 text-sm text-green-700 text-right font-bold font-mono">
+                                      ${p.revenue ? p.revenue.toFixed(2) : "0.00"}
+                                    </td>
+                                  </tr>
+                                ))
+                              )}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Right Column: General Stats Cards or Revenue By Hotel */}
+                  <div className="flex flex-col gap-6">
+                    {!isDirector ? (
+                      <>
+                        <h2 className="text-lg font-bold text-[#1d1d1f]">Booking Metrics Summary</h2>
+                        {bookingStats ? (
+                          <div className="grid grid-cols-1 gap-4">
+                            <div className="bg-[#f5f5f7] p-5 rounded-2xl border border-[#e8e8ed]">
+                              <span className="text-xs text-[#86868b] uppercase tracking-wider block font-semibold">Total Reservations</span>
+                              <span className="text-3xl font-extrabold text-[#1d1d1f] mt-1 block font-mono">
+                                {bookingStats.totalBookings}
+                              </span>
+                            </div>
+
+                            <div className="bg-emerald-50 p-5 rounded-2xl border border-emerald-100">
+                              <span className="text-xs text-emerald-600 uppercase tracking-wider block font-bold">Confirmed / Completed</span>
+                              <span className="text-3xl font-extrabold text-emerald-700 mt-1 block font-mono">
+                                {bookingStats.statusBreakdown?.CONFIRMED || 0}
+                              </span>
+                            </div>
+
+                            <div className="bg-rose-50 p-5 rounded-2xl border border-rose-100">
+                              <span className="text-xs text-rose-600 uppercase tracking-wider block font-bold">Cancellations</span>
+                              <span className="text-3xl font-extrabold text-rose-700 mt-1 block font-mono">
+                                {bookingStats.statusBreakdown?.CANCELLED || 0}
+                              </span>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="bg-[#f5f5f7] p-10 rounded-2xl border border-[#e8e8ed] text-center text-xs text-[#86868b] italic">
+                            No general stats data available.
+                          </div>
+                        )}
+                      </>
+                    ) : (
+                      <>
+                        <h2 className="text-lg font-bold text-[#1d1d1f]">Revenue by Hotel</h2>
+                        {revenueReport && revenueReport.revenueByHotel && revenueReport.revenueByHotel.length > 0 ? (
+                          <div className="grid grid-cols-1 gap-4">
+                            {revenueReport.revenueByHotel.map((hotel, idx) => (
+                              <div key={idx} className="bg-white p-5 rounded-2xl border border-[#e8e8ed] shadow-sm hover:shadow-md transition-all">
+                                <span className="text-xs text-[#86868b] font-bold block truncate" title={hotel.hotelName}>
+                                  {hotel.hotelName}
+                                </span>
+                                <div className="flex justify-between items-baseline mt-2">
+                                  <span className="text-xl font-extrabold text-green-700 font-mono">
+                                    ${hotel.revenue ? hotel.revenue.toFixed(2) : "0.00"}
+                                  </span>
+                                  <span className="text-xs font-semibold text-[#515154] font-mono">
+                                    {hotel.bookingCount} bookings
+                                  </span>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="bg-[#f5f5f7] p-10 rounded-2xl border border-[#e8e8ed] text-center text-xs text-[#86868b] italic">
+                            No hotel revenue data available.
+                          </div>
+                        )}
+                      </>
+                    )}
+                  </div>
+
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Tab Content: Review Moderation */}
+          {activeTab === 'reviews' && (
+            <div className="text-left animate-fadeIn">
+              {/* Reviews Filter */}
+              <div className="flex flex-col sm:flex-row gap-4 items-center justify-between mb-8 pb-6 border-b border-[#f5f5f7]">
+                <div className="flex gap-4">
+                  <select
+                    className="h-[40px] px-4 py-2 rounded-xl border border-[#e8e8ed] text-xs font-semibold bg-white focus:outline-none focus:border-[#0066cc]"
+                    value={reviewsFilter}
+                    onChange={(e) => {
+                      setReviewsFilter(e.target.value);
+                      setReviewsPage(0);
+                    }}
+                  >
+                    <option value="ALL">All Reviews</option>
+                    <option value="VISIBLE">Visible only</option>
+                    <option value="HIDDEN">Hidden only</option>
+                  </select>
+                </div>
+                <span className="text-xs text-[#86868b] font-semibold font-mono">
+                  Found {reviewsTotalElements} customer reviews
+                </span>
+              </div>
+
+              {isLoading ? (
+                <div className="text-center py-20 text-[#86868b] apple-body">
+                  Loading customer reviews...
+                </div>
+              ) : reviews.length === 0 ? (
+                <div className="text-center py-20 text-[#86868b] apple-body">
+                  No reviews match current status filter.
+                </div>
+              ) : (
+                <div className="flex flex-col gap-6">
+                  {reviews.map((rev) => (
+                    <div 
+                      key={rev.reviewId} 
+                      className={`p-6 rounded-2xl border transition-all ${
+                        rev.status === 'HIDDEN' 
+                          ? 'bg-rose-50/20 border-rose-100' 
+                          : 'bg-white border-[#e8e8ed] hover:shadow-md'
+                      }`}
+                    >
+                      <div className="flex justify-between items-start gap-4">
+                        <div>
+                          {/* Rating & Hotel */}
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="text-sm font-bold text-amber-500 font-mono">
+                              {"★".repeat(rev.rating)}{"☆".repeat(5 - rev.rating)} ({rev.rating}/5)
+                            </span>
+                            <span className="text-xs text-[#86868b]">•</span>
+                            <span className="text-sm font-bold text-[#1d1d1f]">{rev.hotelName}</span>
+                          </div>
+
+                          {/* Comment */}
+                          <p className="text-sm text-[#1d1d1f] mt-3 leading-relaxed font-medium">
+                            "{rev.comment}"
+                          </p>
+
+                          {/* Author & Timestamp */}
+                          <div className="text-[11px] text-[#86868b] mt-4 flex items-center gap-2 flex-wrap font-semibold">
+                            <span>Author: <span className="text-[#515154]">{rev.customerName || 'Anonymous'}</span></span>
+                            <span>•</span>
+                            <span>Code: <span className="font-mono text-indigo-600">{rev.bookingCode}</span></span>
+                            <span>•</span>
+                            <span>Date: {new Date(rev.createdAt).toLocaleString('vi-VN')}</span>
+                          </div>
+
+                          {/* Moderation reason details if hidden */}
+                          {rev.status === 'HIDDEN' && (
+                            <div className="bg-rose-50 border border-rose-150 p-3 rounded-lg mt-4 text-xs text-rose-800">
+                              <div className="font-bold mb-0.5">Ẩn bởi hệ thống kiểm duyệt:</div>
+                              <div>Lý do: <span className="italic font-medium">"{rev.moderationReason}"</span></div>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Actions */}
+                        <div className="flex flex-col items-end gap-3 min-w-[120px]">
+                          <span className={`inline-block px-2.5 py-0.5 rounded-full font-bold text-[10px] ${
+                            rev.status === 'VISIBLE'
+                              ? 'bg-green-50 text-green-600 border border-green-200'
+                              : 'bg-rose-50 text-rose-600 border border-rose-200'
+                          }`}>
+                            {rev.status}
+                          </span>
+
+                          <button
+                            onClick={() => handleModerateReview(rev.reviewId, rev.status)}
+                            disabled={modifyingReviewId === rev.reviewId}
+                            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all active:scale-95 disabled:opacity-50 ${
+                              rev.status === 'VISIBLE'
+                                ? 'bg-rose-50 text-rose-600 hover:bg-rose-100'
+                                : 'bg-green-50 text-green-600 hover:bg-green-100'
+                            }`}
+                          >
+                            {modifyingReviewId === rev.reviewId 
+                              ? 'Saving...' 
+                              : rev.status === 'VISIBLE' ? 'Hide Review' : 'Show Review'}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+
+                  {/* Reviews Pagination */}
+                  {reviewsTotalElements > 0 && (
+                    <div className="flex justify-center items-center gap-6 mt-8">
+                      <button
+                        onClick={() => setReviewsPage(p => Math.max(0, p - 1))}
+                        disabled={reviewsPage === 0 || isLoading}
+                        className="px-4 py-2 rounded-full border border-[#d2d2d7] text-xs font-semibold hover:bg-[#f5f5f7] active:scale-95 disabled:opacity-40 transition-all bg-white"
+                      >
+                        Previous
+                      </button>
+                      <span className="text-sm font-semibold text-[#1d1d1f] font-mono bg-[#f5f5f7] px-3.5 py-1.5 rounded-full border border-[#e8e8ed]">
+                        {reviewsPage + 1}/{Math.max(1, reviewsTotalPages)}
+                      </span>
+                      <button
+                        onClick={() => setReviewsPage(p => Math.min(reviewsTotalPages - 1, p + 1))}
+                        disabled={reviewsPage >= reviewsTotalPages - 1 || isLoading}
+                        className="px-4 py-2 rounded-full border border-[#d2d2d7] text-xs font-semibold hover:bg-[#f5f5f7] active:scale-95 disabled:opacity-40 transition-all bg-white"
+                      >
+                        Next
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
           )}
 
         </div>

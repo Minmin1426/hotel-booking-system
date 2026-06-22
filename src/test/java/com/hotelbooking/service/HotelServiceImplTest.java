@@ -31,16 +31,29 @@ import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import com.hotelbooking.dto.HotelCreateRequest;
+import com.hotelbooking.dto.HotelUpdateRequest;
+import com.hotelbooking.exception.BusinessException;
+import com.hotelbooking.repository.BookingRepository;
+import com.hotelbooking.repository.RoomRepository;
+import org.springframework.web.multipart.MultipartFile;
+import java.io.IOException;
+
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class HotelServiceImplTest {
 
     @Mock
     private HotelRepository hotelRepository;
+
+    @Mock
+    private RoomRepository roomRepository;
+
+    @Mock
+    private BookingRepository bookingRepository;
 
     @InjectMocks
     private HotelServiceImpl hotelService;
@@ -256,5 +269,112 @@ class HotelServiceImplTest {
         assertThatThrownBy(() -> hotelService.getHotelDetail(99L))
                 .isInstanceOf(ResourceNotFoundException.class)
                 .hasMessageContaining("Hotel not found or inactive");
+    }
+
+    @Test
+    void createHotel_Success() {
+        HotelCreateRequest request = new HotelCreateRequest();
+        request.setName("New Hotel");
+        request.setLocation("Hanoi");
+        request.setDescription("Nice hotel");
+
+        Hotel savedHotel = Hotel.builder()
+                .hotelId(2L)
+                .name("New Hotel")
+                .location("Hanoi")
+                .description("Nice hotel")
+                .isActive(true)
+                .rooms(new ArrayList<>())
+                .images(new ArrayList<>())
+                .build();
+
+        when(hotelRepository.save(any(Hotel.class))).thenReturn(savedHotel);
+
+        HotelResponse response = hotelService.createHotel(request);
+
+        assertThat(response).isNotNull();
+        assertThat(response.getHotelId()).isEqualTo(2L);
+        assertThat(response.getName()).isEqualTo("New Hotel");
+        verify(hotelRepository, times(1)).save(any(Hotel.class));
+    }
+
+    @Test
+    void updateHotel_Success() {
+        HotelUpdateRequest request = new HotelUpdateRequest();
+        request.setName("Updated Hotel");
+        request.setLocation("Hanoi");
+        request.setDescription("Nice hotel updated");
+        request.setIsActive(true);
+
+        when(hotelRepository.findById(1L)).thenReturn(Optional.of(activeHotel));
+        when(hotelRepository.save(any(Hotel.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        HotelResponse response = hotelService.updateHotel(1L, request);
+
+        assertThat(response).isNotNull();
+        assertThat(response.getName()).isEqualTo("Updated Hotel");
+        assertThat(activeHotel.getDescription()).isEqualTo("Nice hotel updated");
+        verify(hotelRepository, times(1)).save(activeHotel);
+    }
+
+    @Test
+    void updateHotel_NotFound() {
+        HotelUpdateRequest request = new HotelUpdateRequest();
+        when(hotelRepository.findById(99L)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> hotelService.updateHotel(99L, request))
+                .isInstanceOf(ResourceNotFoundException.class);
+    }
+
+    @Test
+    void deleteHotel_Success() {
+        when(hotelRepository.findById(1L)).thenReturn(Optional.of(activeHotel));
+        when(bookingRepository.existsByHotel_HotelIdAndStatus(1L, "CONFIRMED")).thenReturn(false);
+        when(bookingRepository.existsByHotel_HotelIdAndStatus(1L, "PENDING")).thenReturn(false);
+        when(roomRepository.findByHotel_HotelId(1L)).thenReturn(new ArrayList<>());
+
+        hotelService.deleteHotel(1L);
+
+        assertThat(activeHotel.getIsActive()).isFalse();
+        verify(hotelRepository, times(1)).save(activeHotel);
+    }
+
+    @Test
+    void deleteHotel_WithActiveBookings_ThrowsException() {
+        when(hotelRepository.findById(1L)).thenReturn(Optional.of(activeHotel));
+        when(bookingRepository.existsByHotel_HotelIdAndStatus(1L, "CONFIRMED")).thenReturn(true);
+
+        assertThatThrownBy(() -> hotelService.deleteHotel(1L))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("Cannot delete hotel because active bookings exist");
+    }
+
+    @Test
+    void uploadImage_Success() throws IOException {
+        MultipartFile file = mock(MultipartFile.class);
+        when(file.getOriginalFilename()).thenReturn("test.png");
+        when(file.getContentType()).thenReturn("image/png");
+
+        when(hotelRepository.findById(1L)).thenReturn(Optional.of(activeHotel));
+        when(hotelRepository.save(any(Hotel.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        String path = hotelService.uploadImage(1L, file);
+
+        assertThat(path).isNotNull();
+        assertThat(path).contains("uploads/hotels");
+        assertThat(activeHotel.getImages()).hasSize(2); // setUp already added 1
+        verify(hotelRepository, times(1)).save(activeHotel);
+    }
+
+    @Test
+    void uploadImage_InvalidFormat_ThrowsException() {
+        MultipartFile file = mock(MultipartFile.class);
+        when(file.getOriginalFilename()).thenReturn("test.txt");
+
+        when(hotelRepository.findById(1L)).thenReturn(Optional.of(activeHotel));
+
+        assertThatThrownBy(() -> hotelService.uploadImage(1L, file))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("Only JPG, PNG, and WEBP");
     }
 }

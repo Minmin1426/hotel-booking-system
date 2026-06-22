@@ -6,6 +6,7 @@ import com.hotelbooking.model.*;
 import com.hotelbooking.repository.BookingRepository;
 import com.hotelbooking.repository.RoomLockRepository;
 import com.hotelbooking.repository.RoomRepository;
+import com.hotelbooking.service.SystemSettingService;
 import com.hotelbooking.service.impl.RoomLockServiceImpl;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -33,6 +34,8 @@ class RoomLockServiceImplTest {
     private BookingRepository bookingRepository;
     @Mock
     private RoomRepository roomRepository;
+    @Mock
+    private SystemSettingService systemSettingService;
 
     @InjectMocks
     private RoomLockServiceImpl roomLockService;
@@ -55,6 +58,8 @@ class RoomLockServiceImplTest {
                 .checkOutDate(LocalDateTime.now().plusDays(3))
                 .status("PENDING")
                 .build();
+
+        lenient().when(systemSettingService.getLockDurationMinutes()).thenReturn(10);
     }
 
     @Test

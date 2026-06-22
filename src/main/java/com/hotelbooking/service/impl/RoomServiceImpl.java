@@ -1,10 +1,14 @@
 package com.hotelbooking.service.impl;
 
+import com.hotelbooking.dto.CreateRoomRequest;
+import com.hotelbooking.dto.UpdateRoomRequest;
 import com.hotelbooking.dto.request.RoomSearchRequest;
 import com.hotelbooking.dto.response.RoomAvailabilityResponse;
 import com.hotelbooking.exception.BusinessException;
 import com.hotelbooking.exception.ResourceNotFoundException;
+import com.hotelbooking.model.Hotel;
 import com.hotelbooking.model.Room;
+import com.hotelbooking.repository.BookingRepository;
 import com.hotelbooking.repository.HotelRepository;
 import com.hotelbooking.repository.RoomRepository;
 import com.hotelbooking.service.RoomService;
@@ -24,6 +28,7 @@ public class RoomServiceImpl implements RoomService {
 
     private final RoomRepository roomRepository;
     private final HotelRepository hotelRepository;
+    private final BookingRepository bookingRepository;
 
     @Override
     @Transactional(readOnly = true)
@@ -65,5 +70,70 @@ public class RoomServiceImpl implements RoomService {
                 .hotelId(room.getHotel().getHotelId())
                 .hotelName(room.getHotel().getName())
                 .build();
+    }
+
+    @Override
+    @Transactional
+    public Room createRoom(CreateRoomRequest request) {
+        log.info("Creating room: {} for hotelId: {}", request.getRoomNumber(), request.getHotelId());
+        Hotel hotel = hotelRepository.findById(request.getHotelId())
+                .orElseThrow(() -> new ResourceNotFoundException("Hotel", "id", request.getHotelId().toString()));
+
+        boolean existed = roomRepository.existsByHotel_HotelIdAndRoomNumber(hotel.getHotelId(), request.getRoomNumber());
+        if (existed) {
+            throw new BusinessException("Room number already exists");
+        }
+
+        Room room = Room.builder()
+                .hotel(hotel)
+                .roomNumber(request.getRoomNumber())
+                .price(request.getPrice())
+                .roomType(request.getRoomType())
+                .status("AVAILABLE")
+                .build();
+
+        return roomRepository.save(room);
+    }
+
+    @Override
+    @Transactional
+    public Room updateRoom(Long roomId, UpdateRoomRequest request) {
+        log.info("Updating room ID: {}", roomId);
+        Room room = roomRepository.findById(roomId)
+                .orElseThrow(() -> new ResourceNotFoundException("Room", "id", roomId.toString()));
+
+        room.setPrice(request.getPrice());
+        if (request.getRoomType() != null) {
+            room.setRoomType(request.getRoomType());
+        }
+
+        return roomRepository.save(room);
+    }
+
+    @Override
+    @Transactional
+    public void deleteRoom(Long roomId) {
+        log.info("Deleting room ID: {}", roomId);
+        Room room = roomRepository.findById(roomId)
+                .orElseThrow(() -> new ResourceNotFoundException("Room", "id", roomId.toString()));
+
+        boolean activeBooking = bookingRepository.existsByRoomIdAndStatusIn(roomId, List.of("CONFIRMED", "PENDING"));
+        if (activeBooking) {
+            throw new BusinessException("Room has active booking");
+        }
+
+        room.setStatus("UNAVAILABLE");
+        roomRepository.save(room);
+    }
+
+    @Override
+    @Transactional
+    public void updateAvailability(Long roomId, boolean available) {
+        log.info("Updating availability for room ID: {}, available: {}", roomId, available);
+        Room room = roomRepository.findById(roomId)
+                .orElseThrow(() -> new ResourceNotFoundException("Room", "id", roomId.toString()));
+
+        room.setStatus(available ? "AVAILABLE" : "UNAVAILABLE");
+        roomRepository.save(room);
     }
 }

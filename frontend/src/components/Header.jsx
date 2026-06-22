@@ -7,6 +7,7 @@ export default function Header({ fullName, role }) {
   const isAuthenticated = !!sessionStorage.getItem("accessToken");
   const userRole = sessionStorage.getItem("userRole") || role;
   const isAdmin = userRole === 'ADMIN';
+  const isDirector = userRole === 'DIRECTOR';
 
   const getDisplayName = () => {
     if (fullName) return fullName;
@@ -53,12 +54,12 @@ export default function Header({ fullName, role }) {
 
             {isAuthenticated && (
               <>
-                {isAdmin ? (
+                {isAdmin && (
                   <>
                     <Link 
                       to="/admin/users?tab=users" 
                       className={`px-4 py-2 rounded-full transition-all ${
-                        window.location.pathname.startsWith('/admin') && !currentPath.includes('tab=bookings')
+                        window.location.pathname.startsWith('/admin') && currentPath.includes('tab=users')
                           ? 'bg-[#0066cc]/5 text-[#0066cc]' 
                           : 'hover:text-[#1d1d1f] hover:bg-[#f5f5f7]'
                       }`}
@@ -76,7 +77,35 @@ export default function Header({ fullName, role }) {
                       Booking Management
                     </Link>
                   </>
-                ) : (
+                )}
+                
+                {(isAdmin || isDirector) && (
+                  <Link 
+                    to="/admin/users?tab=reports" 
+                    className={`px-4 py-2 rounded-full transition-all ${
+                      window.location.pathname.startsWith('/admin') && currentPath.includes('tab=reports')
+                        ? 'bg-[#0066cc]/5 text-[#0066cc]' 
+                        : 'hover:text-[#1d1d1f] hover:bg-[#f5f5f7]'
+                    }`}
+                  >
+                    Reports & Stats
+                  </Link>
+                )}
+
+                {isAdmin && (
+                  <Link 
+                    to="/admin/users?tab=reviews" 
+                    className={`px-4 py-2 rounded-full transition-all ${
+                      window.location.pathname.startsWith('/admin') && currentPath.includes('tab=reviews')
+                        ? 'bg-[#0066cc]/5 text-[#0066cc]' 
+                        : 'hover:text-[#1d1d1f] hover:bg-[#f5f5f7]'
+                    }`}
+                  >
+                    Review Moderation
+                  </Link>
+                )}
+
+                {!isAdmin && !isDirector && (
                   <Link 
                     to="/profile?tab=bookings" 
                     className={`px-4 py-2 rounded-full transition-all ${
