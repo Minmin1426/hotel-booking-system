@@ -2,8 +2,10 @@ package com.hotelbooking.voucher;
 import com.hotelbooking.booking.Booking;
 import com.hotelbooking.booking.BookingRepository;
 import com.hotelbooking.common.exception.BusinessException;
+import com.hotelbooking.voucher.dto.VoucherResponse;
 
 import org.junit.jupiter.api.Test;
+import java.util.List;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
@@ -91,5 +93,44 @@ public class VoucherServiceTest {
         BusinessException exception = assertThrows(BusinessException.class, 
             () -> voucherService.applyVoucher(1L, "MIN1000"));
         assertEquals("Booking total does not meet the minimum value requirement for this voucher.", exception.getMessage());
+    }
+
+    @Test
+    void testGetAllActiveVouchers_Success() {
+        Voucher active1 = Voucher.builder()
+                .voucherId(1L)
+                .code("ACTIVE1")
+                .discountType("PERCENTAGE")
+                .discountValue(BigDecimal.valueOf(10))
+                .startDate(LocalDateTime.now().minusDays(1))
+                .endDate(LocalDateTime.now().plusDays(5))
+                .maxUsage(10)
+                .currentUsage(2)
+                .build();
+
+        Voucher expired = Voucher.builder()
+                .voucherId(2L)
+                .code("EXPIRED")
+                .discountType("FIXED_AMOUNT")
+                .discountValue(BigDecimal.valueOf(50))
+                .endDate(LocalDateTime.now().minusDays(1))
+                .build();
+
+        Voucher exhausted = Voucher.builder()
+                .voucherId(3L)
+                .code("EXHAUSTED")
+                .discountType("PERCENTAGE")
+                .discountValue(BigDecimal.valueOf(15))
+                .maxUsage(5)
+                .currentUsage(5)
+                .build();
+
+        when(voucherRepository.findAll()).thenReturn(List.of(active1, expired, exhausted));
+
+        List<VoucherResponse> result = voucherService.getAllActiveVouchers();
+
+        assertNotNull(result);
+        assertEquals(1, result.size());
+        assertEquals("ACTIVE1", result.get(0).getCode());
     }
 }

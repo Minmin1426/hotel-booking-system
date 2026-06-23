@@ -17,4 +17,11 @@ public interface ReviewRepository extends JpaRepository<Review, Long> {
     // UC-26: đếm bookings theo hotel và khoảng thời gian (room usage)
     @Query("SELECT COUNT(r) FROM Review r WHERE r.hotel.hotelId = :hotelId")
     long countByHotelId(@Param("hotelId") Long hotelId);
+
+    long countByUser_UserId(Long userId);
+
+    @org.springframework.data.jpa.repository.Modifying
+    @org.springframework.transaction.annotation.Transactional
+    @Query("DELETE FROM Review r WHERE r.user.userId = :userId")
+    void deleteByUser_UserId(@Param("userId") Long userId);
 }

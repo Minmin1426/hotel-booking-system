@@ -3,6 +3,7 @@ import com.hotelbooking.booking.Booking;
 import com.hotelbooking.booking.BookingRepository;
 import com.hotelbooking.common.exception.BusinessException;
 import com.hotelbooking.common.exception.ResourceNotFoundException;
+import com.hotelbooking.voucher.dto.VoucherResponse;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -11,6 +12,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -85,5 +87,33 @@ public class VoucherServiceImpl implements VoucherService {
 
         voucherRepository.save(voucher);
         return bookingRepository.save(booking);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<VoucherResponse> getAllActiveVouchers() {
+        log.info("Retrieving all active vouchers for guests");
+        LocalDateTime now = LocalDateTime.now();
+        return voucherRepository.findAll().stream()
+                .filter(v -> (v.getStartDate() == null || now.isAfter(v.getStartDate())))
+                .filter(v -> (v.getEndDate() == null || now.isBefore(v.getEndDate())))
+                .filter(v -> (v.getMaxUsage() == null || v.getMaxUsage() == 0 ||
+                             v.getCurrentUsage() == null || v.getCurrentUsage() < v.getMaxUsage()))
+                .map(this::mapToResponse)
+                .toList();
+    }
+
+    private VoucherResponse mapToResponse(Voucher voucher) {
+        return VoucherResponse.builder()
+                .voucherId(voucher.getVoucherId())
+                .code(voucher.getCode())
+                .discountType(voucher.getDiscountType())
+                .discountValue(voucher.getDiscountValue())
+                .minBookingValue(voucher.getMinBookingValue())
+                .startDate(voucher.getStartDate())
+                .endDate(voucher.getEndDate())
+                .maxUsage(voucher.getMaxUsage())
+                .currentUsage(voucher.getCurrentUsage())
+                .build();
     }
 }

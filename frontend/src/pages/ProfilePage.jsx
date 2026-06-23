@@ -31,6 +31,11 @@ export default function ProfilePage() {
   const [bookings, setBookings] = useState([]);
   const [bookingsLoading, setBookingsLoading] = useState(false);
 
+  // Vouchers state
+  const [vouchers, setVouchers] = useState([]);
+  const [vouchersLoading, setVouchersLoading] = useState(false);
+  const [copiedCode, setCopiedCode] = useState(null);
+
   const isAdmin = profile.role === 'ADMIN';
 
   // Read active tab from query params
@@ -83,6 +88,34 @@ export default function ProfilePage() {
       setBookingsLoading(false);
     }
   };
+
+  const loadVouchers = async () => {
+    setVouchersLoading(true);
+    setError(null);
+    try {
+      const res = await BookingService.getActiveVouchers();
+      setVouchers(res || []);
+    } catch (err) {
+      console.error("Failed to fetch vouchers:", err);
+      setError(err.message || "Failed to load active vouchers");
+    } finally {
+      setVouchersLoading(false);
+    }
+  };
+
+  const handleCopyCode = (code) => {
+    navigator.clipboard.writeText(code);
+    setCopiedCode(code);
+    setTimeout(() => {
+      setCopiedCode(null);
+    }, 2000);
+  };
+
+  useEffect(() => {
+    if (activeTab === 'vouchers' && profile.role !== 'ADMIN' && profile.role) {
+      loadVouchers();
+    }
+  }, [activeTab, profile.role]);
 
   const handleCancelBooking = async (bookingId, bookingCode) => {
     if (!window.confirm(`Are you sure you want to cancel booking ${bookingCode}?`)) {
@@ -406,6 +439,95 @@ export default function ProfilePage() {
                   })
                 )}
               </div>
+            </div>
+          )}
+
+          {/* My Vouchers Tab */}
+          {activeTab === 'vouchers' && !isAdmin && (
+            <div className="w-full bg-white p-[32px] md:p-[40px] rounded-[24px] border border-[#e3e3e8]/50 shadow-[0_10px_40px_rgba(0,0,0,0.02)] text-left animate-fade-in">
+              <div className="mb-8 flex justify-between items-center border-b border-[#f5f5f7] pb-6">
+                <div>
+                  <h2 className="text-2xl font-bold tracking-tight text-[#1d1d1f]">My Vouchers</h2>
+                  <p className="text-xs text-[#86868b] mt-1">Copy code and apply them during booking checkout to get big discount discounts</p>
+                </div>
+                <button 
+                  onClick={loadVouchers}
+                  disabled={vouchersLoading}
+                  className="px-4 py-2 rounded-full border border-[#d2d2d7] text-xs font-bold hover:bg-[#f5f5f7] active:scale-95 transition-all cursor-pointer bg-white"
+                >
+                  {vouchersLoading ? 'Refreshing...' : '🔄 Refresh'}
+                </button>
+              </div>
+
+              {error && (
+                <div className="text-red-500 text-center bg-red-50 py-2.5 rounded-xl mb-6 text-xs font-semibold">
+                  {error}
+                </div>
+              )}
+
+              {vouchersLoading && vouchers.length === 0 ? (
+                <div className="text-center py-20 text-[#86868b] text-xs font-medium">
+                  Loading active promotional codes...
+                </div>
+              ) : vouchers.length === 0 ? (
+                <div className="text-center py-16 text-[#86868b] text-xs italic bg-slate-50 border border-dashed border-slate-200 rounded-[20px] p-10">
+                  No active vouchers are available right now. Check back later for new promotional campaigns!
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {vouchers.map((v) => {
+                    const isPercentage = v.discountType === 'PERCENTAGE';
+                    const valueStr = isPercentage ? `${v.discountValue}%` : `$${v.discountValue}`;
+                    const minSpendStr = v.minBookingValue > 0 ? `Min spend $${v.minBookingValue}` : 'No minimum spend';
+                    const expiryDate = v.endDate ? new Date(v.endDate).toLocaleDateString('vi-VN') : 'No expiry';
+                    
+                    return (
+                      <div 
+                        key={v.voucherId} 
+                        className="bg-gradient-to-tr from-[#f9fafb] to-white border border-[#e8e8ed] hover:border-[#0066cc]/30 rounded-3xl p-6 shadow-sm hover:shadow-md transition-all flex flex-col justify-between relative overflow-hidden"
+                      >
+                        {/* Cutouts for voucher ticket aesthetic */}
+                        <div className="absolute left-[-8px] top-1/2 -translate-y-1/2 w-4 h-6 bg-[#f5f7fa] border-r border-[#e8e8ed] rounded-r-full" />
+                        <div className="absolute right-[-8px] top-1/2 -translate-y-1/2 w-4 h-6 bg-[#f5f7fa] border-l border-[#e8e8ed] rounded-l-full" />
+                        
+                        <div>
+                          <div className="flex justify-between items-start gap-2 mb-2">
+                            <span className="text-3xl font-extrabold tracking-tight text-[#1d1d1f]">
+                              {valueStr} <span className="text-xs text-[#86868b] font-bold uppercase tracking-wider block mt-1">OFF YOUR BOOKING</span>
+                            </span>
+                            <span className="text-[9px] font-bold text-indigo-600 bg-indigo-50 border border-indigo-150 px-2 py-0.5 rounded-full uppercase tracking-wider">
+                              {v.discountType}
+                            </span>
+                          </div>
+
+                          <p className="text-xs text-[#515154] font-semibold mt-4">
+                            {minSpendStr}
+                          </p>
+                          <p className="text-[10px] text-[#86868b] mt-1 font-medium">
+                            Valid until: <span className="font-semibold text-[#1d1d1f]">{expiryDate}</span>
+                          </p>
+                        </div>
+
+                        <div className="mt-6 pt-4 border-t border-[#f5f5f7] flex justify-between items-center gap-3">
+                          <div className="font-mono text-sm font-bold text-[#1d1d1f] bg-slate-100 px-3 py-1.5 rounded-xl select-all border border-slate-200">
+                            {v.code}
+                          </div>
+                          <button
+                            onClick={() => handleCopyCode(v.code)}
+                            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all active:scale-95 cursor-pointer ${
+                              copiedCode === v.code
+                                ? 'bg-green-600 text-white shadow-sm'
+                                : 'bg-[#0066cc] hover:bg-[#0055b3] text-white shadow-sm'
+                            }`}
+                          >
+                            {copiedCode === v.code ? '✓ Copied' : 'Copy Code'}
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           )}
 

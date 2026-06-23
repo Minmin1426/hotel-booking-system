@@ -4,6 +4,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { AuthService } from '../services/AuthService';
 import { BookingService } from '../services/BookingService';
 import { ReportService } from '../services/ReportService';
+import { HotelService } from '../services/HotelService';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
 
@@ -72,6 +73,50 @@ export default function AdminDashboardPage() {
   const [isSavingLockDuration, setIsSavingLockDuration] = useState(false);
   const [lockDurationMessage, setLockDurationMessage] = useState('');
 
+  // User CUD Modal States
+  const [isUserModalOpen, setIsUserModalOpen] = useState(false);
+  const [editingUser, setEditingUser] = useState(null);
+  const [userEmail, setUserEmail] = useState('');
+  const [userFullName, setUserFullName] = useState('');
+  const [userPassword, setUserPassword] = useState('');
+  const [userRoleState, setUserRoleState] = useState('CUSTOMER');
+  const [userStatusState, setUserStatusState] = useState('ACTIVE');
+  const [userPhone, setUserPhone] = useState('');
+  const [userIdent, setUserIdent] = useState('');
+
+  // Booking CUD Modal States
+  const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
+  const [editingBooking, setEditingBooking] = useState(null);
+  const [bookingUserId, setBookingUserId] = useState('');
+  const [bookingHotelId, setBookingHotelId] = useState('');
+  const [bookingCheckIn, setBookingCheckIn] = useState('');
+  const [bookingCheckOut, setBookingCheckOut] = useState('');
+  const [bookingRoomIds, setBookingRoomIds] = useState(''); // Comma separated string e.g. "1, 2"
+  const [bookingPaymentMethod, setBookingPaymentMethod] = useState('ONLINE');
+  const [bookingPaymentStatus, setBookingPaymentStatus] = useState('PENDING');
+  const [bookingStatusState, setBookingStatusState] = useState('PENDING');
+  const [bookingVoucherCode, setBookingVoucherCode] = useState('');
+
+  // State for Hotels
+  const [hotels, setHotels] = useState([]);
+  const [hotelsLoading, setHotelsLoading] = useState(false);
+  const [isHotelModalOpen, setIsHotelModalOpen] = useState(false);
+  const [editingHotel, setEditingHotel] = useState(null);
+  const [hotelName, setHotelName] = useState('');
+  const [hotelLocation, setHotelLocation] = useState('');
+  const [hotelDescription, setHotelDescription] = useState('');
+  const [hotelIsActive, setHotelIsActive] = useState(true);
+
+  // State for Rooms
+  const [rooms, setRooms] = useState([]);
+  const [roomsLoading, setRoomsLoading] = useState(false);
+  const [selectedHotelId, setSelectedHotelId] = useState('');
+  const [isRoomModalOpen, setIsRoomModalOpen] = useState(false);
+  const [editingRoom, setEditingRoom] = useState(null);
+  const [roomNumber, setRoomNumber] = useState('');
+  const [roomPrice, setRoomPrice] = useState('');
+  const [roomType, setRoomType] = useState('STANDARD');
+
   // 1. Fetch Users when page changes
   useEffect(() => {
     if (activeTab === 'users') {
@@ -113,6 +158,20 @@ export default function AdminDashboardPage() {
       loadReviews();
     }
   }, [activeTab, reviewsPage, reviewsFilter]);
+
+  // Load hotels when Hotels or Rooms tab is active
+  useEffect(() => {
+    if (activeTab === 'hotels' || activeTab === 'rooms') {
+      loadHotels();
+    }
+  }, [activeTab]);
+
+  // Load rooms when Selected Hotel changes and Rooms tab is active
+  useEffect(() => {
+    if (activeTab === 'rooms' && selectedHotelId) {
+      loadRoomsForSelectedHotel(selectedHotelId);
+    }
+  }, [activeTab, selectedHotelId]);
 
   useEffect(() => {
     const token = sessionStorage.getItem("accessToken");
@@ -259,6 +318,197 @@ export default function AdminDashboardPage() {
     }
   };
 
+  // User CUD Handlers
+  const handleCreateUserClick = () => {
+    setEditingUser(null);
+    setUserEmail('');
+    setUserFullName('');
+    setUserPassword('');
+    setUserRoleState('CUSTOMER');
+    setUserStatusState('ACTIVE');
+    setUserPhone('');
+    setUserIdent('');
+    setError(null);
+    setIsUserModalOpen(true);
+  };
+
+  const handleEditUserClick = (user) => {
+    setEditingUser(user);
+    setUserEmail(user.email || '');
+    setUserFullName(user.fullName || '');
+    setUserPassword(''); 
+    setUserRoleState(user.role || 'CUSTOMER');
+    setUserStatusState(user.status || 'ACTIVE');
+    setUserPhone(user.phoneNumber || '');
+    setUserIdent(user.identificationNumber || '');
+    setError(null);
+    setIsUserModalOpen(true);
+  };
+
+  const handleSaveUser = async (e) => {
+    e.preventDefault();
+    setIsLoading(true);
+    setError(null);
+
+    const userData = {
+      email: userEmail,
+      fullName: userFullName,
+      role: userRoleState,
+      status: userStatusState,
+      phoneNumber: userPhone,
+      identificationNumber: userIdent,
+    };
+
+    if (!editingUser) {
+      if (!userPassword) {
+        setError("Password is required for new users.");
+        setIsLoading(false);
+        return;
+      }
+      userData.password = userPassword;
+    } else {
+      if (userPassword) {
+        userData.password = userPassword;
+      }
+    }
+
+    try {
+      if (!editingUser) {
+        await AuthService.adminCreateUser(userData);
+      } else {
+        await AuthService.adminUpdateUser(editingUser.userId, userData);
+      }
+      setIsUserModalOpen(false);
+      loadUsers();
+    } catch (err) {
+      setError(err.message || "Failed to save user");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleDeleteUser = async (userId) => {
+    if (window.confirm("Are you sure you want to delete this user? This cannot be undone.")) {
+      setIsLoading(true);
+      setError(null);
+      try {
+        await AuthService.adminDeleteUser(userId);
+        loadUsers();
+      } catch (err) {
+        setError(err.message || "Failed to delete user");
+      } finally {
+        setIsLoading(false);
+      }
+    }
+  };
+
+  // Booking CUD Handlers
+  const handleCreateBookingClick = () => {
+    setEditingBooking(null);
+    setBookingUserId('');
+    setBookingHotelId('');
+    setBookingCheckIn('');
+    setBookingCheckOut('');
+    setBookingRoomIds('');
+    setBookingPaymentMethod('ONLINE');
+    setBookingPaymentStatus('PENDING');
+    setBookingStatusState('PENDING');
+    setBookingVoucherCode('');
+    setError(null);
+    setIsBookingModalOpen(true);
+  };
+
+  const handleEditBookingClick = async (booking) => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const detail = await BookingService.getBooking(booking.bookingId);
+      setEditingBooking(detail);
+      setBookingUserId(detail.userId || '');
+      setBookingHotelId(detail.hotelId || '');
+      setBookingCheckIn(detail.checkInDate ? detail.checkInDate.split('T')[0] : '');
+      setBookingCheckOut(detail.checkOutDate ? detail.checkOutDate.split('T')[0] : '');
+      setBookingRoomIds(detail.roomIds ? detail.roomIds.join(', ') : '');
+      
+      // Look up payment details if available
+      const payments = detail.payments || [];
+      const paymentMethod = payments.length > 0 ? payments[0].paymentMethod : 'ONLINE';
+      const paymentStatus = payments.length > 0 ? payments[0].status : 'PENDING';
+      
+      setBookingPaymentMethod(paymentMethod);
+      setBookingPaymentStatus(paymentStatus);
+      setBookingStatusState(detail.status || 'PENDING');
+      setBookingVoucherCode(detail.voucherCode || '');
+      setIsBookingModalOpen(true);
+    } catch (err) {
+      setError("Failed to load booking details: " + err.message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleSaveBooking = async (e) => {
+    e.preventDefault();
+    setIsLoading(true);
+    setError(null);
+
+    const roomIdsArr = bookingRoomIds
+      .split(',')
+      .map(id => id.trim())
+      .filter(id => id !== '')
+      .map(id => Number(id));
+
+    if (roomIdsArr.length === 0) {
+      setError("At least one Room ID must be specified.");
+      setIsLoading(false);
+      return;
+    }
+
+    const bookingData = {
+      userId: Number(bookingUserId),
+      hotelId: Number(bookingHotelId),
+      checkInDate: bookingCheckIn,
+      checkOutDate: bookingCheckOut,
+      roomIds: roomIdsArr,
+      paymentMethod: bookingPaymentMethod,
+      voucherCode: bookingVoucherCode,
+    };
+
+    if (editingBooking) {
+      bookingData.status = bookingStatusState;
+      bookingData.paymentStatus = bookingPaymentStatus;
+    }
+
+    try {
+      if (!editingBooking) {
+        await BookingService.adminCreateBooking(bookingData);
+      } else {
+        await BookingService.adminUpdateBooking(editingBooking.bookingId, bookingData);
+      }
+      setIsBookingModalOpen(false);
+      loadBookings();
+    } catch (err) {
+      setError(err.message || "Failed to save booking");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleDeleteBooking = async (bookingId) => {
+    if (window.confirm("Are you sure you want to delete this booking? This will release all locks and delete associated payments.")) {
+      setIsLoading(true);
+      setError(null);
+      try {
+        await BookingService.adminDeleteBooking(bookingId);
+        loadBookings();
+      } catch (err) {
+        setError(err.message || "Failed to delete booking");
+      } finally {
+        setIsLoading(false);
+      }
+    }
+  };
+
   const handleSaveLockDuration = async (e) => {
     e.preventDefault();
     setIsSavingLockDuration(true);
@@ -320,6 +570,185 @@ export default function AdminDashboardPage() {
     }
   };
 
+  const loadHotels = async () => {
+    setHotelsLoading(true);
+    setError(null);
+    try {
+      const data = await HotelService.getHotels({});
+      setHotels(data || []);
+      if (data && data.length > 0 && !selectedHotelId) {
+        setSelectedHotelId(data[0].hotelId.toString());
+      }
+    } catch (err) {
+      setError("Failed to load hotels: " + err.message);
+    } finally {
+      setHotelsLoading(false);
+    }
+  };
+
+  const loadRoomsForSelectedHotel = async (hotelId) => {
+    if (!hotelId) return;
+    setRoomsLoading(true);
+    setError(null);
+    try {
+      const roomsData = await HotelService.getRoomsByHotel(hotelId);
+      setRooms(roomsData || []);
+    } catch (err) {
+      setError("Failed to load rooms for hotel: " + err.message);
+    } finally {
+      setRoomsLoading(false);
+    }
+  };
+
+  // Hotel CUD Handlers
+  const handleCreateHotelClick = () => {
+    setEditingHotel(null);
+    setHotelName('');
+    setHotelLocation('');
+    setHotelDescription('');
+    setHotelIsActive(true);
+    setError(null);
+    setIsHotelModalOpen(true);
+  };
+
+  const handleEditHotelClick = (hotel) => {
+    setEditingHotel(hotel);
+    setHotelName(hotel.name || '');
+    setHotelLocation(hotel.location || '');
+    setHotelDescription(hotel.description || '');
+    setHotelIsActive(hotel.isActive !== undefined ? hotel.isActive : true);
+    setError(null);
+    setIsHotelModalOpen(true);
+  };
+
+  const handleSaveHotel = async (e) => {
+    e.preventDefault();
+    setIsLoading(true);
+    setError(null);
+
+    const hotelData = {
+      name: hotelName,
+      location: hotelLocation,
+      description: hotelDescription,
+    };
+
+    if (editingHotel) {
+      hotelData.isActive = hotelIsActive;
+    }
+
+    try {
+      if (!editingHotel) {
+        await HotelService.createHotel(hotelData);
+      } else {
+        await HotelService.updateHotel(editingHotel.hotelId, hotelData);
+      }
+      setIsHotelModalOpen(false);
+      loadHotels();
+    } catch (err) {
+      setError(err.message || "Failed to save hotel");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleDeleteHotel = async (hotelId) => {
+    if (window.confirm("Are you sure you want to delete this hotel? This will soft-delete the hotel if there are no active bookings.")) {
+      setIsLoading(true);
+      setError(null);
+      try {
+        await HotelService.deleteHotel(hotelId);
+        loadHotels();
+      } catch (err) {
+        setError(err.message || "Failed to delete hotel");
+      } finally {
+        setIsLoading(false);
+      }
+    }
+  };
+
+  // Room CUD Handlers
+  const handleCreateRoomClick = () => {
+    setEditingRoom(null);
+    setRoomNumber('');
+    setRoomPrice('');
+    setRoomType('STANDARD');
+    setError(null);
+    setIsRoomModalOpen(true);
+  };
+
+  const handleEditRoomClick = (room) => {
+    setEditingRoom(room);
+    setRoomNumber(room.roomNumber || '');
+    setRoomPrice(room.pricePerNight ? room.pricePerNight.toString() : '');
+    setRoomType(room.roomType || 'STANDARD');
+    setError(null);
+    setIsRoomModalOpen(true);
+  };
+
+  const handleSaveRoom = async (e) => {
+    e.preventDefault();
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      if (!editingRoom) {
+        const roomData = {
+          hotelId: Number(selectedHotelId),
+          roomNumber,
+          price: Number(roomPrice),
+          roomType,
+        };
+        await HotelService.createRoom(roomData);
+      } else {
+        const roomData = {
+          price: Number(roomPrice),
+          roomType,
+        };
+        await HotelService.updateRoom(editingRoom.roomId, roomData);
+      }
+      setIsRoomModalOpen(false);
+      loadRoomsForSelectedHotel(selectedHotelId);
+    } catch (err) {
+      setError(err.message || "Failed to save room");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleDeleteRoom = async (roomId) => {
+    if (window.confirm("Are you sure you want to delete this room?")) {
+      setIsLoading(true);
+      setError(null);
+      try {
+        await HotelService.deleteRoom(roomId);
+        loadRoomsForSelectedHotel(selectedHotelId);
+      } catch (err) {
+        setError(err.message || "Failed to delete room");
+      } finally {
+        setIsLoading(false);
+      }
+    }
+  };
+
+  const handleToggleRoomAvailability = async (roomId, currentStatus) => {
+    const isAvailable = currentStatus === 'AVAILABLE';
+    const nextStatus = !isAvailable;
+    setActionLoadingId(roomId);
+    setError(null);
+    try {
+      await HotelService.updateRoomAvailability(roomId, nextStatus);
+      setRooms(prevRooms =>
+        prevRooms.map(room =>
+          room.roomId === roomId ? { ...room, status: nextStatus ? 'AVAILABLE' : 'UNAVAILABLE' } : room
+        )
+      );
+    } catch (err) {
+      setError("Failed to update availability: " + err.message);
+    } finally {
+      setActionLoadingId(null);
+    }
+  };
+
   // Client-side users filter
   const filteredUsers = users.filter(user => {
     const fullNameMatches = (user.fullName || '').toLowerCase().includes(searchQuery.toLowerCase());
@@ -345,12 +774,16 @@ export default function AdminDashboardPage() {
               <h1 className="text-3xl font-bold tracking-tight text-[#1d1d1f]">
                 {activeTab === 'users' && 'User Management'}
                 {activeTab === 'bookings' && 'Booking Management'}
+                {activeTab === 'hotels' && 'Hotel Management'}
+                {activeTab === 'rooms' && 'Room Management'}
                 {activeTab === 'reports' && 'Operations & Reports'}
                 {activeTab === 'reviews' && 'Review Moderation'}
               </h1>
               <p className="text-xs text-[#86868b] mt-1">
                 {activeTab === 'users' && 'Admin console to manage registered user accounts'}
                 {activeTab === 'bookings' && 'Manage hotel reservations, payments, and offline manual booking processing'}
+                {activeTab === 'hotels' && 'Create, edit, delete, and configure hotel profiles'}
+                {activeTab === 'rooms' && 'Manage hotel rooms, pricing, room types, and toggle real-time availability'}
                 {activeTab === 'reports' && 'Operational statistics, room occupancy reports, and Excel exporting'}
                 {activeTab === 'reviews' && 'Moderate customer comments and audit review visibility'}
               </p>
@@ -368,6 +801,30 @@ export default function AdminDashboardPage() {
                   }`}
                 >
                   Users
+                </button>
+              )}
+              {isAdmin && (
+                <button
+                  onClick={() => navigate('/admin/users?tab=hotels')}
+                  className={`px-4 py-2 text-xs font-bold rounded-lg transition-all ${
+                    activeTab === 'hotels' 
+                      ? 'bg-white text-[#1d1d1f] shadow-sm' 
+                      : 'text-[#86868b] hover:text-[#1d1d1f]'
+                  }`}
+                >
+                  Hotels
+                </button>
+              )}
+              {isAdmin && (
+                <button
+                  onClick={() => navigate('/admin/users?tab=rooms')}
+                  className={`px-4 py-2 text-xs font-bold rounded-lg transition-all ${
+                    activeTab === 'rooms' 
+                      ? 'bg-white text-[#1d1d1f] shadow-sm' 
+                      : 'text-[#86868b] hover:text-[#1d1d1f]'
+                  }`}
+                >
+                  Rooms
                 </button>
               )}
               {isAdmin && (
@@ -460,6 +917,12 @@ export default function AdminDashboardPage() {
                     <option value="ACTIVE">Active</option>
                     <option value="LOCKED">Locked</option>
                   </select>
+                  <button
+                    onClick={handleCreateUserClick}
+                    className="h-[40px] px-5 rounded-xl bg-indigo-600 text-white text-xs font-bold hover:brightness-105 active:scale-95 transition-all shadow-sm flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <span>➕</span> Add User
+                  </button>
                 </div>
               </div>
 
@@ -511,28 +974,42 @@ export default function AdminDashboardPage() {
                             </div>
                           </td>
                           <td className="p-4 text-right">
-                            {user.role === 'ADMIN' ? (
+                            <div className="flex gap-1.5 justify-end">
                               <button
-                                disabled
-                                className="px-3 py-1.5 rounded-full text-xs font-semibold bg-[#f5f5f7] text-[#86868b] border border-[#e8e8ed] cursor-not-allowed opacity-60"
+                                onClick={() => handleEditUserClick(user)}
+                                className="px-3 py-1.5 rounded-full text-xs font-semibold bg-blue-50 text-blue-600 hover:bg-blue-100 active:scale-95 transition-all cursor-pointer"
                               >
-                                Protected
+                                Edit
                               </button>
-                            ) : (
+                              {user.role !== 'ADMIN' ? (
+                                <button
+                                  onClick={() => handleDeleteUser(user.userId)}
+                                  className="px-3 py-1.5 rounded-full text-xs font-semibold bg-rose-50 text-rose-600 hover:bg-rose-100 active:scale-95 transition-all cursor-pointer"
+                                >
+                                  Delete
+                                </button>
+                              ) : (
+                                <button
+                                  disabled
+                                  className="px-3 py-1.5 rounded-full text-xs font-semibold bg-[#f5f5f7] text-[#86868b] border border-[#e8e8ed] cursor-not-allowed opacity-60"
+                                >
+                                  Protected
+                                </button>
+                              )}
                               <button
                                 onClick={() => handleToggleStatus(user.userId, user.status)}
                                 disabled={actionLoadingId === user.userId}
-                                className={`px-3 py-1.5 rounded-full text-xs font-medium hover:scale-95 active:scale-95 transition-all ${
+                                className={`px-3 py-1.5 rounded-full text-xs font-medium hover:scale-95 active:scale-95 transition-all cursor-pointer ${
                                   user.status === 'ACTIVE'
-                                    ? 'bg-red-50 text-red-600 hover:bg-red-100'
+                                    ? 'bg-amber-50 text-amber-600 hover:bg-amber-100'
                                     : 'bg-green-50 text-green-600 hover:bg-green-100'
                                   }`}
                               >
                                 {actionLoadingId === user.userId 
-                                  ? 'Processing...' 
-                                  : user.status === 'ACTIVE' ? 'Lock Account' : 'Unlock Account'}
+                                  ? '...' 
+                                  : user.status === 'ACTIVE' ? 'Lock' : 'Unlock'}
                               </button>
-                            )}
+                            </div>
                           </td>
                         </tr>
                       ))}
@@ -648,6 +1125,12 @@ export default function AdminDashboardPage() {
                     <option value="CREDIT_CARD">Credit Card (CREDIT_CARD)</option>
                     <option value="PAYPAL">PayPal (PAYPAL)</option>
                   </select>
+                  <button
+                    onClick={handleCreateBookingClick}
+                    className="h-[40px] px-5 rounded-xl bg-indigo-600 text-white text-xs font-bold hover:brightness-105 active:scale-95 transition-all shadow-sm flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <span>➕</span> Add Booking
+                  </button>
                 </div>
               </div>
 
@@ -731,28 +1214,38 @@ export default function AdminDashboardPage() {
                               </span>
                             </td>
                             <td className="p-4 text-right">
-                              {isOfflinePending ? (
-                                <div className="flex gap-2 justify-end">
-                                  <button
-                                    onClick={() => handleProcessBooking(booking.bookingId, 'CONFIRMED')}
-                                    disabled={actionLoadingId === booking.bookingId}
-                                    className="px-3 py-1.5 rounded-full text-xs font-semibold bg-green-50 text-green-600 hover:bg-green-100 active:scale-95 transition-all"
-                                  >
-                                    {actionLoadingId === booking.bookingId ? '...' : 'Confirm'}
-                                  </button>
-                                  <button
-                                    onClick={() => handleProcessBooking(booking.bookingId, 'CANCELLED')}
-                                    disabled={actionLoadingId === booking.bookingId}
-                                    className="px-3 py-1.5 rounded-full text-xs font-semibold bg-rose-50 text-rose-600 hover:bg-rose-100 active:scale-95 transition-all"
-                                  >
-                                    {actionLoadingId === booking.bookingId ? '...' : 'Reject'}
-                                  </button>
-                                </div>
-                              ) : (
-                                <span className="text-[10px] font-semibold text-[#86868b] italic">
-                                  {booking.paymentMethod === 'ONLINE' ? 'Auto Managed' : 'Processed'}
-                                </span>
-                              )}
+                              <div className="flex gap-1.5 justify-end items-center">
+                                <button
+                                  onClick={() => handleEditBookingClick(booking)}
+                                  className="px-2.5 py-1.5 rounded-full text-[10px] font-semibold bg-blue-50 text-blue-600 hover:bg-blue-100 active:scale-95 transition-all cursor-pointer"
+                                >
+                                  Edit
+                                </button>
+                                <button
+                                  onClick={() => handleDeleteBooking(booking.bookingId)}
+                                  className="px-2.5 py-1.5 rounded-full text-[10px] font-semibold bg-rose-50 text-rose-600 hover:bg-rose-100 active:scale-95 transition-all cursor-pointer"
+                                >
+                                  Delete
+                                </button>
+                                {isOfflinePending && (
+                                  <>
+                                    <button
+                                      onClick={() => handleProcessBooking(booking.bookingId, 'CONFIRMED')}
+                                      disabled={actionLoadingId === booking.bookingId}
+                                      className="px-2.5 py-1.5 rounded-full text-[10px] font-semibold bg-green-50 text-green-600 hover:bg-green-100 active:scale-95 transition-all cursor-pointer"
+                                    >
+                                      {actionLoadingId === booking.bookingId ? '...' : 'Confirm'}
+                                    </button>
+                                    <button
+                                      onClick={() => handleProcessBooking(booking.bookingId, 'CANCELLED')}
+                                      disabled={actionLoadingId === booking.bookingId}
+                                      className="px-2.5 py-1.5 rounded-full text-[10px] font-semibold bg-red-50 text-red-600 hover:bg-red-100 active:scale-95 transition-all cursor-pointer"
+                                    >
+                                      {actionLoadingId === booking.bookingId ? '...' : 'Reject'}
+                                    </button>
+                                  </>
+                                )}
+                              </div>
                             </td>
                           </tr>
                         );
@@ -959,14 +1452,14 @@ export default function AdminDashboardPage() {
                             <div className="bg-emerald-50 p-5 rounded-2xl border border-emerald-100">
                               <span className="text-xs text-emerald-600 uppercase tracking-wider block font-bold">Confirmed / Completed</span>
                               <span className="text-3xl font-extrabold text-emerald-700 mt-1 block font-mono">
-                                {bookingStats.statusBreakdown?.CONFIRMED || 0}
+                                {bookingStats.confirmedBookings}
                               </span>
                             </div>
 
                             <div className="bg-rose-50 p-5 rounded-2xl border border-rose-100">
                               <span className="text-xs text-rose-600 uppercase tracking-wider block font-bold">Cancellations</span>
                               <span className="text-3xl font-extrabold text-rose-700 mt-1 block font-mono">
-                                {bookingStats.statusBreakdown?.CANCELLED || 0}
+                                {bookingStats.cancelledBookings}
                               </span>
                             </div>
                           </div>
@@ -1143,10 +1636,704 @@ export default function AdminDashboardPage() {
             </div>
           )}
 
+          {/* Tab Content: Hotels */}
+          {activeTab === 'hotels' && (
+            <div className="animate-fadeIn">
+              {/* Hotels Stats Summary */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+                <div className="bg-[#f5f5f7] p-4 rounded-[12px] text-left border border-[#e8e8ed]">
+                  <span className="text-xs text-[#86868b] uppercase tracking-wider block font-semibold">Total Hotels</span>
+                  <span className="text-2xl font-bold text-[#1d1d1f] mt-1 block">{hotels.length}</span>
+                </div>
+                <div className="bg-[#f5f5f7] p-4 rounded-[12px] text-left border border-[#e8e8ed]">
+                  <span className="text-xs text-[#86868b] uppercase tracking-wider block font-semibold">Admin Access Level</span>
+                  <span className="text-sm font-bold text-green-600 mt-2 inline-block px-3 py-1 bg-green-50 rounded-full">FULL CONTROL</span>
+                </div>
+              </div>
+
+              {/* Add Hotel Header Actions */}
+              <div className="flex justify-end mb-6">
+                <button
+                  onClick={handleCreateHotelClick}
+                  className="h-[40px] px-5 rounded-xl bg-indigo-600 text-white text-xs font-bold hover:brightness-105 active:scale-95 transition-all shadow-sm flex items-center gap-1.5 cursor-pointer"
+                >
+                  <span>➕</span> Add Hotel
+                </button>
+              </div>
+
+              {/* Hotel Table Card */}
+              <div className="overflow-x-auto border border-[#e8e8ed] rounded-xl">
+                {hotelsLoading ? (
+                  <div className="text-center py-20 text-[#86868b] apple-body">
+                    Loading hotels list...
+                  </div>
+                ) : hotels.length === 0 ? (
+                  <div className="text-center py-20 text-[#86868b] apple-body">
+                    No hotels found. Create a new one to get started.
+                  </div>
+                ) : (
+                  <table className="w-full text-left border-collapse">
+                     <thead>
+                      <tr className="bg-[#f5f5f7] border-b border-[#e8e8ed]">
+                        <th className="p-4 text-xs font-semibold uppercase text-[#86868b] tracking-wider w-[80px]">Hotel ID</th>
+                        <th className="p-4 text-xs font-semibold uppercase text-[#86868b] tracking-wider">Hotel Name</th>
+                        <th className="p-4 text-xs font-semibold uppercase text-[#86868b] tracking-wider">Location</th>
+                        <th className="p-4 text-xs font-semibold uppercase text-[#86868b] tracking-wider">Description</th>
+                        <th className="p-4 text-xs font-semibold uppercase text-[#86868b] tracking-wider w-[120px]">Status</th>
+                        <th className="p-4 text-xs font-semibold uppercase text-[#86868b] tracking-wider text-right w-[180px]">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-[#e8e8ed]">
+                      {hotels.map((hotel) => (
+                        <tr key={hotel.hotelId} className="hover:bg-[#fafafc] transition-colors">
+                          <td className="p-4 text-sm font-semibold text-[#1d1d1f]">#{hotel.hotelId}</td>
+                          <td className="p-4 text-sm font-medium text-[#1d1d1f]">{hotel.name}</td>
+                          <td className="p-4 text-sm text-[#1d1d1f]">{hotel.location}</td>
+                          <td className="p-4 text-sm text-[#86868b] max-w-[300px] truncate" title={hotel.description}>
+                            {hotel.description || 'No description'}
+                          </td>
+                          <td className="p-4">
+                            <div className="flex items-center gap-2">
+                              <span className={`w-2.5 h-2.5 rounded-full ${
+                                hotel.isActive ? 'bg-green-500' : 'bg-red-500'
+                              }`} />
+                              <span className={`text-xs font-semibold ${
+                                hotel.isActive ? 'text-green-600' : 'text-red-600'
+                              }`}>
+                                {hotel.isActive ? 'ACTIVE' : 'INACTIVE'}
+                              </span>
+                            </div>
+                          </td>
+                          <td className="p-4 text-right">
+                            <div className="flex gap-1.5 justify-end">
+                              <button
+                                onClick={() => handleEditHotelClick(hotel)}
+                                className="px-3 py-1.5 rounded-full text-xs font-semibold bg-blue-50 text-blue-600 hover:bg-blue-100 active:scale-95 transition-all cursor-pointer"
+                              >
+                                Edit
+                              </button>
+                              <button
+                                onClick={() => handleDeleteHotel(hotel.hotelId)}
+                                className="px-3 py-1.5 rounded-full text-xs font-semibold bg-rose-50 text-rose-600 hover:bg-rose-100 active:scale-95 transition-all cursor-pointer"
+                              >
+                                Delete
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Tab Content: Rooms */}
+          {activeTab === 'rooms' && (
+            <div className="animate-fadeIn">
+              {/* Hotel Selector Dropdown */}
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+                <div className="flex items-center gap-3">
+                  <label className="text-xs font-bold text-[#86868b] uppercase tracking-wider">Select Hotel:</label>
+                  <select
+                    className="h-[40px] px-4 rounded-xl border border-[#e8e8ed] text-sm font-semibold bg-white focus:outline-none focus:border-[#0066cc]"
+                    value={selectedHotelId}
+                    onChange={(e) => setSelectedHotelId(e.target.value)}
+                  >
+                    <option value="">-- Choose Hotel --</option>
+                    {hotels.map(h => (
+                      <option key={h.hotelId} value={h.hotelId}>{h.name} ({h.location})</option>
+                    ))}
+                  </select>
+                </div>
+                {selectedHotelId && (
+                  <button
+                    onClick={handleCreateRoomClick}
+                    className="h-[40px] px-5 rounded-xl bg-indigo-600 text-white text-xs font-bold hover:brightness-105 active:scale-95 transition-all shadow-sm flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <span>➕</span> Add Room
+                  </button>
+                )}
+              </div>
+
+              {/* Rooms Table Card */}
+              <div className="overflow-x-auto border border-[#e8e8ed] rounded-xl">
+                {!selectedHotelId ? (
+                  <div className="text-center py-20 text-[#86868b] apple-body">
+                    Please select a hotel above to view and manage its rooms.
+                  </div>
+                ) : roomsLoading ? (
+                  <div className="text-center py-20 text-[#86868b] apple-body">
+                    Loading hotel rooms...
+                  </div>
+                ) : rooms.length === 0 ? (
+                  <div className="text-center py-20 text-[#86868b] apple-body">
+                    No rooms found for this hotel. Add a room to get started.
+                  </div>
+                ) : (
+                  <table className="w-full text-left border-collapse">
+                     <thead>
+                      <tr className="bg-[#f5f5f7] border-b border-[#e8e8ed]">
+                        <th className="p-4 text-xs font-semibold uppercase text-[#86868b] tracking-wider w-[80px]">Room ID</th>
+                        <th className="p-4 text-xs font-semibold uppercase text-[#86868b] tracking-wider">Room Number</th>
+                        <th className="p-4 text-xs font-semibold uppercase text-[#86868b] tracking-wider">Room Type</th>
+                        <th className="p-4 text-xs font-semibold uppercase text-[#86868b] tracking-wider">Price per Night</th>
+                        <th className="p-4 text-xs font-semibold uppercase text-[#86868b] tracking-wider w-[120px]">Availability</th>
+                        <th className="p-4 text-xs font-semibold uppercase text-[#86868b] tracking-wider text-right w-[200px]">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-[#e8e8ed]">
+                      {rooms.map((room) => (
+                        <tr key={room.roomId} className="hover:bg-[#fafafc] transition-colors">
+                          <td className="p-4 text-sm font-semibold text-[#1d1d1f]">#{room.roomId}</td>
+                          <td className="p-4 text-sm font-bold text-indigo-600 font-mono">{room.roomNumber}</td>
+                          <td className="p-4 text-sm font-medium text-[#1d1d1f]">
+                            <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-slate-100 text-slate-700">
+                              {room.roomType}
+                            </span>
+                          </td>
+                          <td className="p-4 text-sm font-semibold text-slate-800 font-mono">
+                            ${room.pricePerNight.toFixed(2)}
+                          </td>
+                          <td className="p-4">
+                            <div className="flex items-center gap-2">
+                              <span className={`w-2.5 h-2.5 rounded-full ${
+                                room.status === 'AVAILABLE' ? 'bg-green-500' : 'bg-red-500'
+                              }`} />
+                              <span className={`text-xs font-bold ${
+                                room.status === 'AVAILABLE' ? 'text-green-600' : 'text-red-600'
+                              }`}>
+                                {room.status}
+                              </span>
+                            </div>
+                          </td>
+                          <td className="p-4 text-right">
+                            <div className="flex gap-1.5 justify-end">
+                              <button
+                                onClick={() => handleEditRoomClick(room)}
+                                className="px-3 py-1.5 rounded-full text-xs font-semibold bg-blue-50 text-blue-600 hover:bg-blue-100 active:scale-95 transition-all cursor-pointer"
+                              >
+                                Edit
+                              </button>
+                              <button
+                                onClick={() => handleDeleteRoom(room.roomId)}
+                                className="px-3 py-1.5 rounded-full text-xs font-semibold bg-rose-50 text-rose-600 hover:bg-rose-100 active:scale-95 transition-all cursor-pointer"
+                              >
+                                Delete
+                              </button>
+                              <button
+                                onClick={() => handleToggleRoomAvailability(room.roomId, room.status)}
+                                disabled={actionLoadingId === room.roomId}
+                                className={`px-3 py-1.5 rounded-full text-xs font-medium hover:scale-95 active:scale-95 transition-all cursor-pointer ${
+                                  room.status === 'AVAILABLE'
+                                    ? 'bg-amber-50 text-amber-600 hover:bg-amber-100'
+                                    : 'bg-green-50 text-green-600 hover:bg-green-100'
+                                  }`}
+                              >
+                                {actionLoadingId === room.roomId 
+                                  ? '...' 
+                                  : room.status === 'AVAILABLE' ? 'Make Unavailable' : 'Make Available'}
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+              </div>
+            </div>
+          )}
+
         </div>
       </main>
 
       <Footer />
+
+      {/* User CUD Modal */}
+      {isUserModalOpen && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl w-full max-w-lg overflow-hidden shadow-2xl border border-[#e8e8ed] animate-fadeIn text-left">
+            <div className="px-8 py-6 border-b border-[#f5f5f7] flex justify-between items-center bg-[#f5f5f7]/50">
+              <h2 className="text-xl font-bold text-[#1d1d1f]">
+                {editingUser ? "Edit User Profile" : "Create New User"}
+              </h2>
+              <button 
+                onClick={() => setIsUserModalOpen(false)}
+                className="text-[#86868b] hover:text-[#1d1d1f] transition-colors p-1"
+              >
+                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveUser} className="p-8 space-y-5">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="col-span-2">
+                  <label className="block text-xs font-bold text-[#86868b] mb-1.5 uppercase tracking-wider">Email Address *</label>
+                  <input
+                    type="email"
+                    required
+                    disabled={!!editingUser}
+                    className="w-full h-[44px] px-4 rounded-xl border border-[#e8e8ed] text-sm focus:outline-none focus:border-[#0066cc] transition-all bg-[#f5f5f7] focus:bg-white disabled:opacity-60"
+                    value={userEmail}
+                    onChange={(e) => setUserEmail(e.target.value)}
+                    placeholder="e.g. customer@example.com"
+                  />
+                </div>
+
+                <div className="col-span-2">
+                  <label className="block text-xs font-bold text-[#86868b] mb-1.5 uppercase tracking-wider">Full Name *</label>
+                  <input
+                    type="text"
+                    required
+                    className="w-full h-[44px] px-4 rounded-xl border border-[#e8e8ed] text-sm focus:outline-none focus:border-[#0066cc] transition-all bg-[#f5f5f7] focus:bg-white"
+                    value={userFullName}
+                    onChange={(e) => setUserFullName(e.target.value)}
+                    placeholder="e.g. Nguyen Van A"
+                  />
+                </div>
+
+                <div className="col-span-2">
+                  <label className="block text-xs font-bold text-[#86868b] mb-1.5 uppercase tracking-wider">
+                    Password {editingUser ? "(leave blank to keep current)" : "*"}
+                  </label>
+                  <input
+                    type="password"
+                    required={!editingUser}
+                    className="w-full h-[44px] px-4 rounded-xl border border-[#e8e8ed] text-sm focus:outline-none focus:border-[#0066cc] transition-all bg-[#f5f5f7] focus:bg-white"
+                    value={userPassword}
+                    onChange={(e) => setUserPassword(e.target.value)}
+                    placeholder={editingUser ? "••••••••" : "Min 8 characters"}
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-[#86868b] mb-1.5 uppercase tracking-wider">Role</label>
+                  <select
+                    className="w-full h-[44px] px-4 rounded-xl border border-[#e8e8ed] text-sm focus:outline-none focus:border-[#0066cc] bg-[#f5f5f7] focus:bg-white"
+                    value={userRoleState}
+                    onChange={(e) => setUserRoleState(e.target.value)}
+                  >
+                    <option value="CUSTOMER">Customer</option>
+                    <option value="STAFF">Staff</option>
+                    <option value="ADMIN">Admin</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-[#86868b] mb-1.5 uppercase tracking-wider">Status</label>
+                  <select
+                    className="w-full h-[44px] px-4 rounded-xl border border-[#e8e8ed] text-sm focus:outline-none focus:border-[#0066cc] bg-[#f5f5f7] focus:bg-white"
+                    value={userStatusState}
+                    onChange={(e) => setUserStatusState(e.target.value)}
+                  >
+                    <option value="ACTIVE">Active</option>
+                    <option value="LOCKED">Locked</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-[#86868b] mb-1.5 uppercase tracking-wider">Phone Number</label>
+                  <input
+                    type="text"
+                    className="w-full h-[44px] px-4 rounded-xl border border-[#e8e8ed] text-sm focus:outline-none focus:border-[#0066cc] transition-all bg-[#f5f5f7] focus:bg-white"
+                    value={userPhone}
+                    onChange={(e) => setUserPhone(e.target.value)}
+                    placeholder="e.g. 0912345678"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-[#86868b] mb-1.5 uppercase tracking-wider">National ID</label>
+                  <input
+                    type="text"
+                    className="w-full h-[44px] px-4 rounded-xl border border-[#e8e8ed] text-sm focus:outline-none focus:border-[#0066cc] transition-all bg-[#f5f5f7] focus:bg-white"
+                    value={userIdent}
+                    onChange={(e) => setUserIdent(e.target.value)}
+                    placeholder="e.g. 034123456789"
+                  />
+                </div>
+              </div>
+
+              {error && (
+                <div className="text-red-500 text-xs font-semibold bg-red-50 p-3 rounded-xl border border-red-100 text-center">
+                  {error}
+                </div>
+              )}
+
+              <div className="pt-4 border-t border-[#f5f5f7] flex justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => setIsUserModalOpen(false)}
+                  className="h-[44px] px-5 rounded-xl border border-[#d2d2d7] text-sm font-semibold hover:bg-[#f5f5f7] transition-all text-[#1d1d1f]"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isLoading}
+                  className="h-[44px] px-6 rounded-xl bg-[#0066cc] hover:bg-[#0055b3] text-sm font-semibold text-white transition-all disabled:opacity-50 flex items-center justify-center min-w-[100px]"
+                >
+                  {isLoading ? "Saving..." : "Save User"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Booking CUD Modal */}
+      {isBookingModalOpen && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-white rounded-3xl w-full max-w-xl my-8 overflow-hidden shadow-2xl border border-[#e8e8ed] animate-fadeIn text-left">
+            <div className="px-8 py-6 border-b border-[#f5f5f7] flex justify-between items-center bg-[#f5f5f7]/50">
+              <h2 className="text-xl font-bold text-[#1d1d1f]">
+                {editingBooking ? `Edit Booking (ID: ${editingBooking.bookingId})` : "Create New Booking"}
+              </h2>
+              <button 
+                onClick={() => setIsBookingModalOpen(false)}
+                className="text-[#86868b] hover:text-[#1d1d1f] transition-colors p-1"
+              >
+                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveBooking} className="p-8 space-y-5">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-[#86868b] mb-1.5 uppercase tracking-wider">User ID *</label>
+                  <input
+                    type="number"
+                    required
+                    disabled={!!editingBooking}
+                    className="w-full h-[44px] px-4 rounded-xl border border-[#e8e8ed] text-sm focus:outline-none focus:border-[#0066cc] transition-all bg-[#f5f5f7] focus:bg-white disabled:opacity-60"
+                    value={bookingUserId}
+                    onChange={(e) => setBookingUserId(e.target.value)}
+                    placeholder="e.g. 5"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-[#86868b] mb-1.5 uppercase tracking-wider">Hotel ID *</label>
+                  <input
+                    type="number"
+                    required
+                    disabled={!!editingBooking}
+                    className="w-full h-[44px] px-4 rounded-xl border border-[#e8e8ed] text-sm focus:outline-none focus:border-[#0066cc] transition-all bg-[#f5f5f7] focus:bg-white disabled:opacity-60"
+                    value={bookingHotelId}
+                    onChange={(e) => setBookingHotelId(e.target.value)}
+                    placeholder="e.g. 1"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-[#86868b] mb-1.5 uppercase tracking-wider">Check-in Date *</label>
+                  <input
+                    type="date"
+                    required
+                    className="w-full h-[44px] px-4 rounded-xl border border-[#e8e8ed] text-sm focus:outline-none focus:border-[#0066cc] transition-all bg-[#f5f5f7] focus:bg-white"
+                    value={bookingCheckIn}
+                    onChange={(e) => setBookingCheckIn(e.target.value)}
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-[#86868b] mb-1.5 uppercase tracking-wider">Check-out Date *</label>
+                  <input
+                    type="date"
+                    required
+                    className="w-full h-[44px] px-4 rounded-xl border border-[#e8e8ed] text-sm focus:outline-none focus:border-[#0066cc] transition-all bg-[#f5f5f7] focus:bg-white"
+                    value={bookingCheckOut}
+                    onChange={(e) => setBookingCheckOut(e.target.value)}
+                  />
+                </div>
+
+                <div className="col-span-2">
+                  <label className="block text-xs font-bold text-[#86868b] mb-1.5 uppercase tracking-wider">Room IDs * (comma-separated)</label>
+                  <input
+                    type="text"
+                    required
+                    className="w-full h-[44px] px-4 rounded-xl border border-[#e8e8ed] text-sm focus:outline-none focus:border-[#0066cc] transition-all bg-[#f5f5f7] focus:bg-white"
+                    value={bookingRoomIds}
+                    onChange={(e) => setBookingRoomIds(e.target.value)}
+                    placeholder="e.g. 101, 102"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-[#86868b] mb-1.5 uppercase tracking-wider">Payment Method</label>
+                  <select
+                    className="w-full h-[44px] px-4 rounded-xl border border-[#e8e8ed] text-sm focus:outline-none focus:border-[#0066cc] bg-[#f5f5f7] focus:bg-white"
+                    value={bookingPaymentMethod}
+                    onChange={(e) => setBookingPaymentMethod(e.target.value)}
+                  >
+                    <option value="ONLINE">Online (ONLINE)</option>
+                    <option value="CASH">Pay at Hotel (CASH)</option>
+                    <option value="BANK_TRANSFER">Bank Transfer (BANK_TRANSFER)</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-[#86868b] mb-1.5 uppercase tracking-wider">Voucher Code</label>
+                  <input
+                    type="text"
+                    className="w-full h-[44px] px-4 rounded-xl border border-[#e8e8ed] text-sm focus:outline-none focus:border-[#0066cc] transition-all bg-[#f5f5f7] focus:bg-white"
+                    value={bookingVoucherCode}
+                    onChange={(e) => setBookingVoucherCode(e.target.value)}
+                    placeholder="e.g. WELCOME10"
+                  />
+                </div>
+
+                {editingBooking && (
+                  <>
+                    <div>
+                      <label className="block text-xs font-bold text-[#86868b] mb-1.5 uppercase tracking-wider">Payment Status</label>
+                      <select
+                        className="w-full h-[44px] px-4 rounded-xl border border-[#e8e8ed] text-sm focus:outline-none focus:border-[#0066cc] bg-[#f5f5f7] focus:bg-white"
+                        value={bookingPaymentStatus}
+                        onChange={(e) => setBookingPaymentStatus(e.target.value)}
+                      >
+                        <option value="PENDING">Pending</option>
+                        <option value="COMPLETED">Completed</option>
+                        <option value="FAILED">Failed</option>
+                        <option value="REFUNDED">Refunded</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-[#86868b] mb-1.5 uppercase tracking-wider">Booking Status</label>
+                      <select
+                        className="w-full h-[44px] px-4 rounded-xl border border-[#e8e8ed] text-sm focus:outline-none focus:border-[#0066cc] bg-[#f5f5f7] focus:bg-white"
+                        value={bookingStatusState}
+                        onChange={(e) => setBookingStatusState(e.target.value)}
+                      >
+                        <option value="PENDING">Pending</option>
+                        <option value="CONFIRMED">Confirmed</option>
+                        <option value="CANCELLED">Cancelled</option>
+                        <option value="COMPLETED">Completed</option>
+                      </select>
+                    </div>
+                  </>
+                )}
+              </div>
+
+              {error && (
+                <div className="text-red-500 text-xs font-semibold bg-red-50 p-3 rounded-xl border border-red-100 text-center">
+                  {error}
+                </div>
+              )}
+
+              <div className="pt-4 border-t border-[#f5f5f7] flex justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => setIsBookingModalOpen(false)}
+                  className="h-[44px] px-5 rounded-xl border border-[#d2d2d7] text-sm font-semibold hover:bg-[#f5f5f7] transition-all text-[#1d1d1f]"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isLoading}
+                  className="h-[44px] px-6 rounded-xl bg-[#0066cc] hover:bg-[#0055b3] text-sm font-semibold text-white transition-all disabled:opacity-50 flex items-center justify-center min-w-[120px]"
+                >
+                  {isLoading ? "Saving..." : "Save Booking"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Hotel CUD Modal */}
+      {isHotelModalOpen && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl w-full max-w-lg overflow-hidden shadow-2xl border border-[#e8e8ed] animate-fadeIn text-left">
+            <div className="px-8 py-6 border-b border-[#f5f5f7] flex justify-between items-center bg-[#f5f5f7]/50">
+              <h2 className="text-xl font-bold text-[#1d1d1f]">
+                {editingHotel ? "Edit Hotel Details" : "Create New Hotel"}
+              </h2>
+              <button 
+                onClick={() => setIsHotelModalOpen(false)}
+                className="text-[#86868b] hover:text-[#1d1d1f] transition-colors p-1"
+              >
+                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveHotel} className="p-8 space-y-5">
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-xs font-bold text-[#86868b] mb-1.5 uppercase tracking-wider">Hotel Name *</label>
+                  <input
+                    type="text"
+                    required
+                    className="w-full h-[44px] px-4 rounded-xl border border-[#e8e8ed] text-sm focus:outline-none focus:border-[#0066cc] transition-all bg-[#f5f5f7] focus:bg-white"
+                    value={hotelName}
+                    onChange={(e) => setHotelName(e.target.value)}
+                    placeholder="e.g. Grand Plaza Hotel"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-[#86868b] mb-1.5 uppercase tracking-wider">Location *</label>
+                  <input
+                    type="text"
+                    required
+                    className="w-full h-[44px] px-4 rounded-xl border border-[#e8e8ed] text-sm focus:outline-none focus:border-[#0066cc] transition-all bg-[#f5f5f7] focus:bg-white"
+                    value={hotelLocation}
+                    onChange={(e) => setHotelLocation(e.target.value)}
+                    placeholder="e.g. Hanoi, Vietnam"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-[#86868b] mb-1.5 uppercase tracking-wider">Description</label>
+                  <textarea
+                    rows="3"
+                    className="w-full p-4 rounded-xl border border-[#e8e8ed] text-sm focus:outline-none focus:border-[#0066cc] transition-all bg-[#f5f5f7] focus:bg-white resize-none"
+                    value={hotelDescription}
+                    onChange={(e) => setHotelDescription(e.target.value)}
+                    placeholder="Describe the hotel's amenities, vibe, and location highlights..."
+                  />
+                </div>
+
+                {editingHotel && (
+                  <div>
+                    <label className="block text-xs font-bold text-[#86868b] mb-1.5 uppercase tracking-wider">Status</label>
+                    <select
+                      className="w-full h-[44px] px-4 rounded-xl border border-[#e8e8ed] text-sm focus:outline-none focus:border-[#0066cc] bg-[#f5f5f7] focus:bg-white font-semibold"
+                      value={hotelIsActive ? "active" : "inactive"}
+                      onChange={(e) => setHotelIsActive(e.target.value === "active")}
+                    >
+                      <option value="active">Active (Available for booking)</option>
+                      <option value="inactive">Inactive (Hidden from search)</option>
+                    </select>
+                  </div>
+                )}
+              </div>
+
+              {error && (
+                <div className="text-red-500 text-xs font-semibold bg-red-50 p-3 rounded-xl border border-red-100 text-center">
+                  {error}
+                </div>
+              )}
+
+              <div className="pt-4 border-t border-[#f5f5f7] flex justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => setIsHotelModalOpen(false)}
+                  className="h-[44px] px-5 rounded-xl border border-[#d2d2d7] text-sm font-semibold hover:bg-[#f5f5f7] transition-all text-[#1d1d1f]"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isLoading}
+                  className="h-[44px] px-6 rounded-xl bg-[#0066cc] hover:bg-[#0055b3] text-sm font-semibold text-white transition-all disabled:opacity-50 flex items-center justify-center min-w-[100px]"
+                >
+                  {isLoading ? "Saving..." : "Save Hotel"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Room CUD Modal */}
+      {isRoomModalOpen && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl w-full max-w-lg overflow-hidden shadow-2xl border border-[#e8e8ed] animate-fadeIn text-left">
+            <div className="px-8 py-6 border-b border-[#f5f5f7] flex justify-between items-center bg-[#f5f5f7]/50">
+              <h2 className="text-xl font-bold text-[#1d1d1f]">
+                {editingRoom ? `Edit Room Details` : "Create New Room"}
+              </h2>
+              <button 
+                onClick={() => setIsRoomModalOpen(false)}
+                className="text-[#86868b] hover:text-[#1d1d1f] transition-colors p-1"
+              >
+                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveRoom} className="p-8 space-y-5">
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-xs font-bold text-[#86868b] mb-1.5 uppercase tracking-wider">Room Number *</label>
+                  <input
+                    type="text"
+                    required
+                    disabled={!!editingRoom}
+                    className="w-full h-[44px] px-4 rounded-xl border border-[#e8e8ed] text-sm focus:outline-none focus:border-[#0066cc] transition-all bg-[#f5f5f7] focus:bg-white disabled:opacity-60"
+                    value={roomNumber}
+                    onChange={(e) => setRoomNumber(e.target.value)}
+                    placeholder="e.g. 101"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-[#86868b] mb-1.5 uppercase tracking-wider">Price per Night * (USD)</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    required
+                    className="w-full h-[44px] px-4 rounded-xl border border-[#e8e8ed] text-sm focus:outline-none focus:border-[#0066cc] transition-all bg-[#f5f5f7] focus:bg-white"
+                    value={roomPrice}
+                    onChange={(e) => setRoomPrice(e.target.value)}
+                    placeholder="e.g. 120.00"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-[#86868b] mb-1.5 uppercase tracking-wider">Room Type *</label>
+                  <select
+                    className="w-full h-[44px] px-4 rounded-xl border border-[#e8e8ed] text-sm focus:outline-none focus:border-[#0066cc] bg-[#f5f5f7] focus:bg-white font-semibold"
+                    value={roomType}
+                    onChange={(e) => setRoomType(e.target.value)}
+                  >
+                    <option value="STANDARD">Standard</option>
+                    <option value="DELUXE">Deluxe</option>
+                    <option value="SUITE">Suite</option>
+                    <option value="FAMILY">Family</option>
+                  </select>
+                </div>
+              </div>
+
+              {error && (
+                <div className="text-red-500 text-xs font-semibold bg-red-50 p-3 rounded-xl border border-red-100 text-center">
+                  {error}
+                </div>
+              )}
+
+              <div className="pt-4 border-t border-[#f5f5f7] flex justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => setIsRoomModalOpen(false)}
+                  className="h-[44px] px-5 rounded-xl border border-[#d2d2d7] text-sm font-semibold hover:bg-[#f5f5f7] transition-all text-[#1d1d1f]"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isLoading}
+                  className="h-[44px] px-6 rounded-xl bg-[#0066cc] hover:bg-[#0055b3] text-sm font-semibold text-white transition-all disabled:opacity-50 flex items-center justify-center min-w-[100px]"
+                >
+                  {isLoading ? "Saving..." : "Save Room"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

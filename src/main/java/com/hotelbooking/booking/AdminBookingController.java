@@ -1,6 +1,9 @@
 package com.hotelbooking.booking;
 import com.hotelbooking.booking.dto.AdminBookingResponse;
 import com.hotelbooking.booking.dto.UpdateBookingStatusRequest;
+import com.hotelbooking.booking.dto.AdminCreateBookingRequest;
+import com.hotelbooking.booking.dto.AdminUpdateBookingRequest;
+import com.hotelbooking.booking.dto.BookingResponse;
 import com.hotelbooking.common.dto.ApiResponse;
 import com.hotelbooking.common.dto.PagedResponse;
 
@@ -41,5 +44,31 @@ public class AdminBookingController {
         log.info("UC-22 REST request received to update bookingId={} status to {}", bookingId, request.status());
         AdminBookingResponse response = bookingService.processBooking(bookingId, request);
         return ResponseEntity.ok(ApiResponse.success("Booking processed successfully", response));
+    }
+
+    @PostMapping
+    public ResponseEntity<ApiResponse<BookingResponse>> adminCreateBooking(
+            @Valid @RequestBody AdminCreateBookingRequest request) {
+        log.info("Admin request received to create booking for userId={}", request.getUserId());
+        BookingResponse response = bookingService.adminCreateBooking(request);
+        return ResponseEntity.status(org.springframework.http.HttpStatus.CREATED)
+                .body(ApiResponse.created("Booking created successfully by Admin", response));
+    }
+
+    @PutMapping("/{bookingId}")
+    public ResponseEntity<ApiResponse<BookingResponse>> adminUpdateBooking(
+            @PathVariable Long bookingId,
+            @Valid @RequestBody AdminUpdateBookingRequest request) {
+        log.info("Admin request received to update bookingId={}", bookingId);
+        BookingResponse response = bookingService.adminUpdateBooking(bookingId, request);
+        return ResponseEntity.ok(ApiResponse.success("Booking updated successfully by Admin", response));
+    }
+
+    @DeleteMapping("/{bookingId}")
+    public ResponseEntity<ApiResponse<Void>> adminDeleteBooking(
+            @PathVariable Long bookingId) {
+        log.info("Admin request received to delete bookingId={}", bookingId);
+        bookingService.adminDeleteBooking(bookingId);
+        return ResponseEntity.ok(ApiResponse.success("Booking deleted successfully by Admin", null));
     }
 }

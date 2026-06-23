@@ -1,5 +1,4 @@
 package com.hotelbooking.booking.dto;
-import com.hotelbooking.hotel.Hotel;
 
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
@@ -10,10 +9,13 @@ import java.util.List;
 
 @Getter
 @Setter
+@Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
-public class BookingRequest {
+public class AdminCreateBookingRequest {
+
+    @NotNull(message = "User ID cannot be null")
+    private Long userId;
 
     @NotNull(message = "Hotel ID cannot be null")
     private Long hotelId;

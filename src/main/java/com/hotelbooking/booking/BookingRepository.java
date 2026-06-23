@@ -34,9 +34,9 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
            "LEFT JOIN b.payments p " +
            "WHERE (:status IS NULL OR b.status = :status) " +
            "AND (:paymentMethod IS NULL OR p.paymentMethod = :paymentMethod) " +
-           "AND (:search IS NULL OR LOWER(b.bookingCode) LIKE LOWER(CONCAT('%', :search, '%')) " +
-           "    OR LOWER(b.user.email) LIKE LOWER(CONCAT('%', :search, '%')) " +
-           "    OR LOWER(b.hotel.name) LIKE LOWER(CONCAT('%', :search, '%')))")
+           "AND (:search IS NULL OR LOWER(b.bookingCode) LIKE :search " +
+           "    OR LOWER(b.user.email) LIKE :search " +
+           "    OR LOWER(b.hotel.name) LIKE :search)")
     Page<Booking> findAllWithFilters(@Param("status") String status,
                                      @Param("paymentMethod") String paymentMethod,
                                      @Param("search") String search,
@@ -53,7 +53,7 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
     @Query("SELECT new com.hotelbooking.report.dto.DailyBookingStats(" +
            "CAST(b.createdAt AS LocalDate), " +
            "COUNT(b), " +
-           "SUM(CASE WHEN b.status = 'CONFIRMED' THEN 1L ELSE 0L END), " +
+           "SUM(CASE WHEN b.status = 'CONFIRMED' OR b.status = 'COMPLETED' THEN 1L ELSE 0L END), " +
            "SUM(CASE WHEN b.status = 'CANCELLED' THEN 1L ELSE 0L END)) " +
            "FROM Booking b " +
            "WHERE b.createdAt >= :startDate AND b.createdAt <= :endDate " +
@@ -69,4 +69,6 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
 
     @Query("SELECT COUNT(b) > 0 FROM Booking b JOIN b.bookingRooms br WHERE br.room.roomId = :roomId AND b.status IN :statuses")
     boolean existsByRoomIdAndStatusIn(@Param("roomId") Long roomId, @Param("statuses") List<String> statuses);
+
+    long countByUser_UserId(Long userId);
 }

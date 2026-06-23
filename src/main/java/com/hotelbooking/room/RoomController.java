@@ -85,4 +85,15 @@ public class RoomController {
         roomService.updateAvailability(id, available);
         return ResponseEntity.ok(ApiResponse.success("Room availability updated successfully", null));
     }
+
+    /**
+     * Get all rooms for a hotel (Admin/Staff only)
+     */
+    @GetMapping("/hotel/{hotelId}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
+    public ResponseEntity<ApiResponse<List<RoomAvailabilityResponse>>> getRoomsByHotelId(@PathVariable Long hotelId) {
+        log.info("Received request to get all rooms for hotel ID: {}", hotelId);
+        List<RoomAvailabilityResponse> rooms = roomService.getRoomsByHotelId(hotelId);
+        return ResponseEntity.ok(ApiResponse.success("Rooms retrieved successfully", rooms));
+    }
 }

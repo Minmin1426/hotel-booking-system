@@ -23,6 +23,10 @@ import com.hotelbooking.room.RoomRepository;
 import com.hotelbooking.setting.SystemSettingService;
 import com.hotelbooking.user.User;
 import com.hotelbooking.user.UserRepository;
+import com.hotelbooking.voucher.VoucherRepository;
+import com.hotelbooking.voucher.Voucher;
+import com.hotelbooking.booking.dto.AdminCreateBookingRequest;
+import com.hotelbooking.booking.dto.AdminUpdateBookingRequest;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -57,6 +61,7 @@ public class BookingServiceImpl implements BookingService {
     private final RoomLockRepository roomLockRepository;
     private final PaymentRepository paymentRepository;
     private final SystemSettingService systemSettingService;
+    private final VoucherRepository voucherRepository;
 
     @Override
     @Transactional(readOnly = true)
@@ -151,6 +156,7 @@ public class BookingServiceImpl implements BookingService {
                 .status("PENDING")
                 .build();
 
+        calculateAndApplyVoucher(booking, request.getVoucherCode());
         booking = bookingRepository.save(booking);
 
         List<BookingRoom> bookingRooms = new ArrayList<>();
@@ -171,7 +177,7 @@ public class BookingServiceImpl implements BookingService {
         Payment payment = Payment.builder()
                 .booking(booking)
                 .paymentMethod(method)
-                .amount(totalAmount)
+                .amount(booking.getFinalPrice() != null ? booking.getFinalPrice() : totalAmount)
                 .status("PENDING")
                 .build();
         paymentRepository.save(payment);
@@ -231,6 +237,13 @@ public class BookingServiceImpl implements BookingService {
         }
 
         booking.setStatus("FAILED");
+        if (booking.getVoucher() != null) {
+            Voucher voucher = booking.getVoucher();
+            if (voucher.getCurrentUsage() != null && voucher.getCurrentUsage() > 0) {
+                voucher.setCurrentUsage(voucher.getCurrentUsage() - 1);
+                voucherRepository.save(voucher);
+            }
+        }
         Booking savedBooking = bookingRepository.save(booking);
 
         // Release the locks
@@ -322,11 +335,14 @@ public class BookingServiceImpl implements BookingService {
                 .bookingStatus("CONFIRMED")
                 .paymentStatus("SUCCESS")
                 .transactionId(request.getTransactionId())
-                .totalAmount(booking.getTotalAmount())
+                .totalAmount(booking.getFinalPrice() != null ? booking.getFinalPrice() : booking.getTotalAmount())
                 .confirmedAt(now)
                 .hotelName(booking.getHotel().getName())
                 .checkInDate(booking.getCheckInDate())
                 .checkOutDate(booking.getCheckOutDate())
+                .discountAmount(booking.getDiscountAmount())
+                .finalPrice(booking.getFinalPrice())
+                .voucherCode(booking.getVoucher() != null ? booking.getVoucher().getCode() : null)
                 .build();
     }
 
@@ -437,6 +453,13 @@ public class BookingServiceImpl implements BookingService {
         }
         
         booking.setStatus("CANCELLED");
+        if (booking.getVoucher() != null) {
+            Voucher voucher = booking.getVoucher();
+            if (voucher.getCurrentUsage() != null && voucher.getCurrentUsage() > 0) {
+                voucher.setCurrentUsage(voucher.getCurrentUsage() - 1);
+                voucherRepository.save(voucher);
+            }
+        }
         bookingRepository.save(booking);
         
         try {
@@ -484,6 +507,9 @@ public class BookingServiceImpl implements BookingService {
                 .status(booking.getStatus())
                 .roomIds(roomIds)
                 .lockExpiresAt(lockExpiresAt)
+                .discountAmount(booking.getDiscountAmount())
+                .finalPrice(booking.getFinalPrice())
+                .voucherCode(booking.getVoucher() != null ? booking.getVoucher().getCode() : null)
                 .build();
     }
 
@@ -509,7 +535,7 @@ public class BookingServiceImpl implements BookingService {
         
         String statusParam = (status == null || status.trim().isEmpty() || "ALL".equalsIgnoreCase(status.trim())) ? null : status.trim();
         String paymentMethodParam = (paymentMethod == null || paymentMethod.trim().isEmpty() || "ALL".equalsIgnoreCase(paymentMethod.trim())) ? null : paymentMethod.trim();
-        String searchParam = (search == null || search.trim().isEmpty()) ? null : search.trim();
+        String searchParam = (search == null || search.trim().isEmpty()) ? null : "%" + search.trim().toLowerCase() + "%";
 
         org.springframework.data.domain.Pageable pageable = PageRequest.of(page, size, org.springframework.data.domain.Sort.by("createdAt").descending());
         Page<Booking> bookingsPage = bookingRepository.findAllWithFilters(statusParam, paymentMethodParam, searchParam, pageable);
@@ -540,11 +566,301 @@ public class BookingServiceImpl implements BookingService {
                 booking.getHotel().getName(),
                 booking.getCheckInDate(),
                 booking.getCheckOutDate(),
-                booking.getTotalAmount(),
+                booking.getFinalPrice() != null ? booking.getFinalPrice() : booking.getTotalAmount(),
                 booking.getStatus(),
                 paymentMethod,
                 paymentStatus,
                 booking.getUpdatedAt()
         );
+    }
+
+    private void calculateAndApplyVoucher(Booking booking, String voucherCode) {
+        if (voucherCode == null || voucherCode.trim().isEmpty()) {
+            booking.setDiscountAmount(BigDecimal.ZERO);
+            booking.setFinalPrice(booking.getTotalAmount());
+            booking.setVoucher(null);
+            return;
+        }
+
+        Voucher voucher = voucherRepository.findByCode(voucherCode)
+                .orElseThrow(() -> new BusinessException("Voucher does not exist."));
+
+        LocalDateTime now = LocalDateTime.now();
+
+        if (voucher.getStartDate() != null && now.isBefore(voucher.getStartDate())) {
+            throw new BusinessException("Voucher is not yet active.");
+        }
+
+        if (voucher.getEndDate() != null && now.isAfter(voucher.getEndDate())) {
+            throw new BusinessException("Voucher has expired.");
+        }
+
+        if (voucher.getMaxUsage() != null && voucher.getMaxUsage() > 0 && 
+            voucher.getCurrentUsage() != null && voucher.getCurrentUsage() >= voucher.getMaxUsage()) {
+            throw new BusinessException("Voucher has reached its usage limit.");
+        }
+
+        if (voucher.getMinBookingValue() != null && 
+            booking.getTotalAmount().compareTo(voucher.getMinBookingValue()) < 0) {
+            throw new BusinessException("Booking total does not meet the minimum value requirement for this voucher.");
+        }
+
+        BigDecimal discountAmount;
+        if ("PERCENTAGE".equalsIgnoreCase(voucher.getDiscountType())) {
+            BigDecimal percentage = voucher.getDiscountValue().divide(BigDecimal.valueOf(100));
+            discountAmount = booking.getTotalAmount().multiply(percentage);
+        } else {
+            discountAmount = voucher.getDiscountValue();
+        }
+
+        // Limit discount to total booking amount
+        if (discountAmount.compareTo(booking.getTotalAmount()) > 0) {
+            discountAmount = booking.getTotalAmount();
+        }
+
+        BigDecimal finalPrice = booking.getTotalAmount().subtract(discountAmount);
+
+        booking.setVoucher(voucher);
+        booking.setDiscountAmount(discountAmount);
+        booking.setFinalPrice(finalPrice);
+
+        // Update voucher usage
+        if (voucher.getCurrentUsage() == null) {
+            voucher.setCurrentUsage(1);
+        } else {
+            voucher.setCurrentUsage(voucher.getCurrentUsage() + 1);
+        }
+        voucherRepository.save(voucher);
+    }
+
+    @Override
+    @Transactional
+    public BookingResponse adminCreateBooking(AdminCreateBookingRequest request) {
+        log.info("Admin creating booking for user ID: {} at hotel ID: {}", request.getUserId(), request.getHotelId());
+
+        DateValidationResponse validation = validateDates(request.getCheckInDate(), request.getCheckOutDate());
+        if (!validation.isValid()) {
+            throw new BusinessException(validation.getMessage());
+        }
+
+        User user = userRepository.findById(request.getUserId())
+                .orElseThrow(() -> new ResourceNotFoundException("User not found with ID: " + request.getUserId()));
+
+        Hotel hotel = hotelRepository.findById(request.getHotelId())
+                .orElseThrow(() -> new ResourceNotFoundException("Hotel not found with ID: " + request.getHotelId()));
+
+        List<Room> rooms = new ArrayList<>();
+        BigDecimal totalRoomPricePerNight = BigDecimal.ZERO;
+
+        for (Long roomId : request.getRoomIds()) {
+            Room room = roomRepository.findById(roomId)
+                    .orElseThrow(() -> new ResourceNotFoundException("Room not found with ID: " + roomId));
+
+            if (!room.getHotel().getHotelId().equals(hotel.getHotelId())) {
+                throw new BusinessException(String.format("Room %s does not belong to selected hotel", room.getRoomNumber()));
+            }
+            rooms.add(room);
+            totalRoomPricePerNight = totalRoomPricePerNight.add(room.getPrice());
+        }
+
+        long nights = validation.getNights();
+        BigDecimal totalAmount = totalRoomPricePerNight.multiply(BigDecimal.valueOf(nights));
+        String bookingCode = "BK-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
+
+        Booking booking = Booking.builder()
+                .bookingCode(bookingCode)
+                .user(user)
+                .hotel(hotel)
+                .checkInDate(request.getCheckInDate().atStartOfDay())
+                .checkOutDate(request.getCheckOutDate().atStartOfDay())
+                .totalAmount(totalAmount)
+                .status("PENDING")
+                .build();
+
+        calculateAndApplyVoucher(booking, request.getVoucherCode());
+        booking = bookingRepository.save(booking);
+
+        List<BookingRoom> bookingRooms = new ArrayList<>();
+        for (Room room : rooms) {
+            BookingRoom br = BookingRoom.builder()
+                    .booking(booking)
+                    .room(room)
+                    .quantity(1)
+                    .priceAtBooking(room.getPrice())
+                    .build();
+            bookingRooms.add(br);
+        }
+        booking.setBookingRooms(bookingRooms);
+        booking = bookingRepository.save(booking);
+
+        String method = request.getPaymentMethod() != null ? request.getPaymentMethod() : "ONLINE";
+        Payment payment = Payment.builder()
+                .booking(booking)
+                .paymentMethod(method)
+                .amount(booking.getFinalPrice() != null ? booking.getFinalPrice() : totalAmount)
+                .status("PENDING")
+                .build();
+        paymentRepository.save(payment);
+
+        List<RoomLock> locks = roomLockService.lockRoomsForBooking(booking, request.getRoomIds());
+        LocalDateTime lockExpiresAt = locks.isEmpty() ? LocalDateTime.now().plusMinutes(systemSettingService.getLockDurationMinutes()) : locks.get(0).getExpiresAt();
+
+        return mapToResponse(booking, lockExpiresAt);
+    }
+
+    @Override
+    @Transactional
+    public BookingResponse adminUpdateBooking(Long bookingId, AdminUpdateBookingRequest request) {
+        log.info("Admin updating booking ID: {}", bookingId);
+        Booking booking = bookingRepository.findById(bookingId)
+                .orElseThrow(() -> new ResourceNotFoundException("Booking not found with ID: " + bookingId));
+
+        boolean checkDatesOrRoomsChanged = false;
+        LocalDate checkIn = request.getCheckInDate() != null ? request.getCheckInDate() : booking.getCheckInDate().toLocalDate();
+        LocalDate checkOut = request.getCheckOutDate() != null ? request.getCheckOutDate() : booking.getCheckOutDate().toLocalDate();
+        List<Long> roomIds = request.getRoomIds() != null && !request.getRoomIds().isEmpty() 
+                ? request.getRoomIds() 
+                : booking.getBookingRooms().stream().map(br -> br.getRoom().getRoomId()).collect(Collectors.toList());
+
+        if (request.getCheckInDate() != null || request.getCheckOutDate() != null || request.getRoomIds() != null) {
+            checkDatesOrRoomsChanged = true;
+        }
+
+        if (checkDatesOrRoomsChanged) {
+            DateValidationResponse validation = validateDates(checkIn, checkOut);
+            if (!validation.isValid()) {
+                throw new BusinessException(validation.getMessage());
+            }
+
+            for (Long roomId : roomIds) {
+                List<Booking> overlapping = bookingRepository.findConfirmedBookingsOverlapping(roomId, checkIn.atStartOfDay(), checkOut.atStartOfDay());
+                boolean hasOtherConfirmed = overlapping.stream().anyMatch(b -> !b.getBookingId().equals(bookingId));
+                if (hasOtherConfirmed) {
+                    Room room = roomRepository.findById(roomId).orElse(null);
+                    throw new BusinessException(String.format("Room %s is already booked for the selected dates", room != null ? room.getRoomNumber() : roomId));
+                }
+
+                List<RoomLock> activeLocks = roomLockRepository.findActiveLocksOverlapping(roomId, checkIn.atStartOfDay(), checkOut.atStartOfDay(), LocalDateTime.now());
+                boolean hasOtherLocks = activeLocks.stream().anyMatch(l -> !l.getBooking().getBookingId().equals(bookingId));
+                if (hasOtherLocks) {
+                    Room room = roomRepository.findById(roomId).orElse(null);
+                    throw new BusinessException(String.format("Room %s is locked by another transaction", room != null ? room.getRoomNumber() : roomId));
+                }
+            }
+
+            booking.setCheckInDate(checkIn.atStartOfDay());
+            booking.setCheckOutDate(checkOut.atStartOfDay());
+
+            roomLockService.releaseLocksForBooking(bookingId);
+
+            List<Room> rooms = new ArrayList<>();
+            BigDecimal totalRoomPricePerNight = BigDecimal.ZERO;
+            for (Long rId : roomIds) {
+                Room r = roomRepository.findById(rId).orElseThrow(() -> new ResourceNotFoundException("Room not found ID: " + rId));
+                rooms.add(r);
+                totalRoomPricePerNight = totalRoomPricePerNight.add(r.getPrice());
+            }
+
+            long nights = ChronoUnit.DAYS.between(checkIn, checkOut);
+            BigDecimal totalAmount = totalRoomPricePerNight.multiply(BigDecimal.valueOf(nights));
+            booking.setTotalAmount(totalAmount);
+
+            booking.getBookingRooms().clear();
+            for (Room r : rooms) {
+                BookingRoom br = BookingRoom.builder()
+                        .booking(booking)
+                        .room(r)
+                        .quantity(1)
+                        .priceAtBooking(r.getPrice())
+                        .build();
+                booking.getBookingRooms().add(br);
+            }
+        }
+
+        String newVoucherCode = request.getVoucherCode();
+        boolean voucherChanged = newVoucherCode != null;
+        if (voucherChanged || checkDatesOrRoomsChanged) {
+            String targetVoucherCode = voucherChanged ? newVoucherCode : (booking.getVoucher() != null ? booking.getVoucher().getCode() : null);
+            
+            if (voucherChanged && booking.getVoucher() != null) {
+                Voucher oldVoucher = booking.getVoucher();
+                if (oldVoucher.getCurrentUsage() != null && oldVoucher.getCurrentUsage() > 0) {
+                    oldVoucher.setCurrentUsage(oldVoucher.getCurrentUsage() - 1);
+                    voucherRepository.save(oldVoucher);
+                }
+                booking.setVoucher(null);
+            }
+
+            calculateAndApplyVoucher(booking, targetVoucherCode);
+        }
+
+        if (request.getStatus() != null) {
+            String targetStatus = request.getStatus().toUpperCase();
+            if (!targetStatus.equals(booking.getStatus())) {
+                if (("FAILED".equals(targetStatus) || "CANCELLED".equals(targetStatus)) && "PENDING".equals(booking.getStatus())) {
+                    if (booking.getVoucher() != null) {
+                        Voucher voucher = booking.getVoucher();
+                        if (voucher.getCurrentUsage() != null && voucher.getCurrentUsage() > 0) {
+                            voucher.setCurrentUsage(voucher.getCurrentUsage() - 1);
+                            voucherRepository.save(voucher);
+                        }
+                    }
+                    roomLockService.releaseLocksForBooking(bookingId);
+                }
+                booking.setStatus(targetStatus);
+            }
+        }
+
+        Booking savedBooking = bookingRepository.save(booking);
+
+        List<Payment> payments = paymentRepository.findByBookingBookingId(bookingId);
+        Payment payment;
+        if (!payments.isEmpty()) {
+            payment = payments.get(0);
+        } else {
+            payment = Payment.builder().booking(savedBooking).status("PENDING").build();
+        }
+
+        if (request.getPaymentMethod() != null) {
+            payment.setPaymentMethod(request.getPaymentMethod().toUpperCase());
+        } else if (payment.getPaymentMethod() == null) {
+            payment.setPaymentMethod("ONLINE");
+        }
+
+        if (request.getPaymentStatus() != null) {
+            payment.setStatus(request.getPaymentStatus().toUpperCase());
+        }
+
+        payment.setAmount(savedBooking.getFinalPrice() != null ? savedBooking.getFinalPrice() : savedBooking.getTotalAmount());
+        paymentRepository.save(payment);
+
+        LocalDateTime lockExpiresAt = null;
+        if ("PENDING".equalsIgnoreCase(savedBooking.getStatus())) {
+            List<RoomLock> locks = roomLockService.lockRoomsForBooking(savedBooking, roomIds);
+            lockExpiresAt = locks.isEmpty() ? null : locks.get(0).getExpiresAt();
+        }
+
+        return mapToResponse(savedBooking, lockExpiresAt);
+    }
+
+    @Override
+    @Transactional
+    public void adminDeleteBooking(Long bookingId) {
+        log.info("Admin deleting booking ID: {}", bookingId);
+        Booking booking = bookingRepository.findById(bookingId)
+                .orElseThrow(() -> new ResourceNotFoundException("Booking not found with ID: " + bookingId));
+
+        roomLockService.releaseLocksForBooking(bookingId);
+
+        if (booking.getVoucher() != null) {
+            Voucher voucher = booking.getVoucher();
+            if (voucher.getCurrentUsage() != null && voucher.getCurrentUsage() > 0) {
+                voucher.setCurrentUsage(voucher.getCurrentUsage() - 1);
+                voucherRepository.save(voucher);
+            }
+        }
+
+        bookingRepository.delete(booking);
+        log.info("Successfully deleted booking ID: {}", bookingId);
     }
 }

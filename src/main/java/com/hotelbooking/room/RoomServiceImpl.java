@@ -133,4 +133,13 @@ public class RoomServiceImpl implements RoomService {
         room.setStatus(available ? "AVAILABLE" : "UNAVAILABLE");
         roomRepository.save(room);
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<RoomAvailabilityResponse> getRoomsByHotelId(Long hotelId) {
+        log.info("Fetching all rooms for hotel ID: {}", hotelId);
+        return roomRepository.findByHotel_HotelId(hotelId).stream()
+                .map(this::toResponse)
+                .toList();
+    }
 }

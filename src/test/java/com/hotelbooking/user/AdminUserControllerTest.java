@@ -2,6 +2,8 @@ package com.hotelbooking.user;
 import com.hotelbooking.common.config.SecurityConfig;
 import com.hotelbooking.common.security.JwtService;
 import com.hotelbooking.common.security.TokenBlacklistService;
+import com.hotelbooking.user.dto.CreateUserRequest;
+import com.hotelbooking.user.dto.UpdateUserRequest;
 import com.hotelbooking.user.dto.UpdateUserStatusRequest;
 import com.hotelbooking.user.dto.UserResponse;
 
@@ -107,5 +109,59 @@ public class AdminUserControllerTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest()); // Triggers validation annotation
+    }
+
+    @Test
+    @WithMockUser(roles = "ADMIN")
+    void createUser_WithValidRequest_ShouldReturn201Created() throws Exception {
+        CreateUserRequest request = CreateUserRequest.builder()
+                .email("newuser@example.com")
+                .fullName("New User")
+                .password("password123")
+                .role("CUSTOMER")
+                .status("ACTIVE")
+                .build();
+        UserResponse response = new UserResponse(2L, "newuser@example.com", "New User", "CUSTOMER", "ACTIVE", LocalDateTime.now());
+
+        when(adminUserService.createUser(any(CreateUserRequest.class))).thenReturn(response);
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/api/v1/admin/users")
+                .with(csrf())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.email").value("newuser@example.com"))
+                .andExpect(jsonPath("$.fullName").value("New User"));
+    }
+
+    @Test
+    @WithMockUser(roles = "ADMIN")
+    void updateUser_WithValidRequest_ShouldReturn200Ok() throws Exception {
+        Long userId = 1L;
+        UpdateUserRequest request = UpdateUserRequest.builder()
+                .fullName("Updated Name")
+                .build();
+        UserResponse response = new UserResponse(userId, "test@email.com", "Updated Name", "ROLE_USER", "ACTIVE", LocalDateTime.now());
+
+        when(adminUserService.updateUser(eq(userId), any(UpdateUserRequest.class))).thenReturn(response);
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put("/api/v1/admin/users/{userId}", userId)
+                .with(csrf())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.fullName").value("Updated Name"));
+    }
+
+    @Test
+    @WithMockUser(roles = "ADMIN")
+    void deleteUser_ShouldReturn200Ok() throws Exception {
+        Long userId = 1L;
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete("/api/v1/admin/users/{userId}", userId)
+                .with(csrf())
+                .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.message").value("User deleted successfully"));
     }
 }

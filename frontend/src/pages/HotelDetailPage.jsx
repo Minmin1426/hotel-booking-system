@@ -44,6 +44,7 @@ function HotelDetailPage() {
   const [guestEmail, setGuestEmail] = useState('');
   const [guestPhone, setGuestPhone] = useState('');
   const [guestIdNumber, setGuestIdNumber] = useState('');
+  const [voucherCode, setVoucherCode] = useState('');
 
   // Fetch hotel details on load
   useEffect(() => {
@@ -187,7 +188,8 @@ function HotelDetailPage() {
         checkIn,
         checkOut,
         [selectedRoom.roomId],
-        paymentMethod
+        paymentMethod,
+        voucherCode
       );
       setBookingDetails(res);
       setBookingStatus(res.status);
@@ -215,7 +217,7 @@ function HotelDetailPage() {
       await BookingService.confirmBooking(
         bookingDetails.bookingCode,
         txnId,
-        bookingDetails.totalAmount,
+        bookingDetails.finalPrice !== undefined && bookingDetails.finalPrice !== null ? bookingDetails.finalPrice : bookingDetails.totalAmount,
         "ONLINE"
       );
       setBookingStatus('CONFIRMED');
@@ -570,6 +572,16 @@ function HotelDetailPage() {
                           />
                         </div>
                       </div>
+                      <div className="pt-2">
+                        <label className="text-[9px] font-bold text-slate-400 uppercase block mb-1">Promo / Voucher Code</label>
+                        <input
+                          type="text"
+                          className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs bg-white text-slate-700 focus:outline-none focus:border-cyan-500 transition-all font-mono uppercase"
+                          value={voucherCode}
+                          onChange={(e) => setVoucherCode(e.target.value)}
+                          placeholder="e.g. WELCOME10"
+                        />
+                      </div>
                     </div>
                   </div>
 
@@ -645,10 +657,27 @@ function HotelDetailPage() {
                       <span>Booking Code:</span>
                       <span className="font-bold text-slate-800">{bookingDetails.bookingCode}</span>
                     </div>
-                    <div className="flex justify-between">
-                      <span>Total Amount Due:</span>
-                      <span className="font-bold text-cyan-600">${bookingDetails.totalAmount}</span>
-                    </div>
+                    {bookingDetails.discountAmount && bookingDetails.discountAmount > 0 ? (
+                      <>
+                        <div className="flex justify-between text-slate-500 mb-1">
+                          <span>Original Price:</span>
+                          <span className="font-semibold line-through">${Number(bookingDetails.totalAmount).toFixed(2)}</span>
+                        </div>
+                        <div className="flex justify-between text-emerald-600 font-medium mb-1">
+                          <span>Voucher Discount ({bookingDetails.voucherCode}):</span>
+                          <span>-${Number(bookingDetails.discountAmount).toFixed(2)}</span>
+                        </div>
+                        <div className="flex justify-between text-sm pt-1.5 border-t border-slate-200/80">
+                          <span className="font-bold text-slate-800">Total Amount Due:</span>
+                          <span className="font-black text-cyan-600">${Number(bookingDetails.finalPrice).toFixed(2)}</span>
+                        </div>
+                      </>
+                    ) : (
+                      <div className="flex justify-between">
+                        <span>Total Amount Due:</span>
+                        <span className="font-bold text-cyan-600">${Number(bookingDetails.totalAmount).toFixed(2)}</span>
+                      </div>
+                    )}
                   </div>
 
                   {bookingError && (

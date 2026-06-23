@@ -23,4 +23,7 @@ public class BookingResponse {
     private String status;
     private List<Long> roomIds;
     private LocalDateTime lockExpiresAt;
+    private BigDecimal discountAmount;
+    private BigDecimal finalPrice;
+    private String voucherCode;
 }

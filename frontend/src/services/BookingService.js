@@ -30,7 +30,7 @@ export const BookingService = {
   },
 
   // Create booking & lock room (UC-11 & UC-33)
-  createBooking: async (hotelId, checkInDate, checkOutDate, roomIds, paymentMethod = "ONLINE") => {
+  createBooking: async (hotelId, checkInDate, checkOutDate, roomIds, paymentMethod = "ONLINE", voucherCode = "") => {
     const response = await fetch(`${API_BASE_URL}/bookings`, {
       method: "POST",
       headers: getHeaders(),
@@ -40,6 +40,7 @@ export const BookingService = {
         checkOutDate,
         roomIds,
         paymentMethod,
+        voucherCode,
       }),
     });
 
@@ -182,5 +183,62 @@ export const BookingService = {
       throw new Error(data.message || "Failed to update lock duration");
     }
     return data.data;
+  },
+
+  // Create booking (Admin only)
+  adminCreateBooking: async (bookingData) => {
+    const response = await fetch(`${API_BASE_URL}/admin/bookings`, {
+      method: "POST",
+      headers: getHeaders(),
+      body: JSON.stringify(bookingData),
+    });
+
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.message || "Failed to create booking");
+    }
+    return data.data;
+  },
+
+  // Update booking (Admin only)
+  adminUpdateBooking: async (bookingId, bookingData) => {
+    const response = await fetch(`${API_BASE_URL}/admin/bookings/${bookingId}`, {
+      method: "PUT",
+      headers: getHeaders(),
+      body: JSON.stringify(bookingData),
+    });
+
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.message || "Failed to update booking");
+    }
+    return data.data;
+  },
+
+  // Delete booking (Admin only)
+  adminDeleteBooking: async (bookingId) => {
+    const response = await fetch(`${API_BASE_URL}/admin/bookings/${bookingId}`, {
+      method: "DELETE",
+      headers: getHeaders(),
+    });
+
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.message || "Failed to delete booking");
+    }
+    return data;
+  },
+
+  getActiveVouchers: async () => {
+    const response = await fetch(`${API_BASE_URL}/vouchers`, {
+      method: "GET",
+      headers: getHeaders(),
+    });
+
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.message || "Failed to load active vouchers");
+    }
+    return data;
   }
 };

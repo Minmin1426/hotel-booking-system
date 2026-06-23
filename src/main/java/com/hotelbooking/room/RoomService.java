@@ -12,4 +12,5 @@ public interface RoomService {
     Room updateRoom(Long roomId, UpdateRoomRequest request);
     void deleteRoom(Long roomId);
     void updateAvailability(Long roomId, boolean available);
+    List<RoomAvailabilityResponse> getRoomsByHotelId(Long hotelId);
 }

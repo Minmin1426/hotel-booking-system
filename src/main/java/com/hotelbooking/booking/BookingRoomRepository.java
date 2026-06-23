@@ -23,7 +23,7 @@ public interface BookingRoomRepository extends JpaRepository<BookingRoom, Long> 
                SUM(br.priceAtBooking * br.quantity)
         FROM BookingRoom br
         JOIN br.booking b
-        WHERE b.status = 'CONFIRMED'
+        WHERE (b.status = 'CONFIRMED' OR b.status = 'COMPLETED')
           AND b.checkInDate >= :from
           AND b.checkOutDate <= :to
         GROUP BY br.room.roomType

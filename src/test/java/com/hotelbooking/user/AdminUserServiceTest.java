@@ -1,7 +1,13 @@
 package com.hotelbooking.user;
 import com.hotelbooking.common.exception.ResourceNotFoundException;
+import com.hotelbooking.common.exception.BusinessException;
+import com.hotelbooking.user.dto.CreateUserRequest;
+import com.hotelbooking.user.dto.UpdateUserRequest;
 import com.hotelbooking.user.dto.UpdateUserStatusRequest;
 import com.hotelbooking.user.dto.UserResponse;
+import com.hotelbooking.booking.BookingRepository;
+import com.hotelbooking.hotel.ReviewRepository;
+import org.springframework.security.crypto.password.PasswordEncoder;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -26,6 +32,15 @@ public class AdminUserServiceTest {
 
     @Mock
     private UserRepository userRepository;
+
+    @Mock
+    private PasswordEncoder passwordEncoder;
+
+    @Mock
+    private BookingRepository bookingRepository;
+
+    @Mock
+    private ReviewRepository reviewRepository;
 
     @InjectMocks
     private AdminUserService adminUserService;
@@ -91,5 +106,109 @@ public class AdminUserServiceTest {
         );
         verify(userRepository, times(1)).findById(userId);
         verify(userRepository, never()).save(any());
+    }
+
+    @Test
+    void createUser_WithNewEmail_ShouldHashPasswordAndSave() {
+        // Arrange
+        CreateUserRequest request = CreateUserRequest.builder()
+                .email("new@example.com")
+                .fullName("New User")
+                .password("plainPassword")
+                .role("CUSTOMER")
+                .status("ACTIVE")
+                .build();
+
+        when(userRepository.existsByEmail(request.getEmail())).thenReturn(false);
+        when(passwordEncoder.encode(request.getPassword())).thenReturn("hashedPassword");
+        when(userRepository.save(any(User.class))).thenAnswer(invocation -> {
+            User u = invocation.getArgument(0);
+            u.setUserId(2L);
+            return u;
+        });
+
+        // Act
+        UserResponse response = adminUserService.createUser(request);
+
+        // Assert
+        assertNotNull(response);
+        assertEquals(2L, response.userId());
+        assertEquals("new@example.com", response.email());
+        assertEquals("CUSTOMER", response.role());
+        verify(userRepository, times(1)).existsByEmail(request.getEmail());
+        verify(passwordEncoder, times(1)).encode("plainPassword");
+        verify(userRepository, times(1)).save(any(User.class));
+    }
+
+    @Test
+    void createUser_WithExistingEmail_ShouldThrowBusinessException() {
+        // Arrange
+        CreateUserRequest request = CreateUserRequest.builder()
+                .email("test@example.com")
+                .build();
+        when(userRepository.existsByEmail(request.getEmail())).thenReturn(true);
+
+        // Act & Assert
+        assertThrows(BusinessException.class, () -> adminUserService.createUser(request));
+        verify(userRepository, times(1)).existsByEmail(request.getEmail());
+        verify(userRepository, never()).save(any());
+    }
+
+    @Test
+    void updateUser_WithValidFields_ShouldUpdateAndSave() {
+        // Arrange
+        Long userId = 1L;
+        UpdateUserRequest request = UpdateUserRequest.builder()
+                .fullName("New Full Name")
+                .password("newPassword")
+                .role("STAFF")
+                .build();
+
+        when(userRepository.findById(userId)).thenReturn(Optional.of(mockUser));
+        when(passwordEncoder.encode("newPassword")).thenReturn("newHashed");
+        when(userRepository.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        // Act
+        UserResponse response = adminUserService.updateUser(userId, request);
+
+        // Assert
+        assertNotNull(response);
+        assertEquals("New Full Name", response.fullName());
+        assertEquals("STAFF", response.role());
+        verify(userRepository, times(1)).findById(userId);
+        verify(passwordEncoder, times(1)).encode("newPassword");
+        verify(userRepository, times(1)).save(mockUser);
+    }
+
+    @Test
+    void deleteUser_WhenNoBookings_ShouldDeleteUserAndReviews() {
+        // Arrange
+        Long userId = 1L;
+        when(userRepository.findById(userId)).thenReturn(Optional.of(mockUser));
+        when(bookingRepository.countByUser_UserId(userId)).thenReturn(0L);
+
+        // Act
+        adminUserService.deleteUser(userId);
+
+        // Assert
+        verify(userRepository, times(1)).findById(userId);
+        verify(bookingRepository, times(1)).countByUser_UserId(userId);
+        verify(reviewRepository, times(1)).deleteByUser_UserId(userId);
+        verify(userRepository, times(1)).delete(mockUser);
+    }
+
+    @Test
+    void deleteUser_WhenHasBookings_ShouldThrowBusinessException() {
+        // Arrange
+        Long userId = 1L;
+        when(userRepository.findById(userId)).thenReturn(Optional.of(mockUser));
+        when(bookingRepository.countByUser_UserId(userId)).thenReturn(5L);
+
+        // Act & Assert
+        assertThrows(BusinessException.class, () -> adminUserService.deleteUser(userId));
+        verify(userRepository, times(1)).findById(userId);
+        verify(bookingRepository, times(1)).countByUser_UserId(userId);
+        verify(reviewRepository, never()).deleteByUser_UserId(anyLong());
+        verify(userRepository, never()).delete(any());
     }
 }

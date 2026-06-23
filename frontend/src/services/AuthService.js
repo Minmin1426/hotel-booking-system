@@ -220,5 +220,72 @@ export const AuthService = {
       throw new Error(data.message || "Failed to update user status");
     }
     return data;
+  },
+
+  // Create User (Admin only)
+  adminCreateUser: async (userData) => {
+    const accessToken = sessionStorage.getItem("accessToken");
+    if (!accessToken) {
+      throw new Error("No access token found");
+    }
+
+    const response = await fetch(`${API_BASE_URL}/admin/users`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${accessToken}`
+      },
+      body: JSON.stringify(userData)
+    });
+
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.message || "Failed to create user");
+    }
+    return data;
+  },
+
+  // Update User (Admin only)
+  adminUpdateUser: async (userId, userData) => {
+    const accessToken = sessionStorage.getItem("accessToken");
+    if (!accessToken) {
+      throw new Error("No access token found");
+    }
+
+    const response = await fetch(`${API_BASE_URL}/admin/users/${userId}`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${accessToken}`
+      },
+      body: JSON.stringify(userData)
+    });
+
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.message || "Failed to update user");
+    }
+    return data;
+  },
+
+  // Delete User (Admin only)
+  adminDeleteUser: async (userId) => {
+    const accessToken = sessionStorage.getItem("accessToken");
+    if (!accessToken) {
+      throw new Error("No access token found");
+    }
+
+    const response = await fetch(`${API_BASE_URL}/admin/users/${userId}`, {
+      method: "DELETE",
+      headers: {
+        "Authorization": `Bearer ${accessToken}`
+      }
+    });
+
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.message || "Failed to delete user");
+    }
+    return data;
   }
 };

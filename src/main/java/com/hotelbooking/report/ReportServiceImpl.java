@@ -80,8 +80,8 @@ public class ReportServiceImpl implements ReportService {
             statusMap.put(status, count);
             totalBookings += count;
 
-            if ("CONFIRMED".equalsIgnoreCase(status)) {
-                confirmed = count;
+            if ("CONFIRMED".equalsIgnoreCase(status) || "COMPLETED".equalsIgnoreCase(status)) {
+                confirmed += count;
             } else if ("CANCELLED".equalsIgnoreCase(status)) {
                 cancelled = count;
             } else if ("PENDING".equalsIgnoreCase(status) || "PENDING_PAYMENT".equalsIgnoreCase(status)) {

@@ -9,6 +9,8 @@ import com.hotelbooking.booking.dto.DateValidationResponse;
 import com.hotelbooking.booking.dto.UpdateBookingStatusRequest;
 import com.hotelbooking.common.dto.PagedResponse;
 import com.hotelbooking.payment.dto.PaymentConfirmRequest;
+import com.hotelbooking.booking.dto.AdminCreateBookingRequest;
+import com.hotelbooking.booking.dto.AdminUpdateBookingRequest;
 
 import java.time.LocalDate;
 
@@ -34,4 +36,8 @@ public interface BookingService {
 
     // Admin List Bookings Query
     PagedResponse<AdminBookingResponse> getAllBookings(int page, int size, String status, String paymentMethod, String search);
+
+    BookingResponse adminCreateBooking(AdminCreateBookingRequest request);
+    BookingResponse adminUpdateBooking(Long bookingId, AdminUpdateBookingRequest request);
+    void adminDeleteBooking(Long bookingId);
 }
