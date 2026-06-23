@@ -22,6 +22,7 @@
         <java.version>17</java.version>
         <jjwt.version>0.12.5</jjwt.version>
         <byte-buddy.version>1.18.8</byte-buddy.version>
+        <flyway.version>10.20.1</flyway.version>
     </properties>
 
     <dependencies>
@@ -66,6 +67,11 @@
             <artifactId>mssql-jdbc</artifactId>
             <scope>runtime</scope>
         </dependency>
+        <dependency>
+            <groupId>org.postgresql</groupId>
+            <artifactId>postgresql</artifactId>
+            <scope>runtime</scope>
+        </dependency>
 
         <!-- FLYWAY -->
         <dependency>
@@ -75,6 +81,10 @@
         <dependency>
             <groupId>org.flywaydb</groupId>
             <artifactId>flyway-sqlserver</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.flywaydb</groupId>
+            <artifactId>flyway-database-postgresql</artifactId>
         </dependency>
 
         <!-- VALIDATION -->

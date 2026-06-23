@@ -23,7 +23,7 @@ Phân hệ Báo cáo và Vận hành đáp ứng các yêu cầu nghiệp vụ c
 
 ## 2. Chi tiết Thiết kế & Logic Xử lý Nghiệp vụ
 
-Phân hệ được cài đặt tại lớp [ReportServiceImpl.java](file:///C:/Users/Minmin/Documents/GitHub/hotel-booking-system/src/main/java/com/hotelbooking/service/impl/ReportServiceImpl.java). Dưới đây là logic chi tiết cho từng nghiệp vụ:
+Phân hệ được cài đặt tại lớp [ReportServiceImpl.java](file:///C:/Users/Minmin/Documents/GitHub/hotel-booking-system/src/main/java/com/hotelbooking/report/ReportServiceImpl.java). Dưới đây là logic chi tiết cho từng nghiệp vụ:
 
 ### 2.1. Thống kê Đặt phòng (UC-24)
 *   **Tham số đầu vào:** `startDate` (LocalDate), `endDate` (LocalDate).
@@ -118,7 +118,7 @@ Các bảng chính liên quan trực tiếp đến việc tính toán báo cáo 
 
 ### Các câu lệnh SQL/JPQL phức tạp được thiết kế trong Repositories:
 
-#### 1. Thống kê tỷ lệ phòng trống / Hiệu suất sử dụng phòng (trong [BookingRoomRepository.java](file:///C:/Users/Minmin/Documents/GitHub/hotel-booking-system/src/main/java/com/hotelbooking/repository/BookingRoomRepository.java)):
+#### 1. Thống kê tỷ lệ phòng trống / Hiệu suất sử dụng phòng (trong [BookingRoomRepository.java](file:///C:/Users/Minmin/Documents/GitHub/hotel-booking-system/src/main/java/com/hotelbooking/booking/BookingRoomRepository.java)):
 ```sql
 -- Lấy tổng số đêm phòng được đặt thực tế và tổng doanh thu theo từng loại phòng
 SELECT r.roomType, 
@@ -134,10 +134,10 @@ WHERE b.status = 'CONFIRMED'
 GROUP BY r.roomType
 ```
 
-#### 2. Thống kê doanh thu theo khách sạn (trong [PaymentRepository.java](file:///C:/Users/Minmin/Documents/GitHub/hotel-booking-system/src/main/java/com/hotelbooking/repository/PaymentRepository.java)):
+#### 2. Thống kê doanh thu theo khách sạn (trong [PaymentRepository.java](file:///C:/Users/Minmin/Documents/GitHub/hotel-booking-system/src/main/java/com/hotelbooking/payment/PaymentRepository.java)):
 ```sql
 -- Tính tổng doanh thu thu thực tế gom nhóm theo khách sạn
-SELECT new com.hotelbooking.dto.response.HotelRevenueDto(
+SELECT new com.hotelbooking.report.dto.HotelRevenueDto(
             h.hotelId, 
             h.name, 
             SUM(p.amount))

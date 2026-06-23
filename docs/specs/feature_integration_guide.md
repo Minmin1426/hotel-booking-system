@@ -70,13 +70,13 @@ Tính liên kết thể hiện qua các ràng buộc khóa ngoại (Foreign Keys
 
 ### Cấp độ 3: Liên kết ở tầng Mã nguồn (Class Dependency / Java Collaboration)
 Trong code Spring Boot, các lớp Service gọi lẫn nhau để hoàn thành nghiệp vụ phức tạp:
-*   [BookingServiceImpl.java](file:///C:/Users/Minmin/Documents/GitHub/hotel-booking-system/src/main/java/com/hotelbooking/service/impl/BookingServiceImpl.java) phụ thuộc vào và gọi:
+*   [BookingServiceImpl.java](file:///C:/Users/Minmin/Documents/GitHub/hotel-booking-system/src/main/java/com/hotelbooking/booking/BookingServiceImpl.java) phụ thuộc vào và gọi:
     *   `RoomLockService` để tạo khóa và giải phóng khóa phòng.
     *   `SystemSettingService` để lấy cấu hình thời gian khóa tự động (mặc định 10 phút).
     *   `PaymentRepository` để tạo bản ghi thanh toán.
-*   [PaymentServiceImpl.java](file:///C:/Users/Minmin/Documents/GitHub/hotel-booking-system/src/main/java/com/hotelbooking/service/impl/PaymentServiceImpl.java) phụ thuộc vào và gọi:
+*   [PaymentServiceImpl.java](file:///C:/Users/Minmin/Documents/GitHub/hotel-booking-system/src/main/java/com/hotelbooking/payment/PaymentServiceImpl.java) phụ thuộc vào và gọi:
     *   `EmailService` để gửi thư xác nhận đặt phòng khi nhận webhook thành công.
-*   [ReportServiceImpl.java](file:///C:/Users/Minmin/Documents/GitHub/hotel-booking-system/src/main/java/com/hotelbooking/service/impl/ReportServiceImpl.java) phụ thuộc vào nhiều repositories (`BookingRepository`, `PaymentRepository`, `ReviewRepository`) để tổng hợp dữ liệu chéo từ các phân hệ khác nhau.
+*   [ReportServiceImpl.java](file:///C:/Users/Minmin/Documents/GitHub/hotel-booking-system/src/main/java/com/hotelbooking/report/ReportServiceImpl.java) phụ thuộc vào nhiều repositories (`BookingRepository`, `PaymentRepository`, `ReviewRepository`) để tổng hợp dữ liệu chéo từ các phân hệ khác nhau.
 
 ---
 

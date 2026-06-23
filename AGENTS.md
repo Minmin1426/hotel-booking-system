@@ -55,7 +55,10 @@ src/
 │   │   └── setting/         # System settings feature (settings controller, services)
 │   └── resources/
 │       ├── application.properties       # Active profile selector only
-│       └── application-dev.properties  # Local dev config (git-ignored)
+│       ├── application-dev.properties  # Local dev config (git-ignored)
+│       └── db/migration/
+│           ├── sqlserver/               # SQL Server migration scripts
+│           └── postgresql/              # PostgreSQL migration scripts
 └── test/
 ```
 

@@ -7,9 +7,9 @@ Tài liệu này đặc tả chi tiết kiến trúc phần mềm, cấu trúc t
 
 ---
 
-## 1. Mô hình Kiến trúc Phân tầng (N-Tier Architecture)
+## 1. Mô hình Kiến trúc Phân tầng kết hợp Package-by-Feature
 
-Hệ thống được thiết kế theo mô hình kiến trúc phân tầng truyền thống (N-Tier / Layered Architecture) nhằm tách biệt các mối quan tâm (Separation of Concerns), tăng cường khả năng bảo trì và kiểm thử độc lập.
+Hệ thống áp dụng mô hình phân tầng chức năng (Controller, Service, Repository, Entity) nhưng được tổ chức vật lý theo **Package-by-Feature** (Đóng gói theo Tính năng) để tăng cường tính đóng gói, dễ quản lý mã nguồn và hỗ trợ phát triển song song các tính năng độc lập.
 
 ```mermaid
 graph TD
@@ -56,63 +56,91 @@ graph TD
 
 ## 2. Cấu trúc thư mục Mã nguồn (Package Structure)
 
-Cấu trúc mã nguồn của hệ thống được tổ chức nhất quán theo chức năng kỹ thuật dưới gói gốc `com.hotelbooking`:
+Cấu trúc mã nguồn của hệ thống được tổ chức nhất quán theo gói chức năng (Package-by-Feature) dưới gói gốc `com.hotelbooking`:
 
 ```
 src/main/java/com/hotelbooking/
 │
 ├── HotelBookingApplication.java      # Lớp khởi chạy ứng dụng Spring Boot
 │
-├── config/                          # Các lớp cấu hình hệ thống
-│   └── SecurityConfig.java          # Cấu hình Spring Security, CORS, BCrypt Bean
+├── common/                          # Các tài nguyên dùng chung toàn hệ thống
+│   ├── config/                      # Các cấu hình hệ thống (Security, CORS, BCrypt, v.v.)
+│   ├── exception/                   # Quản lý lỗi tập trung (GlobalExceptionHandler, v.v.)
+│   ├── security/                    # Các bộ lọc JWT, TokenBlacklist, v.v.
+│   ├── utils/                       # Lớp tiện ích chung
+│   └── validation/                  # Trình xác thực dữ liệu tùy chỉnh
 │
-├── controller/                      # Lớp điều khiển REST API
-│   ├── AuthController.java          # API Đăng ký, Đăng nhập, Đăng xuất
-│   ├── BookingController.java       # API chọn ngày, tạo booking, hủy đặt phòng
-│   ├── HotelController.java         # API quản lý khách sạn và ảnh (Admin)
-│   ├── RoomController.java          # API quản lý phòng và lọc tìm phòng trống
-│   ├── VoucherController.java       # API áp dụng voucher giảm giá
-│   ├── ReportController.java        # API báo cáo, doanh thu và kiểm duyệt đánh giá
-│   └── ...
+├── auth/                            # Feature: Xác thực & Bảo mật
+│   ├── AuthController.java          # REST API cho Đăng ký, Đăng nhập, Đăng xuất
+│   ├── AuthService.java             # Interface nghiệp vụ xác thực
+│   ├── AuthServiceImpl.java         # Hiện thực hóa nghiệp vụ xác thực
+│   └── dto/                         # DTO cho chức năng xác thực
 │
-├── service/                         # Giao diện nghiệp vụ (Interfaces)
-│   ├── AuthService.java
-│   ├── BookingService.java
-│   └── ...
-│   └── impl/                        # Hiện thực hóa chi tiết của Service (Business Logic)
-│       ├── AuthServiceImpl.java
-│       ├── BookingServiceImpl.java
-│       └── ...
+├── user/                            # Feature: Quản lý Người dùng
+│   ├── UserController.java          # REST API cập nhật thông tin cá nhân
+│   ├── AdminUserController.java     # REST API quản trị tài khoản người dùng
+│   ├── UserService.java             # Interface nghiệp vụ người dùng
+│   ├── UserServiceImpl.java         # Hiện thực hóa nghiệp vụ người dùng
+│   ├── UserRepository.java          # Truy xuất cơ sở dữ liệu bảng Users
+│   ├── User.java                    # Thực thể JPA User
+│   └── dto/                         # DTO cho quản lý người dùng
 │
-├── repository/                      # Lớp truy xuất DB (Spring Data JPA)
-│   ├── UserRepository.java
-│   ├── BookingRepository.java
-│   ├── RoomLockRepository.java
-│   └── ...
+├── hotel/                           # Feature: Khách sạn & Đánh giá
+│   ├── HotelController.java         # REST API xem, lọc, quản trị khách sạn
+│   ├── HotelService.java            # Interface nghiệp vụ khách sạn
+│   ├── HotelServiceImpl.java        # Hiện thực hóa nghiệp vụ khách sạn
+│   ├── HotelRepository.java         # Truy xuất cơ sở dữ liệu bảng Hotels
+│   ├── Hotel.java                   # Thực thể JPA Hotel
+│   ├── ReviewRepository.java        # Truy xuất cơ sở dữ liệu đánh giá
+│   ├── Review.java                  # Thực thể JPA Review
+│   └── dto/                         # DTO liên quan đến khách sạn & review
 │
-├── model/                           # Lớp định nghĩa thực thể JPA (Entities)
-│   ├── User.java
-│   ├── Booking.java
-│   ├── RoomLock.java
-│   └── ...
+├── room/                            # Feature: Quản lý Phòng & Khóa phòng
+│   ├── RoomController.java          # REST API tìm phòng trống, quản lý phòng
+│   ├── RoomService.java             # Interface nghiệp vụ phòng
+│   ├── RoomServiceImpl.java         # Hiện thực hóa nghiệp vụ phòng
+│   ├── RoomRepository.java          # Truy xuất cơ sở dữ liệu bảng Rooms
+│   ├── Room.java                    # Thực thể JPA Room
+│   ├── RoomLock.java                # Thực thể JPA khóa giữ phòng tạm thời
+│   ├── RoomLockRepository.java      # Truy xuất cơ sở dữ liệu khóa giữ phòng
+│   ├── RoomLockCleanupScheduler.java# Tác vụ tự động giải phóng phòng giữ quá hạn
+│   └── dto/                         # DTO liên quan đến phòng
 │
-├── dto/                             # Data Transfer Objects (Request/Response)
-│   ├── request/                     # DTO chứa dữ liệu client gửi lên
-│   ├── response/                    # DTO chứa dữ liệu trả về client
-│   └── ApiResponse.java             # Cấu trúc JSON trả về chuẩn hóa của hệ thống
+├── booking/                         # Feature: Đặt phòng
+│   ├── BookingController.java       # REST API chọn ngày, đặt phòng, hủy phòng
+│   ├── BookingService.java          # Interface nghiệp vụ đặt phòng
+│   ├── BookingServiceImpl.java      # Hiện thực hóa nghiệp vụ đặt phòng
+│   ├── BookingRepository.java       # Truy xuất cơ sở dữ liệu bảng Bookings
+│   ├── BookingRoomRepository.java   # Truy xuất cơ sở dữ liệu bảng chi tiết BookingRooms
+│   ├── Booking.java                 # Thực thể JPA Booking
+│   └── dto/                         # DTO cho nghiệp vụ đặt phòng
 │
-├── exception/                       # Quản lý lỗi tập trung
-│   ├── GlobalExceptionHandler.java  # Bắt exception toàn hệ thống và map HTTP status
-│   └── CustomException.java
+├── payment/                         # Feature: Giao dịch & Thanh toán
+│   ├── PaymentController.java       # REST API tích hợp thanh toán trực tuyến
+│   ├── PaymentService.java          # Interface nghiệp vụ thanh toán
+│   ├── PaymentServiceImpl.java      # Hiện thực hóa nghiệp vụ thanh toán, hoàn tiền
+│   ├── PaymentRepository.java       # Truy xuất cơ sở dữ liệu giao dịch thanh toán
+│   ├── Payment.java                 # Thực thể JPA Payment
+│   └── dto/                         # DTO liên quan đến thanh toán
 │
-├── security/                        # Cấu trúc lọc bảo mật JWT & Schedulers
-│   ├── JwtAuthenticationFilter.java # Filter kiểm tra và giải mã token JWT
-│   ├── JwtService.java              # Cung cấp sinh và verify chữ ký token
-│   ├── TokenBlacklistService.java   # Xử lý blacklist token khi Logout
-│   ├── RoomLockCleanupScheduler.java# Tự động hủy đơn hàng và mở khóa phòng sau 10p
-│   └── TokenCleanupScheduler.java   # Định kỳ dọn dẹp các token blacklist đã hết hạn
+├── voucher/                         # Feature: Mã giảm giá (Vouchers)
+│   ├── VoucherController.java       # REST API quản trị và áp dụng mã giảm giá
+│   ├── VoucherService.java          # Interface nghiệp vụ voucher
+│   ├── VoucherServiceImpl.java      # Hiện thực hóa nghiệp vụ voucher
+│   ├── VoucherRepository.java       # Truy xuất cơ sở dữ liệu bảng Vouchers
+│   ├── Voucher.java                 # Thực thể JPA Voucher
+│   └── dto/                         # DTO liên quan đến mã giảm giá
 │
-└── validation/                      # Các validator tùy chỉnh (custom annotations)
+├── report/                          # Feature: Báo cáo & Thống kê
+│   ├── ReportController.java        # REST API truy xuất báo cáo doanh thu, thống kê
+│   ├── ReportService.java           # Interface nghiệp vụ báo cáo
+│   ├── ReportServiceImpl.java       # Hiện thực hóa nghiệp vụ báo cáo
+│   └── dto/                         # DTO cấu trúc báo cáo (ví dụ: HotelRevenueDto)
+│
+└── setting/                         # Feature: Cấu hình Hệ thống
+    ├── SettingController.java       # REST API cho các cấu hình hệ thống
+    ├── SettingService.java          # Interface cấu hình
+    └── SettingServiceImpl.java      # Hiện thực hóa cấu hình hệ thống
 ```
 
 ---

@@ -9,31 +9,41 @@ Tài liệu này tổng hợp cấu trúc kiểm thử, các kịch bản kiểm
 
 ## 1. Cấu trúc Thư mục Kiểm thử (Test Package Structure)
 
-Toàn bộ các lớp kiểm thử được tổ chức đồng bộ với gói mã nguồn chính và chia làm 3 phân vùng kỹ thuật chính dưới gói gốc [src/test/java/com/hotelbooking](file:///C:/Users/Minmin/Documents/GitHub/hotel-booking-system/src/test/java/com/hotelbooking):
+Toàn bộ các lớp kiểm thử được tổ chức đồng bộ với gói mã nguồn chính và chia theo gói tính năng (Package-by-Feature) tương ứng dưới gói gốc [src/test/java/com/hotelbooking](file:///C:/Users/Minmin/Documents/GitHub/hotel-booking-system/src/test/java/com/hotelbooking):
 
 ```
 src/test/java/com/hotelbooking/
 │
-├── controller/                  # Unit Test cho tầng REST Controller (sử dụng MockMvc)
-│   ├── BookingControllerTest.java
-│   ├── HotelControllerTest.java
-│   ├── RoomControllerTest.java
-│   ├── AdminBookingControllerTest.java
-│   └── AdminUserControllerTest.java
+├── auth/                           # Kiểm thử Feature: Xác thực & Bảo mật
+│   └── AuthServiceImplTest.java
 │
-├── service/                     # Unit Test nghiệp vụ cho tầng Service (sử dụng Mockito)
-│   ├── AuthServiceImplTest.java
-│   ├── BookingServiceImplTest.java
+├── booking/                        # Kiểm thử Feature: Đặt phòng
+│   ├── AdminBookingControllerTest.java
+│   ├── BookingControllerTest.java
+│   └── BookingServiceImplTest.java
+│
+├── hotel/                          # Kiểm thử Feature: Khách sạn & Đánh giá
+│   ├── HotelControllerTest.java
+│   └── HotelServiceImplTest.java
+│
+├── payment/                        # Kiểm thử Feature: Giao dịch & Thanh toán
+│   └── PaymentServiceTest.java
+│
+├── report/                         # Kiểm thử Feature: Báo cáo & Thống kê
+│   └── ReportServiceImplTest.java
+│
+├── room/                           # Kiểm thử Feature: Quản lý Phòng & Khóa phòng
+│   ├── RoomController.java
+│   ├── RoomLockCleanupSchedulerTest.java
 │   ├── RoomLockServiceImplTest.java
-│   ├── HotelServiceImplTest.java
-│   ├── RoomServiceImplTest.java
-│   ├── VoucherServiceTest.java
-│   ├── PaymentServiceTest.java
-│   ├── ReportServiceImplTest.java
+│   └── RoomServiceImplTest.java
+│
+├── user/                           # Kiểm thử Feature: Quản lý Người dùng
+│   ├── AdminUserControllerTest.java
 │   └── AdminUserServiceTest.java
 │
-└── security/                    # Kiểm thử lập lịch dọn dẹp khóa phòng và bảo mật
-    └── RoomLockCleanupSchedulerTest.java
+└── voucher/                        # Kiểm thử Feature: Mã giảm giá
+    └── VoucherServiceTest.java
 ```
 
 ---

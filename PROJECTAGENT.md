@@ -1113,6 +1113,15 @@ Session-based authentication không được dùng cho REST API.
 
 ---
 
+## ADR-004 — PostgreSQL / Neon DB Support
+
+Bổ sung hỗ trợ PostgreSQL (Neon DB) cho online database server vì:
+- Cloud-native serverless database với auto-scaling.
+- Phù hợp cho việc deploy online và kiểm thử môi trường production.
+- Tương thích tốt với Flyway sử dụng cấu trúc thư mục migrations phân tách theo vendor (`db/migration/{vendor}`).
+
+---
+
 # 24. Current Business Rules
 
 ## BR-001
