@@ -2,7 +2,7 @@
 # Project Constitution & AI Collaboration Memory
 
 > Version: 3.0.0  
-> Architecture: Hybrid SDD + ADD  
+> Architecture: SDD + ADD  
 > Stack: Spring Boot 3 + SQL Server + JWT + JPA  
 > Auther: VudtlHE190770
 > Last Updated: 2026-05-26
