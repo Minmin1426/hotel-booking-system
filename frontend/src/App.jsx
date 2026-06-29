@@ -10,6 +10,7 @@ import TermsPage from './pages/TermsPage';
 import PrivacyPage from './pages/PrivacyPage';
 import HotelsPage from './pages/HotelsPage';
 import HotelDetailPage from './pages/HotelDetailPage';
+import PaymentStatusPage from './pages/PaymentStatusPage';
 
 function App() {
   const isAuthenticated = !!sessionStorage.getItem("accessToken");
@@ -40,6 +41,10 @@ function App() {
         {/* Protected routes */}
         <Route path="/profile" element={isAuthenticated ? <ProfilePage /> : <Navigate to="/login" replace />} />
         <Route path="/admin/users" element={isAuthenticated && isAdminOrDirector ? <AdminDashboardPage /> : <Navigate to="/login" replace />} />
+
+        {/* Payment routes */}
+        <Route path="/payment/success" element={<PaymentStatusPage status="success" />} />
+        <Route path="/payment/cancel" element={<PaymentStatusPage status="cancel" />} />
 
         {/* Public info routes */}
         <Route path="/terms" element={<TermsPage />} />

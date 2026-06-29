@@ -1,7 +1,6 @@
 package com.hotelbooking.payment;
 import com.hotelbooking.payment.dto.PaymentRequestDTO;
 import com.hotelbooking.payment.dto.PaymentResponseDTO;
-import com.hotelbooking.payment.dto.WebhookCallbackDTO;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -23,18 +22,13 @@ public class PaymentController {
         return ResponseEntity.ok(response);
     }
 
-    @PostMapping("/webhook")
-    public ResponseEntity<String> handleWebhook(
-            @RequestHeader("X-Signature") String signature,
-            @RequestBody String rawPayload) {
+    @PostMapping("/verify")
+    public ResponseEntity<String> verifyPayment(@RequestParam String paymentIntentId) {
         try {
-            com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
-            WebhookCallbackDTO callbackDTO = mapper.readValue(rawPayload, WebhookCallbackDTO.class);
-            
-            paymentService.processWebhook(callbackDTO, signature, rawPayload);
-            return ResponseEntity.ok("OK");
+            paymentService.verifyPayment(paymentIntentId);
+            return ResponseEntity.ok("Payment verified successfully");
         } catch (Exception e) {
-            return ResponseEntity.badRequest().body("Error processing webhook");
+            return ResponseEntity.badRequest().body(e.getMessage());
         }
     }
 

@@ -5,8 +5,9 @@ import com.hotelbooking.common.exception.BusinessException;
 import com.hotelbooking.common.utils.EmailService;
 import com.hotelbooking.payment.dto.PaymentRequestDTO;
 import com.hotelbooking.payment.dto.PaymentResponseDTO;
-import com.hotelbooking.payment.dto.WebhookCallbackDTO;
 import com.hotelbooking.user.User;
+import com.stripe.model.checkout.Session;
+import org.mockito.MockedStatic;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -16,10 +17,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 
-import javax.crypto.Mac;
-import javax.crypto.spec.SecretKeySpec;
 import java.math.BigDecimal;
-import java.nio.charset.StandardCharsets;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -44,11 +42,13 @@ public class PaymentServiceTest {
     @InjectMocks
     private PaymentServiceImpl paymentService;
 
-    private final String secret = "mock-gateway-secret-key-that-is-long-enough-for-hs256-hashing-1234567890";
+    private final String stripeKey = "sk_test_mock";
 
     @BeforeEach
     void setUp() {
-        ReflectionTestUtils.setField(paymentService, "gatewaySecret", secret);
+        ReflectionTestUtils.setField(paymentService, "stripeApiKey", stripeKey);
+        ReflectionTestUtils.setField(paymentService, "stripeSuccessUrl", "http://localhost");
+        ReflectionTestUtils.setField(paymentService, "stripeCancelUrl", "http://localhost");
     }
 
     @Test
@@ -62,15 +62,24 @@ public class PaymentServiceTest {
 
         PaymentRequestDTO requestDTO = new PaymentRequestDTO();
         requestDTO.setBookingId(1L);
-        requestDTO.setPaymentMethod("VNPAY");
+        requestDTO.setPaymentMethod("STRIPE");
 
-        PaymentResponseDTO response = paymentService.createPaymentRequest(requestDTO);
+        try (MockedStatic<Session> mockedSession = mockStatic(Session.class)) {
+            Session mockSession = new Session();
+            mockSession.setId("cs_test_123");
+            mockSession.setUrl("https://checkout.stripe.com/pay");
+            
+            mockedSession.when(() -> Session.create(any(com.stripe.param.checkout.SessionCreateParams.class)))
+                    .thenReturn(mockSession);
 
-        assertNotNull(response);
-        assertNotNull(response.getTransactionId());
-        assertTrue(response.getPaymentUrl().contains("mock-gateway.com/pay"));
-        verify(paymentRepository, times(1)).save(any(Payment.class));
-        verify(auditLogRepository, times(1)).save(any());
+            PaymentResponseDTO response = paymentService.createPaymentRequest(requestDTO);
+
+            assertNotNull(response);
+            assertEquals("cs_test_123", response.getTransactionId());
+            assertEquals("https://checkout.stripe.com/pay", response.getPaymentUrl());
+            verify(paymentRepository, times(1)).save(any(Payment.class));
+            verify(auditLogRepository, times(1)).save(any());
+        }
     }
 
     @Test
@@ -89,15 +98,8 @@ public class PaymentServiceTest {
     }
 
     @Test
-    void testProcessWebhook_Success() throws Exception {
-        String transactionId = "test-txn-123";
-        String rawPayload = "{\"transactionId\":\"test-txn-123\",\"status\":\"SUCCESS\"}";
-        
-        WebhookCallbackDTO callback = new WebhookCallbackDTO();
-        callback.setTransactionId(transactionId);
-        callback.setStatus("SUCCESS");
-
-        String signature = generateSignature(rawPayload, secret);
+    void testVerifyPayment_Success() {
+        String transactionId = "cs_test_123";
 
         User user = new User();
         user.setEmail("test@test.com");
@@ -115,40 +117,24 @@ public class PaymentServiceTest {
 
         when(paymentRepository.findByTransactionId(transactionId)).thenReturn(Optional.of(payment));
 
-        paymentService.processWebhook(callback, signature, rawPayload);
+        try (MockedStatic<Session> mockedSession = mockStatic(Session.class)) {
+            Session mockSession = new Session();
+            mockSession.setPaymentStatus("paid");
+            
+            mockedSession.when(() -> Session.retrieve(transactionId))
+                    .thenReturn(mockSession);
 
-        assertEquals("SUCCESS", payment.getStatus());
-        assertEquals("SUCCESS", booking.getPaymentStatus());
-        assertEquals("CONFIRMED", booking.getStatus());
-        
-        verify(paymentRepository, times(1)).save(payment);
-        verify(bookingRepository, times(1)).save(booking);
-        verify(emailService, times(1)).sendBookingConfirmationEmail("test@test.com", "B-12345");
-        verify(auditLogRepository, times(1)).save(any());
-    }
+            paymentService.verifyPayment(transactionId);
 
-    @Test
-    void testProcessWebhook_InvalidSignature() {
-        WebhookCallbackDTO callback = new WebhookCallbackDTO();
-        callback.setTransactionId("txn-1");
-
-        assertThrows(SecurityException.class, () -> 
-            paymentService.processWebhook(callback, "invalid-signature", "payload"));
-    }
-
-    private String generateSignature(String payload, String secret) throws Exception {
-        Mac hmacSha256 = Mac.getInstance("HmacSHA256");
-        SecretKeySpec secretKeySpec = new SecretKeySpec(secret.getBytes(StandardCharsets.UTF_8), "HmacSHA256");
-        hmacSha256.init(secretKeySpec);
-        byte[] hash = hmacSha256.doFinal(payload.getBytes(StandardCharsets.UTF_8));
-        
-        StringBuilder hexString = new StringBuilder();
-        for (byte b : hash) {
-            String hex = Integer.toHexString(0xff & b);
-            if (hex.length() == 1) hexString.append('0');
-            hexString.append(hex);
+            assertEquals("SUCCESS", payment.getStatus());
+            assertEquals("SUCCESS", booking.getPaymentStatus());
+            assertEquals("CONFIRMED", booking.getStatus());
+            
+            verify(paymentRepository, times(1)).save(payment);
+            verify(bookingRepository, times(1)).save(booking);
+            verify(emailService, times(1)).sendBookingConfirmationEmail("test@test.com", "B-12345");
+            verify(auditLogRepository, times(1)).save(any());
         }
-        return hexString.toString();
     }
 
     @Test

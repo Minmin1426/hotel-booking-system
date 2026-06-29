@@ -72,7 +72,7 @@ public class BookingController {
 
     // UC-15: Xem lịch sử booking (paging)
     @GetMapping("/my-history")
-    @PreAuthorize("hasAnyRole('CUSTOMER', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('CUSTOMER', 'STAFF', 'ADMIN', 'DIRECTOR')")
     public ResponseEntity<ApiResponse<PagedResponse<BookingHistoryResponse>>> getMyBookingHistory(
             @AuthenticationPrincipal User currentUser,
             @RequestParam(defaultValue = "0") int page,
@@ -86,7 +86,7 @@ public class BookingController {
 
     // UC-14: Hủy đặt phòng
     @PostMapping("/{id}/cancel")
-    @PreAuthorize("hasAnyRole('CUSTOMER', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('CUSTOMER', 'STAFF', 'ADMIN', 'DIRECTOR')")
     public ResponseEntity<ApiResponse<CancelBookingResponse>> cancelBooking(
             @PathVariable("id") Long bookingId,
             @AuthenticationPrincipal User currentUser) {

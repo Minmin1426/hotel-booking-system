@@ -12,4 +12,5 @@ import lombok.NoArgsConstructor;
 public class PaymentResponseDTO {
     private String paymentUrl;
     private String transactionId;
+    private String clientSecret;
 }
