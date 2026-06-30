@@ -30,3 +30,7 @@ frontend/.env.production.local
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+
+# Extras
+apache-maven-3.9.8/
+maven.zip

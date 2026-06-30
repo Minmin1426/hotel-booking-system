@@ -6,17 +6,18 @@ import com.hotelbooking.common.exception.ResourceNotFoundException;
 import com.hotelbooking.common.utils.EmailService;
 import com.hotelbooking.payment.dto.PaymentRequestDTO;
 import com.hotelbooking.payment.dto.PaymentResponseDTO;
-import com.hotelbooking.payment.dto.WebhookCallbackDTO;
+import com.stripe.Stripe;
+import com.stripe.model.PaymentIntent;
+import com.stripe.param.PaymentIntentCreateParams;
 
+import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import javax.crypto.Mac;
-import javax.crypto.spec.SecretKeySpec;
-import java.nio.charset.StandardCharsets;
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
@@ -30,8 +31,19 @@ public class PaymentServiceImpl implements PaymentService {
     private final PaymentAuditLogRepository auditLogRepository;
     private final EmailService emailService;
 
-    @Value("${payment.gateway.secret}")
-    private String gatewaySecret;
+    @Value("${stripe.api.key}")
+    private String stripeApiKey;
+
+    @Value("${stripe.success.url}")
+    private String stripeSuccessUrl;
+
+    @Value("${stripe.cancel.url}")
+    private String stripeCancelUrl;
+
+    @PostConstruct
+    public void init() {
+        Stripe.apiKey = stripeApiKey;
+    }
 
     @Override
     @Transactional
@@ -39,112 +51,96 @@ public class PaymentServiceImpl implements PaymentService {
         Booking booking = bookingRepository.findById(requestDTO.getBookingId())
                 .orElseThrow(() -> new ResourceNotFoundException("Booking", "id", requestDTO.getBookingId().toString()));
 
-        if (!"PENDING_PAYMENT".equals(booking.getStatus())) {
-            throw new BusinessException("Booking is not in PENDING_PAYMENT status");
+        if (!"PENDING".equals(booking.getStatus())) {
+            throw new BusinessException("Booking is not in PENDING status");
         }
 
-        String transactionId = UUID.randomUUID().toString();
+        try {
+            PaymentIntentCreateParams params = PaymentIntentCreateParams.builder()
+                    .setAmount(booking.getTotalAmount().multiply(new BigDecimal(100)).longValue())
+                    .setCurrency("usd")
+                    .putMetadata("bookingId", booking.getBookingId().toString())
+                    .build();
 
-        Payment payment = Payment.builder()
-                .booking(booking)
-                .paymentMethod(requestDTO.getPaymentMethod())
-                .amount(booking.getTotalAmount())
-                .status("PROCESSING")
-                .transactionId(transactionId)
-                .gateway(requestDTO.getPaymentMethod())
-                .build();
+            PaymentIntent intent = PaymentIntent.create(params);
+            String transactionId = intent.getId();
 
-        paymentRepository.save(payment);
+            Payment payment = Payment.builder()
+                    .booking(booking)
+                    .paymentMethod(requestDTO.getPaymentMethod())
+                    .amount(booking.getTotalAmount())
+                    .status("PROCESSING")
+                    .transactionId(transactionId)
+                    .gateway("STRIPE")
+                    .build();
 
-        PaymentAuditLog auditLog = PaymentAuditLog.builder()
-                .transactionId(transactionId)
-                .action("CREATE_REQUEST")
-                .requestPayload("Booking ID: " + booking.getBookingId() + ", Amount: " + booking.getTotalAmount())
-                .build();
-        auditLogRepository.save(auditLog);
+            paymentRepository.save(payment);
 
-        String paymentUrl = "https://mock-gateway.com/pay?txn=" + transactionId;
+            PaymentAuditLog auditLog = PaymentAuditLog.builder()
+                    .transactionId(transactionId)
+                    .action("CREATE_STRIPE_PAYMENT_INTENT")
+                    .requestPayload("Booking ID: " + booking.getBookingId() + ", Amount: " + booking.getTotalAmount())
+                    .responsePayload("Intent ID: " + intent.getId())
+                    .build();
+            auditLogRepository.save(auditLog);
 
-        return PaymentResponseDTO.builder()
-                .transactionId(transactionId)
-                .paymentUrl(paymentUrl)
-                .build();
+            return PaymentResponseDTO.builder()
+                    .transactionId(transactionId)
+                    .clientSecret(intent.getClientSecret())
+                    .build();
+        } catch (Exception e) {
+            log.error("Stripe payment intent creation failed", e);
+            throw new BusinessException("Payment intent creation failed: " + e.getMessage());
+        }
     }
 
     @Override
     @Transactional
-    public void processWebhook(WebhookCallbackDTO callback, String signature, String rawPayload) {
-        // 1. Verify HMAC Signature
-        if (!verifySignature(rawPayload, signature)) {
-            log.warn("Invalid webhook signature for transaction: {}", callback.getTransactionId());
-            PaymentAuditLog auditLog = PaymentAuditLog.builder()
-                    .transactionId(callback.getTransactionId())
-                    .action("WEBHOOK_FAILED_SIGNATURE")
-                    .requestPayload(rawPayload)
-                    .build();
-            auditLogRepository.save(auditLog);
-            throw new SecurityException("Invalid webhook signature");
-        }
-
-        // 2. Duplicate Check
-        Payment payment = paymentRepository.findByTransactionId(callback.getTransactionId())
-                .orElseThrow(() -> new ResourceNotFoundException("Payment", "transactionId", callback.getTransactionId()));
+    public void verifyPayment(String paymentIntentId) {
+        Payment payment = paymentRepository.findByTransactionId(paymentIntentId)
+                .orElseThrow(() -> new ResourceNotFoundException("Payment", "transactionId", paymentIntentId));
 
         if ("SUCCESS".equals(payment.getStatus()) || "FAILED".equals(payment.getStatus())) {
-            log.info("Duplicate webhook callback for transaction: {}", callback.getTransactionId());
-            PaymentAuditLog auditLog = PaymentAuditLog.builder()
-                    .transactionId(callback.getTransactionId())
-                    .action("WEBHOOK_DUPLICATE")
-                    .requestPayload(rawPayload)
-                    .build();
-            auditLogRepository.save(auditLog);
+            log.info("Payment already verified for intent: {}", paymentIntentId);
             return; // Ignore duplicate
         }
 
-        // 3. Update Status
-        payment.setStatus(callback.getStatus());
-        payment.setPaymentTime(LocalDateTime.now());
-        paymentRepository.save(payment);
-
-        Booking booking = payment.getBooking();
-        
-        if ("SUCCESS".equals(callback.getStatus())) {
-            booking.setPaymentStatus("SUCCESS");
-            booking.setStatus("CONFIRMED");
-            bookingRepository.save(booking);
-            emailService.sendBookingConfirmationEmail(booking.getUser().getEmail(), booking.getBookingCode());
-        } else {
-            booking.setPaymentStatus("FAILED");
-            // Booking keeps PENDING_PAYMENT status per AF-01
-            bookingRepository.save(booking);
-        }
-
-        PaymentAuditLog auditLog = PaymentAuditLog.builder()
-                .transactionId(callback.getTransactionId())
-                .action("WEBHOOK_PROCESSED")
-                .requestPayload(rawPayload)
-                .responsePayload("Status updated to: " + callback.getStatus())
-                .build();
-        auditLogRepository.save(auditLog);
-    }
-
-    private boolean verifySignature(String payload, String signature) {
         try {
-            Mac hmacSha256 = Mac.getInstance("HmacSHA256");
-            SecretKeySpec secretKeySpec = new SecretKeySpec(gatewaySecret.getBytes(StandardCharsets.UTF_8), "HmacSHA256");
-            hmacSha256.init(secretKeySpec);
-            byte[] hash = hmacSha256.doFinal(payload.getBytes(StandardCharsets.UTF_8));
-            
-            StringBuilder hexString = new StringBuilder();
-            for (byte b : hash) {
-                String hex = Integer.toHexString(0xff & b);
-                if (hex.length() == 1) hexString.append('0');
-                hexString.append(hex);
+            PaymentIntent intent = PaymentIntent.retrieve(paymentIntentId);
+            String paymentStatus = intent.getStatus();
+
+            if ("succeeded".equals(paymentStatus)) {
+                payment.setStatus("SUCCESS");
+                payment.setPaymentTime(LocalDateTime.now());
+                
+                Booking booking = payment.getBooking();
+                booking.setPaymentStatus("SUCCESS");
+                booking.setStatus("CONFIRMED");
+                bookingRepository.save(booking);
+                
+                emailService.sendBookingConfirmationEmail(booking.getUser().getEmail(), booking.getBookingCode());
+            } else {
+                payment.setStatus("FAILED");
+                payment.setPaymentTime(LocalDateTime.now());
+                
+                Booking booking = payment.getBooking();
+                booking.setPaymentStatus("FAILED");
+                bookingRepository.save(booking);
             }
-            return hexString.toString().equalsIgnoreCase(signature);
+            
+            paymentRepository.save(payment);
+
+            PaymentAuditLog auditLog = PaymentAuditLog.builder()
+                    .transactionId(paymentIntentId)
+                    .action("VERIFY_PAYMENT")
+                    .requestPayload("Intent ID: " + paymentIntentId)
+                    .responsePayload("Stripe Status: " + paymentStatus)
+                    .build();
+            auditLogRepository.save(auditLog);
+            
         } catch (Exception e) {
-            log.error("Error verifying signature", e);
-            return false;
+            log.error("Error verifying payment session", e);
+            throw new BusinessException("Failed to verify payment: " + e.getMessage());
         }
     }
 

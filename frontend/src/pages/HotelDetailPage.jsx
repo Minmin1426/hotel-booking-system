@@ -4,7 +4,14 @@ import { HotelService } from '../services/HotelService';
 import { BookingService } from '../services/BookingService';
 import { AuthService } from '../services/AuthService';
 import { ReviewService } from '../services/ReviewService';
+import { PaymentService } from '../services/PaymentService';
+import { Elements } from '@stripe/react-stripe-js';
+import { loadStripe } from '@stripe/stripe-js';
+import CheckoutForm from '../components/CheckoutForm';
 import Header from '../components/Header';
+
+// You must replace this with your actual Stripe publishable key that matches your Secret key
+const stripePromise = loadStripe('pk_test_51TngEK89ERUHjbAagoTsrsKR43AUNXXKqW2G9sMY9N27ImvWCCJ3vw4ZAr5Ye7qRDoZbPwIrRrzmNuDo4He7tw8n008pq8g7sS');
 
 function HotelDetailPage() {
   const { id } = useParams();
@@ -12,18 +19,18 @@ function HotelDetailPage() {
 
   const [hotel, setHotel] = useState(null);
   const [activeImage, setActiveImage] = useState('');
-  
+
   // Date picker states for UC-09
   const todayStr = new Date(Date.now() + 86400000).toISOString().split('T')[0]; // Tomorrow
   const dayAfterStr = new Date(Date.now() + 172800000).toISOString().split('T')[0]; // Day after tomorrow
-  
+
   const [checkIn, setCheckIn] = useState(todayStr);
   const [checkOut, setCheckOut] = useState(dayAfterStr);
-  
+
   const [rooms, setRooms] = useState([]);
   const [roomsLoading, setRoomsLoading] = useState(false);
   const [roomsError, setRoomsError] = useState('');
-  
+
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [bookingSuccess, setBookingSuccess] = useState('');
@@ -39,6 +46,9 @@ function HotelDetailPage() {
   const [timeLeft, setTimeLeft] = useState(0); // in seconds
   const [paymentMethod, setPaymentMethod] = useState('ONLINE');
   const [bookingError, setBookingError] = useState('');
+
+  // Stripe Elements state
+  const [clientSecret, setClientSecret] = useState('');
 
   // Guest details verification states
   const [guestName, setGuestName] = useState('');
@@ -165,7 +175,8 @@ function HotelDetailPage() {
     setBookingError('');
     setPaymentMethod('ONLINE');
     setBookingSuccess('');
-    
+    setClientSecret('');
+
     // Fetch live user profile details to verify (confirm user info)
     setIsBookingInProgress(true);
     try {
@@ -235,24 +246,18 @@ function HotelDetailPage() {
     }
   };
 
-  const handleSimulatePayment = async () => {
+  const handleOnlinePayment = async () => {
     setIsBookingInProgress(true);
     setBookingError('');
     try {
-      const txnId = "TXN-" + Math.random().toString(36).substring(2, 11).toUpperCase();
-      await BookingService.confirmBooking(
-        bookingDetails.bookingCode,
-        txnId,
-        bookingDetails.finalPrice !== undefined && bookingDetails.finalPrice !== null ? bookingDetails.finalPrice : bookingDetails.totalAmount,
-        "ONLINE"
-      );
-      setBookingStatus('CONFIRMED');
-      setTimeLeft(0);
-      setBookingSuccess(`Room ${selectedRoom.roomNumber} booked successfully! Booking Code: ${bookingDetails.bookingCode}`);
-      // Refresh room list
-      handleCheckAvailability();
+      const response = await PaymentService.createPaymentRequest(bookingDetails.bookingId, "ONLINE");
+      if (response && response.clientSecret) {
+        setClientSecret(response.clientSecret);
+      } else {
+        throw new Error("No client secret received from Stripe.");
+      }
     } catch (err) {
-      setBookingError(err.message || "Failed to confirm payment.");
+      setBookingError(err.message || "Failed to initiate Stripe payment.");
     } finally {
       setIsBookingInProgress(false);
     }
@@ -319,7 +324,7 @@ function HotelDetailPage() {
 
       {/* Hero Detail Panel */}
       <main className="max-w-7xl mx-auto px-6 py-12 space-y-12">
-        
+
         {/* Back navigation */}
         <Link to="/" className="inline-flex items-center gap-2 text-xs font-bold text-slate-400 hover:text-cyan-600 transition-colors uppercase tracking-wider">
           <span>←</span> Back to Search Catalog
@@ -327,22 +332,22 @@ function HotelDetailPage() {
 
         {/* Info Grid: Media & Profile info */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-          
+
           {/* Media Showcase (Left) */}
           <div className="lg:col-span-7 space-y-4">
             <div className="aspect-video w-full rounded-3xl overflow-hidden bg-slate-100 border border-slate-200">
-              <img 
-                src={activeImage || 'https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=800&q=80'} 
-                alt={hotel.name} 
+              <img
+                src={activeImage || 'https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=800&q=80'}
+                alt={hotel.name}
                 className="w-full h-full object-cover"
               />
             </div>
-            
+
             {/* Gallery thumbnails */}
             {hotel.images && hotel.images.length > 1 && (
               <div className="flex gap-3 overflow-x-auto pb-2">
                 {hotel.images.map((img) => (
-                  <button 
+                  <button
                     key={img.imageId}
                     onClick={() => setActiveImage(img.imageUrl)}
                     className={`relative w-24 aspect-[4/3] rounded-xl overflow-hidden border-2 bg-slate-100 flex-shrink-0 transition-colors ${activeImage === img.imageUrl ? 'border-cyan-500' : 'border-slate-200 hover:border-slate-300'}`}
@@ -398,7 +403,7 @@ function HotelDetailPage() {
 
         {/* Room Availability Checker Section */}
         <section className="p-8 rounded-3xl bg-white border border-slate-200/80 shadow-md shadow-slate-100 space-y-8">
-          
+
           <div className="space-y-2 border-b border-slate-100 pb-4">
             <h3 className="text-xl font-extrabold tracking-tight text-slate-900">🛏️ Check Vacant Rooms</h3>
             <p className="text-xs text-slate-500">Pick check-in and check-out dates to query live available suites.</p>
@@ -408,8 +413,8 @@ function HotelDetailPage() {
           <form onSubmit={handleCheckAvailability} className="grid grid-cols-1 md:grid-cols-3 gap-6 items-end">
             <div className="space-y-2">
               <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Check-in Date</label>
-              <input 
-                type="date" 
+              <input
+                type="date"
                 value={checkIn}
                 min={todayStr}
                 onChange={(e) => setCheckIn(e.target.value)}
@@ -417,11 +422,11 @@ function HotelDetailPage() {
                 required
               />
             </div>
-            
+
             <div className="space-y-2">
               <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Check-out Date</label>
-              <input 
-                type="date" 
+              <input
+                type="date"
                 value={checkOut}
                 min={checkIn || todayStr}
                 onChange={(e) => setCheckOut(e.target.value)}
@@ -430,7 +435,7 @@ function HotelDetailPage() {
               />
             </div>
 
-            <button 
+            <button
               type="submit"
               disabled={roomsLoading}
               className="w-full py-3 rounded-xl bg-gradient-to-r from-cyan-500 to-indigo-600 text-white font-bold text-sm tracking-wide shadow-md hover:brightness-105 disabled:opacity-50 transition-all cursor-pointer"
@@ -458,7 +463,7 @@ function HotelDetailPage() {
             {rooms.length > 0 && (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {rooms.map((room) => (
-                  <div 
+                  <div
                     key={room.roomId}
                     className="p-5 rounded-2xl bg-white border border-slate-200 hover:border-cyan-500/30 flex flex-col justify-between space-y-4 shadow-sm hover:shadow-md transition-all duration-300"
                   >
@@ -476,7 +481,7 @@ function HotelDetailPage() {
                         <span className="text-[10px] text-slate-400 block font-bold">Per Night</span>
                         <span className="text-base font-extrabold text-cyan-600">${room.pricePerNight.toFixed(0)}</span>
                       </div>
-                      <button 
+                      <button
                         onClick={() => handleBookRoom(room)}
                         className="px-4 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs font-bold text-slate-700 hover:bg-cyan-500 hover:text-white hover:border-transparent transition-all duration-350 cursor-pointer"
                       >
@@ -565,328 +570,314 @@ function HotelDetailPage() {
 
       </main>
 
-      {/* Booking Checkout Modal */}
+            {/* Booking Checkout Full Screen Overlay */}
       {showBookingModal && selectedRoom && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
-          <div className="relative w-full max-w-lg bg-white rounded-3xl shadow-2xl border border-slate-100 overflow-hidden flex flex-col max-h-[90vh]">
+        <div className="fixed inset-0 z-[100] bg-slate-50 flex flex-col h-screen overflow-hidden animate-fade-in">
+          
+          {/* Top Header */}
+          <div className="bg-white border-b border-slate-200 px-6 py-4 flex justify-between items-center shrink-0 shadow-sm z-10">
+            <div className="flex items-center gap-2">
+              <span className="text-2xl">🏢</span>
+              <span className="text-xl font-black tracking-tighter text-[#1A3B85]">StayZone<span className="text-cyan-500 font-medium">Hotel</span></span>
+            </div>
             
-            {/* Header */}
-            <div className="p-6 bg-gradient-to-r from-cyan-600 to-indigo-600 text-white flex justify-between items-center">
-              <div>
-                <h3 className="text-lg font-bold">Confirm Your Reservation</h3>
-                <p className="text-xs text-white/80">Securing your stay at {hotel.name}</p>
+            <div className="flex items-center gap-6">
+              <div className="flex items-center gap-2 text-slate-600 font-medium text-sm">
+                <span>🔒</span>
+                <span>Secure Checkout</span>
               </div>
               {!isBookingInProgress && bookingStatus !== 'PENDING' && (
                 <button 
                   onClick={() => setShowBookingModal(false)}
-                  className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white font-bold transition-all cursor-pointer"
+                  className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-500 font-bold transition-all cursor-pointer"
                 >
                   ✕
                 </button>
               )}
             </div>
-
-            {/* Modal Content */}
-            <div className="p-6 overflow-y-auto space-y-6 flex-1 text-left">
-              
-              {bookingStatus === '' && (
-                // Screen 1: Summary and checkout details
-                <div className="space-y-6">
-                  {/* Room Summary Card */}
-                  <div className="p-4 rounded-2xl bg-slate-50 border border-slate-100 space-y-2">
-                    <span className="px-2 py-0.5 rounded text-[10px] font-extrabold bg-cyan-50 text-cyan-600 border border-cyan-100 uppercase tracking-widest">{selectedRoom.roomType}</span>
-                    <h4 className="text-base font-bold text-slate-800">Room {selectedRoom.roomNumber}</h4>
-                    <div className="grid grid-cols-2 gap-4 pt-2 text-xs text-slate-600 border-t border-slate-200/50">
-                      <div>
-                        <span className="block text-[10px] text-slate-400 font-bold uppercase">Check-In</span>
-                        <span className="font-semibold text-slate-700">{checkIn}</span>
-                      </div>
-                      <div>
-                        <span className="block text-[10px] text-slate-400 font-bold uppercase">Check-Out</span>
-                        <span className="font-semibold text-slate-700">{checkOut}</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Calculations */}
-                  <div className="space-y-2 text-xs text-slate-600">
-                    <div className="flex justify-between">
-                      <span>Room Rate</span>
-                      <span>${selectedRoom.pricePerNight} / night</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>Nights</span>
-                      <span>{calculateNights(checkIn, checkOut)} nights</span>
-                    </div>
-                    <div className="flex justify-between pt-2 border-t border-slate-100 text-sm font-extrabold text-slate-900">
-                      <span>Total Amount</span>
-                      <span className="text-cyan-600">${calculateNights(checkIn, checkOut) * selectedRoom.pricePerNight}</span>
-                    </div>
-                  </div>
-
-                  {/* Confirm Guest Details Form */}
-                  <div className="space-y-3 p-4 bg-slate-50 rounded-2xl border border-slate-100/80">
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Verify Guest Information</span>
-                    <div className="space-y-3">
-                      <div>
-                        <label className="text-[9px] font-bold text-slate-400 uppercase block mb-1">Full Name</label>
-                        <input
-                          type="text"
-                          className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs bg-white text-slate-700 focus:outline-none focus:border-cyan-500 transition-all"
-                          value={guestName}
-                          onChange={(e) => setGuestName(e.target.value)}
-                          required
-                          placeholder="Enter your full name"
-                        />
-                      </div>
-                      <div className="grid grid-cols-2 gap-3">
-                        <div>
-                          <label className="text-[9px] font-bold text-slate-400 uppercase block mb-1">Phone Number</label>
-                          <input
-                            type="text"
-                            className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs bg-white text-slate-700 focus:outline-none focus:border-cyan-500 transition-all"
-                            value={guestPhone}
-                            onChange={(e) => setGuestPhone(e.target.value)}
-                            required
-                            placeholder="e.g. +84 912345678"
-                          />
-                        </div>
-                        <div>
-                          <label className="text-[9px] font-bold text-slate-400 uppercase block mb-1">ID / Passport Number</label>
-                          <input
-                            type="text"
-                            className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs bg-white text-slate-700 focus:outline-none focus:border-cyan-500 transition-all"
-                            value={guestIdNumber}
-                            onChange={(e) => setGuestIdNumber(e.target.value)}
-                            required
-                            placeholder="e.g. 001206123456"
-                          />
-                        </div>
-                      </div>
-                      <div className="pt-2">
-                        <label className="text-[9px] font-bold text-slate-400 uppercase block mb-1">Promo / Voucher Code</label>
-                        <input
-                          type="text"
-                          className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs bg-white text-slate-700 focus:outline-none focus:border-cyan-500 transition-all font-mono uppercase"
-                          value={voucherCode}
-                          onChange={(e) => setVoucherCode(e.target.value)}
-                          placeholder="e.g. WELCOME10"
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Payment Method */}
-                  <div className="space-y-2">
-                    <label className="text-xs font-bold text-slate-400 uppercase tracking-wider block">Payment Method</label>
-                    <div className="grid grid-cols-2 gap-3">
-                      <button
-                        type="button"
-                        onClick={() => setPaymentMethod('ONLINE')}
-                        className={`p-3 rounded-xl border text-left flex flex-col justify-between transition-all cursor-pointer ${paymentMethod === 'ONLINE' ? 'border-cyan-500 bg-cyan-50/30' : 'border-slate-200 hover:border-slate-300'}`}
-                      >
-                        <span className="text-xs font-bold text-slate-800">Online Payment</span>
-                        <span className="text-[10px] text-slate-400 mt-1">Locks room for 10 mins</span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setPaymentMethod('CASH')}
-                        className={`p-3 rounded-xl border text-left flex flex-col justify-between transition-all cursor-pointer ${paymentMethod === 'CASH' ? 'border-slate-200 hover:border-slate-300' : 'border-slate-200 hover:border-slate-350'}`}
-                      >
-                        <span className="text-xs font-bold text-slate-800">Pay at Hotel</span>
-                        <span className="text-[10px] text-slate-400 mt-1">No instant locking</span>
-                      </button>
-                    </div>
-                  </div>
-
-                  {bookingError && (
-                    <p className="text-xs font-semibold text-red-650 bg-red-50 p-3 rounded-lg border border-red-100">⚠️ {bookingError}</p>
-                  )}
-
-                  {/* CTA */}
-                  <button
-                    onClick={handleConfirmBookingCreation}
-                    disabled={isBookingInProgress}
-                    className="w-full py-3 rounded-xl bg-gradient-to-r from-cyan-500 to-indigo-600 text-white font-bold text-sm tracking-wide shadow-md hover:brightness-105 active:scale-95 disabled:opacity-50 transition-all cursor-pointer"
-                  >
-                    {isBookingInProgress ? "Processing..." : "Lock Room & Proceed"}
-                  </button>
+          </div>
+          
+          {/* Progress Indicator */}
+          <div className="bg-white px-6 py-5 border-b border-slate-100 shrink-0">
+            <div className="flex items-center justify-center space-x-3 md:space-x-8 max-w-4xl mx-auto w-full">
+              {/* Step 1 */}
+              <div className="flex items-center space-x-2">
+                <div className="w-6 h-6 rounded-full bg-[#1A3B85] text-white flex items-center justify-center text-xs font-bold">✓</div>
+                <span className="text-sm font-semibold text-slate-700 hidden md:inline">Select Room</span>
+              </div>
+              <div className="h-px w-8 md:w-16 bg-slate-200"></div>
+              {/* Step 2 */}
+              <div className="flex items-center space-x-2">
+                <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${bookingStatus === '' || bookingStatus === 'PENDING' || bookingStatus === 'CONFIRMED' || bookingStatus === 'CANCELLED' || bookingStatus === 'EXPIRED' ? 'bg-[#1A3B85] text-white' : 'bg-slate-200 text-slate-500'}`}>
+                  {bookingStatus === 'PENDING' || bookingStatus === 'CONFIRMED' ? '✓' : '2'}
                 </div>
-              )}
+                <span className={`text-sm font-semibold hidden md:inline ${bookingStatus === '' || bookingStatus === 'PENDING' || bookingStatus === 'CONFIRMED' ? 'text-slate-700' : 'text-slate-500'}`}>Guest Information</span>
+              </div>
+              <div className="h-px w-8 md:w-16 bg-slate-200"></div>
+              {/* Step 3 */}
+              <div className="flex items-center space-x-2">
+                <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${bookingStatus === 'PENDING' || bookingStatus === 'CONFIRMED' ? 'bg-[#1A3B85] text-white' : 'bg-slate-200 text-slate-500'}`}>
+                  {bookingStatus === 'CONFIRMED' ? '✓' : '3'}
+                </div>
+                <span className={`text-sm font-semibold hidden md:inline ${bookingStatus === 'PENDING' || bookingStatus === 'CONFIRMED' ? 'text-slate-700' : 'text-slate-500'}`}>Payment</span>
+              </div>
+              <div className="h-px w-8 md:w-16 bg-slate-200"></div>
+              {/* Step 4 */}
+              <div className="flex items-center space-x-2">
+                <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${bookingStatus === 'CONFIRMED' ? 'bg-[#1A3B85] text-white' : 'bg-slate-200 text-slate-500'}`}>
+                  4
+                </div>
+                <span className={`text-sm font-semibold hidden md:inline ${bookingStatus === 'CONFIRMED' ? 'text-slate-700' : 'text-slate-500'}`}>Confirmation</span>
+              </div>
+            </div>
+          </div>
 
-              {bookingStatus === 'PENDING' && bookingDetails && (
-                // Screen 2: Room Locked, Payment pending, Countdown Timer
-                <div className="space-y-6 text-center py-4">
-                  
-                  {/* Locking Header */}
-                  <div className="w-16 h-16 bg-amber-50 border border-amber-200 rounded-full flex items-center justify-center text-3xl mx-auto animate-pulse">
-                    🔒
-                  </div>
-
-                  <div className="space-y-2">
-                    <h4 className="text-lg font-bold text-slate-800">Room locked successfully!</h4>
-                    <p className="text-xs text-slate-500">Your room is reserved for you. Please complete payment within the timeframe to secure it.</p>
-                  </div>
-
-                  {/* Live Timer Card */}
-                  <div className="p-4 rounded-2xl bg-amber-50/50 border border-amber-100 max-w-xs mx-auto space-y-1">
-                    <span className="text-[10px] font-bold text-amber-600 uppercase tracking-wider">Remaining Time</span>
-                    <div className="text-3xl font-black text-slate-800 font-mono tracking-tight">{formatTime(timeLeft)}</div>
+          {/* Main Content - Two Columns */}
+          <div className="flex-1 overflow-y-auto bg-slate-50">
+            <div className="max-w-6xl mx-auto py-10 px-4 md:px-8">
+              <div className="flex flex-col lg:flex-row gap-12">
+                 
+                 {/* LEFT COLUMN (Payment Section) - 65% */}
+                 <div className="lg:w-[60%] space-y-8">
                     
-                    {/* Progress bar */}
-                    <div className="w-full h-1.5 bg-slate-200 rounded-full overflow-hidden mt-2">
-                      <div 
-                        className={`h-full transition-all duration-1000 ${timeLeft < 120 ? 'bg-red-500' : 'bg-amber-500'}`}
-                        style={{ width: `${(timeLeft / 600) * 100}%` }}
-                      />
-                    </div>
-                  </div>
+                    {bookingStatus === '' && (
+                      <div className="space-y-6">
+                        <div className="bg-white p-8 rounded-2xl border border-slate-200 shadow-sm space-y-6">
+                          <div>
+                            <h3 className="text-2xl font-bold text-slate-800 tracking-tight">Guest Information</h3>
+                            <p className="text-sm text-slate-500 mt-1">Please provide your details to ensure the best service.</p>
+                          </div>
+                          
+                          <div className="space-y-5">
+                            <div>
+                              <label className="text-xs font-bold text-slate-700 uppercase tracking-wide block mb-2">Full Name</label>
+                              <input type="text" className="w-full px-5 py-3.5 rounded-xl border border-slate-300 text-sm focus:outline-none focus:border-[#1A3B85] focus:ring-1 focus:ring-[#1A3B85] transition-all" value={guestName} onChange={(e) => setGuestName(e.target.value)} required placeholder="John Doe" />
+                            </div>
+                            <div className="grid grid-cols-2 gap-5">
+                              <div>
+                                <label className="text-xs font-bold text-slate-700 uppercase tracking-wide block mb-2">Phone Number</label>
+                                <input type="text" className="w-full px-5 py-3.5 rounded-xl border border-slate-300 text-sm focus:outline-none focus:border-[#1A3B85] focus:ring-1 focus:ring-[#1A3B85] transition-all" value={guestPhone} onChange={(e) => setGuestPhone(e.target.value)} required placeholder="+1 234 567 890" />
+                              </div>
+                              <div>
+                                <label className="text-xs font-bold text-slate-700 uppercase tracking-wide block mb-2">ID / Passport Number</label>
+                                <input type="text" className="w-full px-5 py-3.5 rounded-xl border border-slate-300 text-sm focus:outline-none focus:border-[#1A3B85] focus:ring-1 focus:ring-[#1A3B85] transition-all" value={guestIdNumber} onChange={(e) => setGuestIdNumber(e.target.value)} required placeholder="001206123456" />
+                              </div>
+                            </div>
+                            <div>
+                              <label className="text-xs font-bold text-slate-700 uppercase tracking-wide block mb-2">Promo Code (Optional)</label>
+                              <input type="text" className="w-full px-5 py-3.5 rounded-xl border border-slate-300 text-sm focus:outline-none focus:border-[#1A3B85] focus:ring-1 focus:ring-[#1A3B85] uppercase transition-all" value={voucherCode} onChange={(e) => setVoucherCode(e.target.value)} placeholder="WELCOME10" />
+                            </div>
+                          </div>
 
-                  {/* Price breakdown */}
-                  <div className="p-4 rounded-xl bg-slate-50 text-xs text-slate-600 text-left space-y-2">
-                    <div className="flex justify-between">
-                      <span>Booking Code:</span>
-                      <span className="font-bold text-slate-800">{bookingDetails.bookingCode}</span>
-                    </div>
-                    {bookingDetails.discountAmount && bookingDetails.discountAmount > 0 ? (
-                      <>
-                        <div className="flex justify-between text-slate-500 mb-1">
-                          <span>Original Price:</span>
-                          <span className="font-semibold line-through">${Number(bookingDetails.totalAmount).toFixed(2)}</span>
+                          {bookingError && <p className="text-sm text-red-500 font-semibold mt-4 p-3 bg-red-50 rounded-lg">⚠️ {bookingError}</p>}
                         </div>
-                        <div className="flex justify-between text-emerald-600 font-medium mb-1">
-                          <span>Voucher Discount ({bookingDetails.voucherCode}):</span>
-                          <span>-${Number(bookingDetails.discountAmount).toFixed(2)}</span>
-                        </div>
-                        <div className="flex justify-between text-sm pt-1.5 border-t border-slate-200/80">
-                          <span className="font-bold text-slate-800">Total Amount Due:</span>
-                          <span className="font-black text-cyan-600">${Number(bookingDetails.finalPrice).toFixed(2)}</span>
-                        </div>
-                      </>
-                    ) : (
-                      <div className="flex justify-between">
-                        <span>Total Amount Due:</span>
-                        <span className="font-bold text-cyan-600">${Number(bookingDetails.totalAmount).toFixed(2)}</span>
+
+                        <button
+                          onClick={handleConfirmBookingCreation}
+                          disabled={isBookingInProgress}
+                          className="w-full py-4 rounded-xl bg-[#1A3B85] text-white font-bold text-lg shadow-lg shadow-blue-900/20 hover:bg-[#122A60] hover:shadow-xl hover:-translate-y-0.5 active:translate-y-0 active:shadow-md transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          {isBookingInProgress ? "Processing..." : "Continue to Payment"}
+                        </button>
                       </div>
                     )}
-                  </div>
 
-                  {bookingError && (
-                    <p className="text-xs font-semibold text-red-650 bg-red-50 p-3 rounded-lg border border-red-100 text-left">⚠️ {bookingError}</p>
-                  )}
+                    {bookingStatus === 'PENDING' && (
+                      <div className="space-y-8 animate-fade-in">
+                        <div className="bg-white p-8 rounded-2xl border border-slate-200 shadow-sm space-y-8">
+                          
+                          <div className="flex justify-between items-start">
+                            <div>
+                              <h3 className="text-2xl font-bold text-slate-800 tracking-tight">Payment</h3>
+                              <p className="text-sm text-slate-500 mt-1">Complete your booking securely with Stripe.</p>
+                            </div>
+                            {/* Card Icons */}
+                            <div className="flex gap-2 bg-slate-50 px-3 py-2 rounded-lg border border-slate-100">
+                               <img src="https://upload.wikimedia.org/wikipedia/commons/4/41/Visa_Logo.png" alt="Visa" className="h-4 object-contain" />
+                               <img src="https://upload.wikimedia.org/wikipedia/commons/b/b7/MasterCard_Logo.svg" alt="Mastercard" className="h-4 object-contain" />
+                               <img src="https://upload.wikimedia.org/wikipedia/commons/3/30/American_Express_logo.svg" alt="Amex" className="h-4 object-contain" />
+                            </div>
+                          </div>
 
-                  {/* Actions */}
-                  <div className="space-y-3 pt-2">
-                    <button
-                      onClick={handleSimulatePayment}
-                      disabled={isBookingInProgress}
-                      className="w-full py-3 rounded-xl bg-emerald-500 text-white font-bold text-sm tracking-wide shadow-md hover:bg-emerald-600 active:scale-95 disabled:opacity-50 transition-all cursor-pointer"
-                    >
-                      {isBookingInProgress ? "Processing..." : "💰 Simulate Card Payment"}
-                    </button>
-                    
-                    <div className="grid grid-cols-2 gap-3">
-                      <button
-                        onClick={handleRenewLock}
-                        disabled={isBookingInProgress}
-                        className="py-2.5 rounded-xl border border-slate-200 text-slate-700 font-bold text-xs hover:bg-slate-50 transition-all cursor-pointer"
-                      >
-                        🔄 Renew 10-Min Lock
-                      </button>
-                      <button
-                        onClick={handleCancelBooking}
-                        disabled={isBookingInProgress}
-                        className="py-2.5 rounded-xl bg-red-50 border border-red-100 text-red-655 font-bold text-xs hover:bg-red-100 transition-all cursor-pointer"
-                      >
-                        ✕ Cancel Booking
-                      </button>
-                    </div>
-                  </div>
+                          {/* Countdown Timer Alert */}
+                          <div className="flex items-center gap-3 p-4 bg-amber-50 border border-amber-200/60 rounded-xl">
+                            <span className="text-amber-500 text-xl">⏱️</span>
+                            <p className="text-sm font-medium text-amber-800">Your room is reserved for <strong className="font-mono text-base ml-1">{formatTime(timeLeft)}</strong></p>
+                          </div>
 
-                </div>
-              )}
+                          {/* Stripe Payment Method */}
+                          <div className="space-y-6">
+                            {!clientSecret ? (
+                              <button
+                                onClick={handleOnlinePayment}
+                                disabled={isBookingInProgress}
+                                className="w-full py-5 rounded-xl border-2 border-dashed border-slate-300 hover:border-[#1A3B85] hover:bg-blue-50/50 text-[#1A3B85] font-bold text-base transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3 group"
+                              >
+                                {isBookingInProgress ? "Connecting securely..." : (
+                                  <>
+                                    <span>Proceed to Card Entry</span>
+                                    <span className="group-hover:translate-x-1 transition-transform">➔</span>
+                                  </>
+                                )}
+                              </button>
+                            ) : (
+                              <div className="space-y-6 animate-fade-in">
+                                <Elements stripe={stripePromise} options={{ clientSecret, locale: 'en' }}>
+                                  <CheckoutForm 
+                                    onCancel={() => setClientSecret('')} 
+                                    amount={`$${((bookingDetails ? bookingDetails.finalPrice : (selectedRoom.pricePerNight * calculateNights(checkIn, checkOut)) * 1.15).toLocaleString())}`} 
+                                  />
+                                </Elements>
+                              </div>
+                            )}
+                          </div>
 
-              {bookingStatus === 'CONFIRMED' && bookingDetails && (
-                // Screen 3: Booking Confirmed
-                <div className="space-y-6 text-center py-6">
-                  <div className="w-16 h-16 bg-emerald-50 border border-emerald-200 rounded-full flex items-center justify-center text-3xl mx-auto">
-                    ✅
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <h4 className="text-xl font-bold text-slate-800">Booking Confirmed!</h4>
-                    <p className="text-xs text-slate-500">Your reservation has been secured and payment verified.</p>
-                  </div>
+                          {bookingError && <p className="text-sm text-red-500 font-semibold p-4 bg-red-50 rounded-xl border border-red-100">⚠️ {bookingError}</p>}
+                        </div>
 
-                  {/* Code summary */}
-                  <div className="p-5 rounded-2xl bg-slate-50 border border-slate-200 max-w-sm mx-auto text-left space-y-3">
-                    <div className="flex justify-between items-center pb-2 border-b border-slate-200/50">
-                      <span className="text-xs text-slate-400 font-bold uppercase">Booking Code</span>
-                      <span className="text-sm font-bold text-slate-800">{bookingDetails.bookingCode}</span>
-                    </div>
-                    <div className="grid grid-cols-2 gap-2 text-xs text-slate-600">
-                      <div>
-                        <span className="block text-[10px] text-slate-400 font-semibold uppercase">Check-In</span>
-                        <span>{checkIn}</span>
+                        <div className="flex items-center gap-6 justify-center mt-6 text-sm text-slate-500 font-medium">
+                          <button onClick={handleRenewLock} className="hover:text-[#1A3B85] hover:underline transition-colors flex items-center gap-2">🔄 Renew 10-Min Lock</button>
+                          <span className="text-slate-300">|</span>
+                          <button onClick={handleCancelBooking} className="hover:text-red-600 hover:underline transition-colors flex items-center gap-2">✕ Cancel Booking</button>
+                        </div>
+                        
+                        {/* Footer Note */}
+                        <div className="text-center pt-8">
+                          <p className="text-xs text-slate-400">
+                            By clicking "Pay", you agree to the <span className="underline cursor-pointer hover:text-slate-600">Terms & Conditions</span> and <span className="underline cursor-pointer hover:text-slate-600">Privacy Policy</span>.
+                          </p>
+                        </div>
                       </div>
-                      <div>
-                        <span className="block text-[10px] text-slate-400 font-semibold uppercase">Check-Out</span>
-                        <span>{checkOut}</span>
+                    )}
+
+                    {bookingStatus === 'CONFIRMED' && (
+                      <div className="space-y-8 text-center py-16 bg-white rounded-2xl border border-slate-200 shadow-sm animate-fade-in">
+                        <div className="w-24 h-24 bg-emerald-50 text-emerald-500 rounded-full flex items-center justify-center text-5xl mx-auto shadow-inner border border-emerald-100">
+                          ✓
+                        </div>
+                        <div className="space-y-3">
+                          <h4 className="text-4xl font-extrabold text-slate-900 tracking-tight">Booking Successful!</h4>
+                          <p className="text-slate-500 text-lg">Thank you for choosing StayZone Hotel. We can't wait to host you.</p>
+                        </div>
+                        <button
+                          onClick={() => setShowBookingModal(false)}
+                          className="w-full max-w-xs py-4 rounded-xl bg-slate-900 text-white font-bold text-base shadow-lg hover:bg-slate-800 hover:shadow-xl hover:-translate-y-0.5 active:translate-y-0 transition-all duration-300 mx-auto block"
+                        >
+                          Return Home
+                        </button>
                       </div>
-                    </div>
-                  </div>
+                    )}
 
-                  <button
-                    onClick={() => setShowBookingModal(false)}
-                    className="w-full py-3 rounded-xl bg-slate-800 text-white font-bold text-sm tracking-wide shadow-md hover:bg-slate-900 active:scale-95 transition-all cursor-pointer"
-                  >
-                    Back to Hotel Details
-                  </button>
-                </div>
-              )}
+                    {bookingStatus === 'CANCELLED' && (
+                      <div className="space-y-8 text-center py-16 bg-white rounded-2xl border border-slate-200 shadow-sm animate-fade-in">
+                        <div className="w-24 h-24 bg-red-50 text-red-500 rounded-full flex items-center justify-center text-5xl mx-auto shadow-inner border border-red-100">
+                          ✕
+                        </div>
+                        <div className="space-y-3">
+                          <h4 className="text-4xl font-extrabold text-slate-900 tracking-tight">Booking Cancelled</h4>
+                          <p className="text-slate-500 text-lg">Your room reservation has been released.</p>
+                        </div>
+                        <button
+                          onClick={() => setShowBookingModal(false)}
+                          className="w-full max-w-xs py-4 rounded-xl bg-slate-900 text-white font-bold text-base shadow-lg hover:bg-slate-800 hover:shadow-xl hover:-translate-y-0.5 active:translate-y-0 transition-all duration-300 mx-auto block"
+                        >
+                          Close Window
+                        </button>
+                      </div>
+                    )}
 
-              {bookingStatus === 'CANCELLED' && (
-                // Screen 4: Booking Cancelled
-                <div className="space-y-6 text-center py-6">
-                  <div className="w-16 h-16 bg-red-50 border border-red-200 rounded-full flex items-center justify-center text-3xl mx-auto">
-                    🚫
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <h4 className="text-xl font-bold text-slate-800">Booking Cancelled</h4>
-                    <p className="text-xs text-slate-500">Your booking has been successfully cancelled and any room locks released.</p>
-                  </div>
+                    {bookingStatus === 'EXPIRED' && (
+                      <div className="space-y-8 text-center py-16 bg-white rounded-2xl border border-slate-200 shadow-sm animate-fade-in">
+                        <div className="w-24 h-24 bg-rose-50 text-rose-500 rounded-full flex items-center justify-center text-5xl mx-auto shadow-inner border border-rose-100">
+                          ⏰
+                        </div>
+                        <div className="space-y-3">
+                          <h4 className="text-4xl font-extrabold text-slate-900 tracking-tight">Reservation Expired</h4>
+                          <p className="text-slate-500 text-lg">The room lock has timed out. The room is now available for other guests.</p>
+                        </div>
+                        <button
+                          onClick={() => setShowBookingModal(false)}
+                          className="w-full max-w-xs py-4 rounded-xl bg-slate-900 text-white font-bold text-base shadow-lg hover:bg-slate-800 hover:shadow-xl hover:-translate-y-0.5 active:translate-y-0 transition-all duration-300 mx-auto block"
+                        >
+                          Book Again
+                        </button>
+                      </div>
+                    )}
+                 </div>
 
-                  <button
-                    onClick={() => setShowBookingModal(false)}
-                    className="w-full py-3 rounded-xl bg-slate-800 text-white font-bold text-sm tracking-wide shadow-md hover:bg-slate-900 active:scale-95 transition-all cursor-pointer"
-                  >
-                    Close Window
-                  </button>
-                </div>
-              )}
+                 {/* RIGHT COLUMN (Booking Summary) - 40% */}
+                 <div className="lg:w-[40%]">
+                   <div className="bg-white rounded-2xl border border-slate-200 p-8 shadow-sm sticky top-8 space-y-8">
+                     <h3 className="text-sm font-bold text-slate-800 uppercase tracking-widest">Booking Summary</h3>
+                     
+                     <div className="flex gap-5 items-center">
+                       <div className="w-28 h-24 bg-slate-100 rounded-xl overflow-hidden flex-shrink-0 border border-slate-100">
+                         <img src={hotel.images?.[0]?.imageUrl || 'https://via.placeholder.com/150'} className="w-full h-full object-cover hover:scale-110 transition-transform duration-500" alt="" />
+                       </div>
+                       <div>
+                         <h4 className="font-extrabold text-lg text-slate-900 leading-tight tracking-tight">{selectedRoom.roomType} Suite</h4>
+                         <p className="text-sm text-slate-500 mt-1">{hotel.name}</p>
+                         <div className="flex gap-1 mt-2 text-amber-400 text-xs">
+                           ★ ★ ★ ★ ★
+                         </div>
+                       </div>
+                     </div>
+                     
+                     <div className="grid grid-cols-2 gap-6 text-sm text-slate-700 bg-slate-50 p-4 rounded-xl border border-slate-100">
+                       <div>
+                         <span className="block text-xs text-slate-400 font-bold uppercase tracking-wider mb-2">Dates</span>
+                         <span className="font-medium text-slate-800">{checkIn} ➔ {checkOut}</span>
+                         <span className="block text-slate-500 mt-1">({calculateNights(checkIn, checkOut)} nights)</span>
+                       </div>
+                       <div>
+                         <span className="block text-xs text-slate-400 font-bold uppercase tracking-wider mb-2">Guests</span>
+                         <span className="font-medium text-slate-800">2 guests</span>
+                       </div>
+                     </div>
 
-              {bookingStatus === 'EXPIRED' && (
-                // Screen 5: Booking Expired
-                <div className="space-y-6 text-center py-6">
-                  <div className="w-16 h-16 bg-rose-50 border border-rose-200 rounded-full flex items-center justify-center text-3xl mx-auto">
-                    ⏰
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <h4 className="text-xl font-bold text-slate-800">Lock Expired</h4>
-                    <p className="text-xs text-slate-500">The 10-minute hold on this room has expired. The room has been released for other customers.</p>
-                  </div>
+                     <div className="space-y-4 text-sm text-slate-600">
+                       <div className="flex justify-between items-center">
+                         <span>Room Rate ({calculateNights(checkIn, checkOut)} nights)</span>
+                         <span className="font-semibold text-slate-800">${((selectedRoom.pricePerNight * calculateNights(checkIn, checkOut)).toLocaleString())}</span>
+                       </div>
+                       <div className="flex justify-between items-center">
+                         <span>Service Fee</span>
+                         <span className="font-semibold text-slate-800">${(((selectedRoom.pricePerNight * calculateNights(checkIn, checkOut)) * 0.05).toLocaleString())}</span>
+                       </div>
+                       <div className="flex justify-between items-center">
+                         <span>Taxes (10%)</span>
+                         <span className="font-semibold text-slate-800">${(((selectedRoom.pricePerNight * calculateNights(checkIn, checkOut)) * 0.1).toLocaleString())}</span>
+                       </div>
+                       {bookingDetails && bookingDetails.discountAmount > 0 && (
+                         <div className="flex justify-between items-center text-emerald-600 bg-emerald-50 px-3 py-2 rounded-lg mt-2">
+                           <span className="font-medium">Discount Code</span>
+                           <span className="font-bold">-${((bookingDetails.discountAmount).toLocaleString())}</span>
+                         </div>
+                       )}
+                     </div>
 
-                  <button
-                    onClick={() => setShowBookingModal(false)}
-                    className="w-full py-3 rounded-xl bg-slate-800 text-white font-bold text-sm tracking-wide shadow-md hover:bg-slate-900 active:scale-95 transition-all cursor-pointer"
-                  >
-                    Try Booking Again
-                  </button>
-                </div>
-              )}
+                     <div className="border-t border-dashed border-slate-200 pt-6 flex justify-between items-end">
+                       <span className="font-bold text-slate-800 uppercase tracking-widest text-sm">Total Amount</span>
+                       <span className="text-3xl font-black text-[#1A3B85] tracking-tight">
+                         ${((bookingDetails ? bookingDetails.finalPrice : (selectedRoom.pricePerNight * calculateNights(checkIn, checkOut)) * 1.15).toLocaleString())}
+                       </span>
+                     </div>
 
+                     {bookingDetails && (
+                       <div className="bg-blue-50 border border-blue-100 p-4 rounded-xl text-center mt-6">
+                         <span className="text-xs text-blue-600 font-bold uppercase tracking-widest block mb-1">Your Booking Code</span>
+                         <div className="text-xl font-black text-blue-900 tracking-widest">{bookingDetails.bookingCode}</div>
+                       </div>
+                     )}
+
+                     <div className="bg-slate-50 p-5 rounded-xl text-xs text-slate-600 border border-slate-100 mt-8">
+                        <p className="font-bold mb-2 uppercase text-slate-700 tracking-wider">Cancellation Policy</p>
+                        <p className="leading-relaxed">Free cancellation up to 24 hours before your check-in date. If you cancel later or do not show up, you will be charged 100% of the booking value.</p>
+                     </div>
+                   </div>
+                 </div>
+
+              </div>
             </div>
           </div>
         </div>
