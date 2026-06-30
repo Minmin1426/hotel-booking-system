@@ -23,4 +23,5 @@ public class BookingHistoryResponse {
     private String status;          // PENDING | CONFIRMED | CANCELLED | COMPLETED
     private LocalDateTime confirmedAt;
     private LocalDateTime createdAt;
+    private Boolean isReviewed;
 }

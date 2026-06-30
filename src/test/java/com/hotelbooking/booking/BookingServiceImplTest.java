@@ -8,6 +8,7 @@ import com.hotelbooking.booking.dto.UpdateBookingStatusRequest;
 import com.hotelbooking.common.exception.BusinessException;
 import com.hotelbooking.hotel.Hotel;
 import com.hotelbooking.hotel.HotelRepository;
+import com.hotelbooking.hotel.ReviewRepository;
 import com.hotelbooking.payment.Payment;
 import com.hotelbooking.payment.PaymentRepository;
 import com.hotelbooking.room.Room;
@@ -56,6 +57,8 @@ class BookingServiceImplTest {
     private RoomLockRepository roomLockRepository;
     @Mock
     private PaymentRepository paymentRepository;
+    @Mock
+    private ReviewRepository reviewRepository;
 
     @InjectMocks
     private BookingServiceImpl bookingService;

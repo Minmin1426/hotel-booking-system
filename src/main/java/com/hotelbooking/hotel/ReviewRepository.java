@@ -20,6 +20,13 @@ public interface ReviewRepository extends JpaRepository<Review, Long> {
 
     long countByUser_UserId(Long userId);
 
+    boolean existsByBookingBookingId(Long bookingId);
+
+    Page<Review> findByHotelHotelIdAndStatusOrderByCreatedAtDesc(Long hotelId, String status, Pageable pageable);
+
+    @Query("SELECT AVG(CAST(r.rating AS double)) FROM Review r WHERE r.hotel.hotelId = :hotelId AND r.status = 'VISIBLE'")
+    Double getAverageRatingForHotel(@Param("hotelId") Long hotelId);
+
     @org.springframework.data.jpa.repository.Modifying
     @org.springframework.transaction.annotation.Transactional
     @Query("DELETE FROM Review r WHERE r.user.userId = :userId")

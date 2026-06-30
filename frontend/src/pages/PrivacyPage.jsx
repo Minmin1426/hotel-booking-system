@@ -28,7 +28,7 @@ export default function PrivacyPage() {
             <p className="text-xs text-[#86868b]">We collect personal information when you voluntarily provide it or through the linked account registration process:</p>
             <ul className="list-disc list-inside text-xs text-[#86868b] space-y-1 mt-2">
               <li><strong>Required Identification Info:</strong> Full name, email address, phone number, and ID/Passport number.</li>
-              <li><strong>Linked Authentication (OAuth2):</strong> Verification tokens and email details from Google/Facebook when utilizing quick sign-in features.</li>
+              <li><strong>Linked Authentication (OAuth2):</strong> Verification tokens and email details from Google when utilizing quick sign-in features.</li>
               <li><strong>Booking History:</strong> Stay history, check-in/out dates, transaction values, and selected custom room preferences.</li>
             </ul>
           </section>

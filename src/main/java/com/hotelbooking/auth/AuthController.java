@@ -54,17 +54,6 @@ public class AuthController {
         return ResponseEntity.ok(response);
     }
 
-    @PostMapping("/facebook")
-    public ResponseEntity<LoginResponse> facebookLogin(
-            @Valid @RequestBody SocialLoginRequest socialLoginRequest, HttpServletRequest request) {
-        String ipAddress = getClientIp(request);
-        String userAgent = request.getHeader("User-Agent");
-
-        log.info("Received Facebook login request from IP: {}", ipAddress);
-        LoginResponse response = authService.loginWithFacebook(socialLoginRequest, ipAddress, userAgent);
-        return ResponseEntity.ok(response);
-    }
-
     @PostMapping("/logout")
     public ResponseEntity<LogoutResponse> logout(
             @RequestHeader("Authorization") String authHeader,

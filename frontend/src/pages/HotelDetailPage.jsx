@@ -3,6 +3,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { HotelService } from '../services/HotelService';
 import { BookingService } from '../services/BookingService';
 import { AuthService } from '../services/AuthService';
+import { ReviewService } from '../services/ReviewService';
 import Header from '../components/Header';
 
 function HotelDetailPage() {
@@ -46,6 +47,13 @@ function HotelDetailPage() {
   const [guestIdNumber, setGuestIdNumber] = useState('');
   const [voucherCode, setVoucherCode] = useState('');
 
+  // Reviews states
+  const [reviews, setReviews] = useState([]);
+  const [reviewsLoading, setReviewsLoading] = useState(false);
+  const [reviewsPage, setReviewsPage] = useState(0);
+  const [reviewsTotalPages, setReviewsTotalPages] = useState(0);
+  const [reviewsTotalElements, setReviewsTotalElements] = useState(0);
+
   // Fetch hotel details on load
   useEffect(() => {
     const fetchDetail = async () => {
@@ -63,6 +71,24 @@ function HotelDetailPage() {
     };
     fetchDetail();
   }, [id]);
+
+  // Fetch reviews on page change or hotel change
+  useEffect(() => {
+    const fetchReviews = async () => {
+      setReviewsLoading(true);
+      try {
+        const data = await ReviewService.getReviewsForHotel(id, reviewsPage, 5);
+        setReviews(data.content || []);
+        setReviewsTotalPages(data.totalPages || 0);
+        setReviewsTotalElements(data.totalElements || 0);
+      } catch (err) {
+        console.error("Failed to load reviews:", err);
+      } finally {
+        setReviewsLoading(false);
+      }
+    };
+    fetchReviews();
+  }, [id, reviewsPage]);
 
   // Handle room lock countdown timer
   useEffect(() => {
@@ -469,6 +495,71 @@ function HotelDetailPage() {
               </div>
             )}
           </div>
+
+          {/* Stay Reviews Section */}
+          <section className="mt-12 pt-8 border-t border-slate-200 text-left">
+            <div className="flex justify-between items-baseline mb-6">
+              <div>
+                <h2 className="text-xl font-bold tracking-tight text-slate-800">Guest Experience</h2>
+                <p className="text-xs text-slate-405">Honest feedback from verified check-outs</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="text-amber-500 text-base font-bold">★ {hotel && hotel.rating ? hotel.rating.toFixed(1) : 'New'}</div>
+                <span className="text-xs text-slate-400">({reviewsTotalElements} reviews)</span>
+              </div>
+            </div>
+
+            {reviewsLoading && reviews.length === 0 ? (
+              <div className="text-center py-8 text-xs text-slate-400">Loading guest reviews...</div>
+            ) : reviews.length === 0 ? (
+              <div className="py-8 text-center rounded-2xl border border-dashed border-slate-200 text-slate-400 text-xs bg-slate-50/50">
+                No reviews submitted yet for this hotel. Be the first to share your experience after checkout!
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {reviews.map((rev) => (
+                  <div key={rev.reviewId} className="p-5 rounded-2xl border border-slate-100 bg-[#fafafc]/50 hover:bg-[#fafafc] transition-colors">
+                    <div className="flex justify-between items-start mb-2">
+                      <div>
+                        <span className="text-sm font-bold text-slate-800 block">{rev.customerName}</span>
+                        <span className="text-[10px] text-slate-400">{new Date(rev.createdAt).toLocaleDateString()}</span>
+                      </div>
+                      <div className="flex gap-0.5 text-amber-500 font-bold text-sm">
+                        {Array.from({ length: rev.rating }).map((_, i) => (
+                          <span key={i}>★</span>
+                        ))}
+                        {Array.from({ length: 5 - rev.rating }).map((_, i) => (
+                          <span key={i} className="text-slate-200">★</span>
+                        ))}
+                      </div>
+                    </div>
+                    <p className="text-xs text-slate-600 leading-relaxed italic">"{rev.comment}"</p>
+                  </div>
+                ))}
+
+                {/* Reviews Pagination */}
+                {reviewsTotalPages > 1 && (
+                  <div className="flex justify-center items-center gap-4 mt-6 pt-4 border-t border-slate-100">
+                    <button
+                      disabled={reviewsPage === 0}
+                      onClick={() => setReviewsPage(prev => prev - 1)}
+                      className="px-3 py-1.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-600 disabled:opacity-40 enabled:hover:bg-slate-50 cursor-pointer transition-all"
+                    >
+                      Prev
+                    </button>
+                    <span className="text-xs text-slate-500 font-medium">Page {reviewsPage + 1} of {reviewsTotalPages}</span>
+                    <button
+                      disabled={reviewsPage >= reviewsTotalPages - 1}
+                      onClick={() => setReviewsPage(prev => prev + 1)}
+                      className="px-3 py-1.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-600 disabled:opacity-40 enabled:hover:bg-slate-50 cursor-pointer transition-all"
+                    >
+                      Next
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+          </section>
 
         </section>
 

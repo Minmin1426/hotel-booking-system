@@ -40,29 +40,6 @@ export default function RegisterPage() {
     window.location.href = url;
   };
 
-  const handleFacebookLogin = async () => {
-    const appId = import.meta.env.VITE_FACEBOOK_APP_ID;
-    if (!appId || appId.includes("your-facebook-app-id")) {
-      const email = prompt("Facebook App ID is not configured in frontend/.env.\n\nEnter the Facebook email you want to use for MOCK LOGIN (testing):", "test.facebook@gmail.com");
-      if (email && email.trim()) {
-        setIsLoading(true);
-        setError(null);
-        try {
-          await AuthService.loginWithFacebook(`mock-facebook-token-${email.trim()}`);
-          window.location.href = '/';
-        } catch (err) {
-          setError(err.message);
-        } finally {
-          setIsLoading(false);
-        }
-      }
-      return;
-    }
-    const redirectUri = encodeURIComponent(window.location.origin + '/login');
-    const url = `https://www.facebook.com/v12.0/dialog/oauth?client_id=${appId}&redirect_uri=${redirectUri}&response_type=token&scope=email&state=facebook`;
-    window.location.href = url;
-  };
-
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
@@ -282,27 +259,16 @@ export default function RegisterPage() {
                 <div className="flex-1 border-t border-[#e3e3e8]"></div>
               </div>
 
-              <div className="flex gap-2">
+              <div className="flex justify-center">
                 <button
                   type="button"
                   onClick={handleGoogleLogin}
-                  className="flex-1 h-[38px] flex items-center justify-center gap-2 rounded-2xl border border-[#e3e3e8] bg-white text-[#1d1d1f] hover:bg-[#f5f5f7] active:scale-[0.97] transition-all text-xs font-semibold cursor-pointer"
+                  className="w-full h-[38px] flex items-center justify-center gap-2 rounded-2xl border border-[#e3e3e8] bg-white text-[#1d1d1f] hover:bg-[#f5f5f7] active:scale-[0.97] transition-all text-xs font-semibold cursor-pointer"
                 >
                   <svg className="w-3.5 h-3.5" viewBox="0 0 24 24">
                     <path fill="#EA4335" d="M12.24 10.285V14.4h6.887c-.648 2.41-2.519 4.2-5.127 4.2a5.99 5.99 0 0 1-6-6 5.99 5.99 0 0 1 6-6c1.64 0 3.09.67 4.14 1.77l3.12-3.12A10.15 10.15 0 0 0 12.24 2a9.99 9.99 0 0 0-10 10 9.99 9.99 0 0 0 10 10c5.3 0 9.76-3.83 9.76-9.76 0-.64-.06-1.22-.17-1.95H12.24z"/>
                   </svg>
-                  Google
-                </button>
-
-                <button
-                  type="button"
-                  onClick={handleFacebookLogin}
-                  className="flex-1 h-[38px] flex items-center justify-center gap-2 rounded-2xl border border-[#e3e3e8] bg-white text-[#1d1d1f] hover:bg-[#f5f5f7] active:scale-[0.97] transition-all text-xs font-semibold cursor-pointer"
-                >
-                  <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="#1877F2">
-                    <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
-                  </svg>
-                  Facebook
+                  Tiếp tục với Google
                 </button>
               </div>
             </form>

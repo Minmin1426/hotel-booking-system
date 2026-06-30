@@ -24,7 +24,8 @@ src/test/java/com/hotelbooking/
 │
 ├── hotel/                          # Kiểm thử Feature: Khách sạn & Đánh giá
 │   ├── HotelControllerTest.java
-│   └── HotelServiceImplTest.java
+│   ├── HotelServiceImplTest.java
+│   └── ReviewServiceImplTest.java
 │
 ├── payment/                        # Kiểm thử Feature: Giao dịch & Thanh toán
 │   └── PaymentServiceTest.java
@@ -99,6 +100,16 @@ src/test/java/com/hotelbooking/
     *   Nhận webhook có chữ ký HMAC hợp lệ $\rightarrow$ Cập nhật Payment thành `SUCCESS`, Booking thành `CONFIRMED`, gửi email xác nhận.
     *   Nhận webhook sai chữ ký $\rightarrow$ Ném lỗi bảo mật `SecurityException` và ghi vết `PaymentAuditLog`.
     *   Nhận webhook trùng lặp giao dịch (Duplicate callback) $\rightarrow$ Bỏ qua không xử lý lại.
+
+### 3.5. Đánh giá & Phản hồi (ReviewServiceImplTest)
+*   **Đăng đánh giá:**
+    *   Đăng đánh giá thành công cho đơn đặt phòng đã hoàn thành (`COMPLETED`) và thuộc sở hữu của người dùng.
+    *   Kiểm tra tính toán lại điểm rating trung bình của khách sạn ngay sau khi đánh giá được lưu thành công.
+*   **Xác thực ràng buộc nghiệp vụ:**
+    *   Ngăn chặn đăng đánh giá khi người dùng không sở hữu đơn đặt phòng (`Access denied`).
+    *   Ngăn chặn đăng đánh giá khi trạng thái đơn đặt phòng chưa hoàn thành (`COMPLETED`).
+    *   Ngăn chặn việc đăng nhiều đánh giá trên cùng một đơn đặt phòng (Duplicate review prevention).
+*   **Hiển thị đánh giá:** Kiểm tra việc chỉ lấy ra các đánh giá có trạng thái `VISIBLE`.
 
 ---
 

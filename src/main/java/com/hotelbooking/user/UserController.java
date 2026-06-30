@@ -21,7 +21,7 @@ public class UserController {
     private final JwtService jwtService;
 
     @PutMapping("/me/profile")
-    @PreAuthorize("hasAnyRole('CUSTOMER', 'STAFF', 'ADMIN', 'DIRECTOR')")
+    @PreAuthorize("hasAnyRole('CUSTOMER', 'STAFF', 'ADMIN', 'DIRECTOR', 'RECEPTIONIST', 'HOUSEKEEPER')")
     public ResponseEntity<ApiResponse<UserProfileResponse>> updateProfile(
             @RequestHeader("Authorization") String authorizationHeader,
             @Valid @RequestBody UpdateProfileRequest request) {

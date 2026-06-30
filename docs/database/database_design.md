@@ -240,7 +240,7 @@ Hệ thống có tổng cộng **16 bảng** dữ liệu được khởi tạo v
 | `email` | VARCHAR(255) | NOT NULL, UNIQUE | Địa chỉ email dùng để đăng nhập. |
 | `password_hash` | VARCHAR(255) | NOT NULL | Mật khẩu băm bằng BCrypt (vòng lặp 12). |
 | `full_name` | NVARCHAR(255) | NOT NULL | Tên đầy đủ hiển thị. |
-| `role` | VARCHAR(50) | NOT NULL | Vai trò: `CUSTOMER`, `STAFF`, `ADMIN`, `DIRECTOR`. |
+| `role` | VARCHAR(50) | NOT NULL | Vai trò: `CUSTOMER`, `STAFF`, `ADMIN`, `DIRECTOR`, `RECEPTIONIST`, `HOUSEKEEPER`. |
 | `status` | VARCHAR(50) | NOT NULL, DEFAULT 'ACTIVE' | Trạng thái: `ACTIVE`, `LOCKED`, `INACTIVE`. |
 | `failed_login_attempts`| INT | NOT NULL, DEFAULT 0 | Số lần đăng nhập sai (tự động khóa nếu $\ge 5$). |
 | `last_login_at` | DATETIME2 | NULL | Thời điểm đăng nhập thành công cuối cùng. |
@@ -470,3 +470,6 @@ Hệ thống quản lý lịch sử cấu trúc dữ liệu qua các script Flyw
 - **`V10__Review_moderation.sql`**: Thêm cột trạng thái kiểm duyệt (`status = VISIBLE/HIDDEN`) và lý do ẩn đánh giá vào bảng `reviews`.
 - **`V11__Reporting_indexes.sql`**: Tạo các chỉ mục phức hợp tối ưu hóa hiệu năng truy vấn cho các báo cáo doanh thu và báo cáo thống kê phòng.
 - **`V12__Seed_director_user.sql`**: Khởi tạo tài khoản giám đốc mặc định phục vụ chạy thử báo cáo doanh thu.
+- **`V13__Seed_vouchers.sql`**: Khởi tạo danh sách mã giảm giá mẫu phục vụ thử nghiệm hệ thống.
+- **`V14__Seed_more_vouchers.sql`**: Bổ sung các mã giảm giá đặc biệt.
+- **`V15__Seed_receptionist_and_housekeeper_users.sql`**: Seed tài khoản nhân viên lễ tân (`RECEPTIONIST`) và buồng phòng (`HOUSEKEEPER`) phục vụ kiểm thử phân quyền mới.

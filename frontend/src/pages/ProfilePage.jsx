@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { AuthService } from '../services/AuthService';
 import { BookingService } from '../services/BookingService';
+import { ReviewService } from '../services/ReviewService';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
 
@@ -30,6 +31,15 @@ export default function ProfilePage() {
   // Booking history state
   const [bookings, setBookings] = useState([]);
   const [bookingsLoading, setBookingsLoading] = useState(false);
+
+  // Review stay state
+  const [reviewModalOpen, setReviewModalOpen] = useState(false);
+  const [reviewBookingId, setReviewBookingId] = useState(null);
+  const [reviewHotelName, setReviewHotelName] = useState('');
+  const [reviewRating, setReviewRating] = useState(5);
+  const [reviewComment, setReviewComment] = useState('');
+  const [reviewSubmitting, setReviewSubmitting] = useState(false);
+  const [reviewError, setReviewError] = useState(null);
 
   // Vouchers state
   const [vouchers, setVouchers] = useState([]);
@@ -63,7 +73,7 @@ export default function ProfilePage() {
       setEditedPhone(data.phoneNumber || '');
       setEditedIdNumber(data.identificationNumber || '');
 
-      if (data.role !== 'ADMIN') {
+      if (data.role === 'CUSTOMER') {
         loadBookingHistory();
       }
     } catch (err) {
@@ -133,6 +143,31 @@ export default function ProfilePage() {
       setError(err.message || "Failed to cancel booking.");
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const openReviewModal = (bookingId, hotelName) => {
+    setReviewBookingId(bookingId);
+    setReviewHotelName(hotelName);
+    setReviewRating(5);
+    setReviewComment('');
+    setReviewError(null);
+    setReviewModalOpen(true);
+  };
+
+  const handleReviewSubmit = async (e) => {
+    e.preventDefault();
+    setReviewSubmitting(true);
+    setReviewError(null);
+    try {
+      await ReviewService.createReview(reviewBookingId, reviewRating, reviewComment);
+      setMessage("Cảm ơn bạn đã gửi đánh giá! Đánh giá sẽ xuất hiện công khai trên trang khách sạn.");
+      setReviewModalOpen(false);
+      loadBookingHistory();
+    } catch (err) {
+      setReviewError(err.message || "Không thể gửi đánh giá.");
+    } finally {
+      setReviewSubmitting(false);
     }
   };
 
@@ -434,6 +469,23 @@ export default function ProfilePage() {
                             </button>
                           </div>
                         )}
+
+                        {booking.status === 'COMPLETED' && (
+                          <div className="mt-4 pt-3 border-t border-[#f5f5fa] flex justify-end">
+                            {booking.isReviewed ? (
+                              <span className="px-3 py-1 rounded-full bg-slate-100 text-[#86868b] border border-slate-200 text-[10px] font-bold">
+                                Checked & Reviewed
+                              </span>
+                            ) : (
+                              <button
+                                onClick={() => openReviewModal(booking.bookingId, booking.hotelName)}
+                                className="px-3 py-1 rounded-full bg-emerald-50 text-emerald-650 border border-emerald-100 hover:bg-emerald-100 text-[10px] font-bold transition-all cursor-pointer"
+                              >
+                                Write Stay Review
+                              </button>
+                            )}
+                          </div>
+                        )}
                       </div>
                     );
                   })
@@ -533,6 +585,80 @@ export default function ProfilePage() {
 
         </div>
       </main>
+
+      {reviewModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm animate-fade-in">
+          <div className="bg-white rounded-2xl p-6 w-full max-w-[450px] shadow-2xl mx-4 border border-[#e8e8ed] animate-scale-up">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-bold text-[#1d1d1f]">Write Stay Review</h3>
+              <button 
+                onClick={() => setReviewModalOpen(false)}
+                className="text-[#86868b] hover:text-[#1d1d1f] transition-colors font-medium text-sm p-1 cursor-pointer"
+              >
+                ✕ Close
+              </button>
+            </div>
+            
+            <form onSubmit={handleReviewSubmit}>
+              <div className="mb-4">
+                <span className="text-xs text-[#86868b] block mb-1">Hotel Name</span>
+                <span className="text-sm font-semibold text-[#1d1d1f] block bg-slate-50 p-3 rounded-xl border border-slate-100">{reviewHotelName}</span>
+              </div>
+
+              <div className="mb-4">
+                <label className="block text-xs font-bold text-[#86868b] mb-1.5 uppercase tracking-wider">Rating</label>
+                <div className="flex gap-2">
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <button
+                      key={star}
+                      type="button"
+                      onClick={() => setReviewRating(star)}
+                      className="text-2xl cursor-pointer transition-transform hover:scale-110"
+                    >
+                      {star <= reviewRating ? '★' : '☆'}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="mb-4">
+                <label className="block text-xs font-bold text-[#86868b] mb-1.5 uppercase tracking-wider">Comments</label>
+                <textarea
+                  required
+                  rows={4}
+                  value={reviewComment}
+                  onChange={(e) => setReviewComment(e.target.value)}
+                  placeholder="Share your stay experience, what you liked, and what could be improved..."
+                  className="w-full p-3 rounded-xl border border-[#e8e8ed] text-sm focus:outline-none focus:border-[#0066cc] bg-[#f5f5f7] focus:bg-white resize-none transition-all"
+                />
+              </div>
+
+              {reviewError && (
+                <div className="mb-4 p-3 bg-red-50 border border-red-100 rounded-xl text-xs text-red-600 font-medium">
+                  {reviewError}
+                </div>
+              )}
+
+              <div className="flex justify-end gap-3 mt-6">
+                <button
+                  type="button"
+                  onClick={() => setReviewModalOpen(false)}
+                  className="h-[38px] px-4 rounded-xl border border-[#e8e8ed] text-xs font-bold text-[#86868b] hover:bg-slate-50 transition-all cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={reviewSubmitting}
+                  className="h-[38px] px-5 rounded-xl bg-[#0066cc] text-white text-xs font-bold hover:bg-[#0055b3] transition-all cursor-pointer disabled:opacity-50"
+                >
+                  {reviewSubmitting ? 'Submitting...' : 'Submit Review'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       <Footer />
     </div>

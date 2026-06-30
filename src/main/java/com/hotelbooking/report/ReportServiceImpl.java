@@ -374,7 +374,14 @@ public class ReportServiceImpl implements ReportService {
         review.setModerationReason("HIDE".equals(request.getAction()) ? request.getReason() : null);
 
         reviewRepository.save(review);
-        log.info("UC-31: Review {} set to {} by admin {}", reviewId, newStatus, adminId);
+
+        // Recalculate average rating of the hotel
+        Hotel hotel = review.getHotel();
+        Double avgRating = reviewRepository.getAverageRatingForHotel(hotel.getHotelId());
+        hotel.setRating(avgRating != null ? java.math.BigDecimal.valueOf(avgRating) : null);
+
+        log.info("UC-31: Review {} set to {} by admin {}. Recalculated hotel {} rating to {}", 
+                reviewId, newStatus, adminId, hotel.getHotelId(), hotel.getRating());
 
         return toReviewResponse(review);
     }

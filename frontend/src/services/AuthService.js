@@ -43,26 +43,6 @@ export const AuthService = {
     return data;
   },
 
-  // Login with Facebook
-  loginWithFacebook: async (token) => {
-    const response = await fetch(`${API_BASE_URL}/auth/facebook`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ token }),
-    });
-
-    const data = await response.json();
-    if (!response.ok) {
-      throw new Error(data.message || "Facebook login failed");
-    }
-
-    sessionStorage.setItem("accessToken", data.accessToken);
-    sessionStorage.setItem("refreshToken", data.refreshToken);
-    sessionStorage.setItem("userEmail", data.email);
-    sessionStorage.setItem("userRole", data.role);
-    return data;
-  },
-
   // Register a new guest account
   register: async (userData) => {
     const response = await fetch(`${API_BASE_URL}/auth/register`, {

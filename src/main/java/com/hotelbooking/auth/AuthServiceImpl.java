@@ -249,56 +249,29 @@ public class AuthServiceImpl implements AuthService {
         return authenticateSocialUser(email, name, "Google", ipAddress, userAgent);
     }
 
-    @Override
-    @Transactional
-    public LoginResponse loginWithFacebook(SocialLoginRequest request, String ipAddress, String userAgent) {
-        log.info("UC2b: Attempting Facebook login");
-        Map<String, Object> tokenInfo = verifyFacebookToken(request.getToken());
-        if (tokenInfo == null) {
-            log.warn("Facebook authentication failed: invalid token");
-            saveAuditLog("ANONYMOUS", "FAILED_INVALID_SOCIAL_TOKEN", ipAddress, userAgent);
-            throw new BadCredentialsException("INVALID_SOCIAL_TOKEN");
-        }
-
-        String email = (String) tokenInfo.get("email");
-        String name = (String) tokenInfo.get("name");
-        return authenticateSocialUser(email, name, "Facebook", ipAddress, userAgent);
-    }
-
-    private Map<String, Object> verifyGoogleToken(String idToken) {
-        if (idToken != null && idToken.startsWith("mock-google-token-")) {
-            String email = idToken.substring("mock-google-token-".length());
+    private Map<String, Object> verifyGoogleToken(String token) {
+        if (token != null && token.startsWith("mock-google-token-")) {
+            String email = token.substring("mock-google-token-".length());
             log.info("Social login: Bypassing Google token verification with mock email: {}", email);
             return Map.of("email", email, "name", "Mock Google User");
         }
         try {
             RestTemplate restTemplate = new RestTemplate();
-            String url = "https://oauth2.googleapis.com/tokeninfo?id_token=" + idToken;
+            String url;
+            // ID tokens are JWTs and contain two dots (3 parts: header.payload.signature).
+            if (token != null && token.contains(".") && token.split("\\.").length == 3) {
+                log.info("Verifying Google token as ID Token");
+                url = "https://oauth2.googleapis.com/tokeninfo?id_token=" + token;
+            } else {
+                log.info("Verifying Google token as Access Token");
+                url = "https://www.googleapis.com/oauth2/v3/userinfo?access_token=" + token;
+            }
             ResponseEntity<Map> response = restTemplate.getForEntity(url, Map.class);
             if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
                 return (Map<String, Object>) response.getBody();
             }
         } catch (Exception e) {
             log.error("Failed to verify Google token: {}", e.getMessage());
-        }
-        return null;
-    }
-
-    private Map<String, Object> verifyFacebookToken(String accessToken) {
-        if (accessToken != null && accessToken.startsWith("mock-facebook-token-")) {
-            String email = accessToken.substring("mock-facebook-token-".length());
-            log.info("Social login: Bypassing Facebook token verification with mock email: {}", email);
-            return Map.of("email", email, "name", "Mock Facebook User");
-        }
-        try {
-            RestTemplate restTemplate = new RestTemplate();
-            String url = "https://graph.facebook.com/me?fields=id,name,email&access_token=" + accessToken;
-            ResponseEntity<Map> response = restTemplate.getForEntity(url, Map.class);
-            if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
-                return (Map<String, Object>) response.getBody();
-            }
-        } catch (Exception e) {
-            log.error("Failed to verify Facebook token: {}", e.getMessage());
         }
         return null;
     }

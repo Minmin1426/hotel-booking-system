@@ -25,7 +25,7 @@ public class VoucherController {
     }
 
     @PostMapping("/apply")
-    @PreAuthorize("hasAnyRole('CUSTOMER', 'STAFF', 'ADMIN', 'DIRECTOR')")
+    @PreAuthorize("hasAnyRole('CUSTOMER', 'STAFF', 'ADMIN', 'DIRECTOR', 'RECEPTIONIST')")
     public ResponseEntity<String> applyVoucher(@Valid @RequestBody ApplyVoucherRequestDTO requestDTO) {
         Booking booking = voucherService.applyVoucher(requestDTO.getBookingId(), requestDTO.getVoucherCode());
         return ResponseEntity.ok("Voucher applied successfully. New total: " + booking.getFinalPrice());

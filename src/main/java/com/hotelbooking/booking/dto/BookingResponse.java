@@ -26,4 +26,5 @@ public class BookingResponse {
     private BigDecimal discountAmount;
     private BigDecimal finalPrice;
     private String voucherCode;
+    private Boolean isReviewed;
 }
