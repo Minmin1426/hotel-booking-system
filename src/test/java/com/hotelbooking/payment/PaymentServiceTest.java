@@ -6,7 +6,8 @@ import com.hotelbooking.common.utils.EmailService;
 import com.hotelbooking.payment.dto.PaymentRequestDTO;
 import com.hotelbooking.payment.dto.PaymentResponseDTO;
 import com.hotelbooking.user.User;
-import com.stripe.model.checkout.Session;
+import com.stripe.model.PaymentIntent;
+import com.stripe.param.PaymentIntentCreateParams;
 import org.mockito.MockedStatic;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -55,7 +56,7 @@ public class PaymentServiceTest {
     void testCreatePaymentRequest_Success() {
         Booking booking = new Booking();
         booking.setBookingId(1L);
-        booking.setStatus("PENDING_PAYMENT");
+        booking.setStatus("PENDING");
         booking.setTotalAmount(BigDecimal.valueOf(1000));
 
         when(bookingRepository.findById(1L)).thenReturn(Optional.of(booking));
@@ -64,19 +65,19 @@ public class PaymentServiceTest {
         requestDTO.setBookingId(1L);
         requestDTO.setPaymentMethod("STRIPE");
 
-        try (MockedStatic<Session> mockedSession = mockStatic(Session.class)) {
-            Session mockSession = new Session();
-            mockSession.setId("cs_test_123");
-            mockSession.setUrl("https://checkout.stripe.com/pay");
+        try (MockedStatic<PaymentIntent> mockedPaymentIntent = mockStatic(PaymentIntent.class)) {
+            PaymentIntent mockIntent = mock(PaymentIntent.class);
+            when(mockIntent.getId()).thenReturn("pi_test_123");
+            when(mockIntent.getClientSecret()).thenReturn("seti_test_secret_123");
             
-            mockedSession.when(() -> Session.create(any(com.stripe.param.checkout.SessionCreateParams.class)))
-                    .thenReturn(mockSession);
+            mockedPaymentIntent.when(() -> PaymentIntent.create(any(PaymentIntentCreateParams.class)))
+                    .thenReturn(mockIntent);
 
             PaymentResponseDTO response = paymentService.createPaymentRequest(requestDTO);
 
             assertNotNull(response);
-            assertEquals("cs_test_123", response.getTransactionId());
-            assertEquals("https://checkout.stripe.com/pay", response.getPaymentUrl());
+            assertEquals("pi_test_123", response.getTransactionId());
+            assertEquals("seti_test_secret_123", response.getClientSecret());
             verify(paymentRepository, times(1)).save(any(Payment.class));
             verify(auditLogRepository, times(1)).save(any());
         }
@@ -99,7 +100,7 @@ public class PaymentServiceTest {
 
     @Test
     void testVerifyPayment_Success() {
-        String transactionId = "cs_test_123";
+        String transactionId = "pi_test_123";
 
         User user = new User();
         user.setEmail("test@test.com");
@@ -117,12 +118,12 @@ public class PaymentServiceTest {
 
         when(paymentRepository.findByTransactionId(transactionId)).thenReturn(Optional.of(payment));
 
-        try (MockedStatic<Session> mockedSession = mockStatic(Session.class)) {
-            Session mockSession = new Session();
-            mockSession.setPaymentStatus("paid");
+        try (MockedStatic<PaymentIntent> mockedPaymentIntent = mockStatic(PaymentIntent.class)) {
+            PaymentIntent mockIntent = mock(PaymentIntent.class);
+            when(mockIntent.getStatus()).thenReturn("succeeded");
             
-            mockedSession.when(() -> Session.retrieve(transactionId))
-                    .thenReturn(mockSession);
+            mockedPaymentIntent.when(() -> PaymentIntent.retrieve(transactionId))
+                    .thenReturn(mockIntent);
 
             paymentService.verifyPayment(transactionId);
 
