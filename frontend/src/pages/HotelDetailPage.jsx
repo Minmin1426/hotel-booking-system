@@ -49,6 +49,7 @@ function HotelDetailPage() {
 
   // Stripe Elements state
   const [clientSecret, setClientSecret] = useState('');
+  const [transactionId, setTransactionId] = useState('');
 
   // Guest details verification states
   const [guestName, setGuestName] = useState('');
@@ -253,6 +254,9 @@ function HotelDetailPage() {
       const response = await PaymentService.createPaymentRequest(bookingDetails.bookingId, "ONLINE");
       if (response && response.clientSecret) {
         setClientSecret(response.clientSecret);
+        if (response.transactionId) {
+          setTransactionId(response.transactionId);
+        }
       } else {
         throw new Error("No client secret received from Stripe.");
       }
@@ -722,12 +726,45 @@ function HotelDetailPage() {
                               </button>
                             ) : (
                               <div className="space-y-6 animate-fade-in">
-                                <Elements stripe={stripePromise} options={{ clientSecret, locale: 'en' }}>
-                                  <CheckoutForm 
-                                    onCancel={() => setClientSecret('')} 
-                                    amount={`$${((bookingDetails ? bookingDetails.finalPrice : (selectedRoom.pricePerNight * calculateNights(checkIn, checkOut)) * 1.15).toLocaleString())}`} 
-                                  />
-                                </Elements>
+                                {clientSecret.startsWith("mock_secret_") ? (
+                                  <div className="p-6 bg-gradient-to-br from-blue-50 to-indigo-50 border border-[#1A3B85]/20 rounded-2xl shadow-sm text-center space-y-4 animate-fade-in">
+                                    <div className="mx-auto w-12 h-12 bg-[#1A3B85]/10 rounded-full flex items-center justify-center text-xl text-[#1A3B85] animate-pulse">
+                                      🔧
+                                    </div>
+                                    <div className="space-y-1">
+                                      <h4 className="font-bold text-slate-800 text-base">Mock Payment Simulation</h4>
+                                      <p className="text-xs text-slate-500 max-w-xs mx-auto leading-relaxed">
+                                        Stripe API key is not configured. The system has automatically activated local simulation mode.
+                                      </p>
+                                    </div>
+                                    
+                                    <div className="py-2 px-4 bg-white/80 border border-slate-200/50 rounded-xl inline-block text-xs font-mono text-[#1A3B85]">
+                                      Txn ID: {transactionId}
+                                    </div>
+
+                                    <div className="space-y-3 pt-2">
+                                      <button
+                                        onClick={() => window.location.href = `/payment/success?payment_intent=${transactionId}`}
+                                        className="w-full py-4 rounded-xl bg-gradient-to-r from-[#1A3B85] to-[#2E5EBD] hover:from-[#122A60] hover:to-[#224A9A] text-white font-bold text-base transition-all duration-300 shadow-md hover:shadow-lg active:translate-y-0.5 active:shadow-sm"
+                                      >
+                                        Simulate Successful Payment
+                                      </button>
+                                      <button
+                                        onClick={() => setClientSecret('')}
+                                        className="w-full py-2.5 rounded-xl border border-slate-200 bg-white text-slate-600 font-semibold text-sm hover:bg-slate-50 transition-all duration-200"
+                                      >
+                                        Cancel
+                                      </button>
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <Elements stripe={stripePromise} options={{ clientSecret, locale: 'en' }}>
+                                    <CheckoutForm 
+                                      onCancel={() => setClientSecret('')} 
+                                      amount={`$${((bookingDetails ? bookingDetails.finalPrice : (selectedRoom.pricePerNight * calculateNights(checkIn, checkOut)) * 1.15).toLocaleString())}`} 
+                                    />
+                                  </Elements>
+                                )}
                               </div>
                             )}
                           </div>

@@ -36,18 +36,28 @@ As an Admin, I want to add/edit rooms and upload hotel images, to provide detail
 1. **Given** a hotel, **When** adding a room, **Then** the room is saved and mapped to that hotel ID.
 2. **Given** an image file (e.g. JPG, PNG), **When** uploading to a hotel, **Then** the file path is saved and returned.
 
+### User Story 4 - Room Cleaning & Status Update (Priority: P2)
+As a Housekeeper or Receptionist, I want to update room status (Clean/Dirty) to make rooms ready for search or lock them for dọn dẹp.
+
+**Independent Test**: Update room status using PUT `/api/v1/rooms/{id}/availability?available=true` and verify status in database.
+
+**Acceptance Scenarios**:
+1. **Given** a housekeeper finishes cleaning a dirty room, **When** reporting completion, **Then** the room status updates to `AVAILABLE`.
+2. **Given** a check-out occurs, **When** the room is flagged as dirty, **Then** status updates to `UNAVAILABLE` and it is excluded from active guest search results.
+
 ## Requirements
 
 ### Functional Requirements
 - **FR-001**: Hotel deletions must be soft-deletions to maintain historical booking records.
 - **FR-002**: Database constraints must prevent deleting a hotel or room if it has active bookings.
 - **FR-003**: Image uploads must restrict format to `jpg`, `png`, and `webp` only.
+- **FR-004**: Room status updates must allow receptionists and housekeepers to change status between available/clean and unavailable/dirty.
 
 ### Key Entities
 - **Hotel**: Represents hotel details.
-- **Room**: Represents room details and pricing.
+- **Room**: Represents room details, pricing, and operational status (`AVAILABLE`, `UNAVAILABLE`, `MAINTENANCE`).
 - **HotelImage**: Represents catalog image URLs.
 
 ## Success Criteria
-- **SC-001**: Proper RBAC enforcement (only ADMIN/STAFF can edit/delete inventory).
+- **SC-001**: Proper RBAC enforcement (only ADMIN can modify hotel metadata; ADMIN, RECEPTIONIST, and HOUSEKEEPER can update room availability).
 - **SC-002**: Zero database orphans or orphaned booking records.

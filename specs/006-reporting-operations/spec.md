@@ -26,24 +26,35 @@ As an Admin or Director, I want to export reports in Excel format, so I can shar
 1. **Given** a requested date range, **When** exporting Excel, **Then** an Excel sheet is generated in <= 5 seconds.
 
 ### User Story 3 - Review Moderation (Priority: P2)
-As an Admin, I want to moderate customer reviews, so I can hide or delete reviews that violate community guidelines.
+As an Admin, I want to moderate customer reviews, so I can hide reviews that violate community guidelines.
 
 **Why this priority**: Essential to keep public listings clean and trustworthy.
-**Independent Test**: Hide a review using PUT `/api/v1/admin/reviews/{id}/censor` and verify it no longer displays on the hotel detail page.
+**Independent Test**: Hide a review using PATCH `/api/v1/reports/reviews/{id}/moderate` (ModerationRequest with action="HIDE") and verify it no longer displays on the hotel detail page.
 
 **Acceptance Scenarios**:
-1. **Given** a review violating guidelines, **When** censored by Admin, **Then** the status is saved and public listings filter it out.
+1. **Given** a review violating guidelines, **When** hidden by Admin, **Then** the status is saved as `HIDDEN` and public listings filter it out.
+
+### User Story 4 - Submit Reviews (Priority: P2)
+As a Customer, I want to submit a star rating and comment for a hotel stay, so I can share my feedback.
+
+**Independent Test**: Submit a review via POST `/api/v1/reviews` for a completed booking and check average rating.
+
+**Acceptance Scenarios**:
+1. **Given** a completed booking, **When** submitting a review, **Then** the review is saved with status `VISIBLE` and hotel's average rating is recalculated.
+2. **Given** an uncompleted booking, **When** attempting to submit a review, **Then** the request is rejected.
 
 ## Requirements
 
 ### Functional Requirements
 - **FR-001**: Only users with role `DIRECTOR` or `ADMIN` can retrieve revenue and occupancy statistics.
 - **FR-002**: Excel exports must run efficiently and streams the output directly to avoid memory overflows.
-- **FR-003**: Customer review listings must only return reviews that are approved or not flagged as censored.
+- **FR-003**: Customer review listings must only return reviews that are active (`status = 'VISIBLE'`).
+- **FR-004**: Reviews are allowed only once per completed booking.
 
 ### Key Entities
-- **Review**: Represents user comments and star rating. Fields: `reviewId`, `bookingId`, `userId`, `hotelId`, `rating`, `comment`, `status` (PENDING, APPROVED, CENSORED).
+- **Review**: Represents user comments and star rating. Fields: `reviewId`, `bookingId`, `userId`, `hotelId`, `rating`, `comment`, `status` (VISIBLE, HIDDEN), `moderatedBy`, `moderatedAt`, `moderationReason`.
 
 ## Success Criteria
 - **SC-001**: Only authorized users (Admin, Director) can access report data.
 - **SC-002**: Excel export completes in less than 5 seconds.
+- **SC-003**: Average hotel rating dynamically updates upon review submission or moderation.

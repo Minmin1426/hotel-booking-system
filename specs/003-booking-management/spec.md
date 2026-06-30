@@ -18,14 +18,15 @@ As a Customer, I want to select check-in and check-out dates, validate availabil
 3. **Given** a booking is created, **When** the payment process is initiated, **Then** the room is temporarily locked (Room Lock) for 10 minutes.
 
 ### User Story 2 - Confirm & Cancel Bookings (Priority: P1)
-As a Customer or Admin, I want to confirm or cancel bookings to keep availability accurate.
+As a Customer, Receptionist, or Admin, I want to confirm, cancel, or process bookings to keep availability and check-in statuses accurate.
 
-**Why this priority**: Required to manage reservation lifecycles and trigger refund policies.
-**Independent Test**: Cancel a confirmed booking via `/api/v1/bookings/{id}/cancel` and verify the status is updated.
+**Why this priority**: Required to manage reservation lifecycles, handle offline/manual bookings, and trigger refund policies.
+**Independent Test**: Cancel a confirmed booking via `/api/v1/bookings/{id}/cancel` or process an offline booking via `/api/v1/admin/bookings/{id}/status`.
 
 **Acceptance Scenarios**:
-1. **Given** a PENDING booking, **When** payment succeeds, **Then** the booking status changes to `CONFIRMED`.
+1. **Given** a PENDING booking, **When** payment succeeds or receptionist confirms offline payment, **Then** the booking status changes to `CONFIRMED`.
 2. **Given** a CONFIRMED booking, **When** cancelling before check-in, **Then** booking status changes to `CANCELLED` and refund is scheduled.
+3. **Given** a receptionist, **When** creating an offline booking for a guest, **Then** a booking is successfully created and managed under admin endpoints.
 
 ### User Story 3 - Room Lock & Automatic Release (Priority: P2)
 As the System, I want to lock rooms during payment processing and automatically release them if payment fails or expires.
