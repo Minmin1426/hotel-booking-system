@@ -24,7 +24,7 @@ public class PaymentWebhookController {
             return ResponseEntity.ok("Webhook processed successfully");
         } catch (BusinessException e) {
             log.warn("Webhook processing skipped or rejected: {}", e.getMessage());
-            return ResponseEntity.status(HttpStatus.OK).body("Ignored: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.OK).body("Ignored");
         } catch (SecurityException e) {
             log.error("Webhook security verification failed: {}", e.getMessage());
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Unauthorized");
