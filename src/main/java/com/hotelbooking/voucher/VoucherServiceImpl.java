@@ -28,7 +28,7 @@ public class VoucherServiceImpl implements VoucherService {
         Booking booking = bookingRepository.findById(bookingId)
                 .orElseThrow(() -> new ResourceNotFoundException("Booking", "id", bookingId.toString()));
 
-        if (!"DRAFT".equals(booking.getStatus()) && !"PENDING_PAYMENT".equals(booking.getStatus())) {
+        if (!"PENDING".equals(booking.getStatus())) {
             throw new BusinessException("Cannot apply voucher to booking in status: " + booking.getStatus());
         }
 
@@ -63,6 +63,9 @@ public class VoucherServiceImpl implements VoucherService {
         if ("PERCENTAGE".equalsIgnoreCase(voucher.getDiscountType())) {
             BigDecimal percentage = voucher.getDiscountValue().divide(BigDecimal.valueOf(100));
             discountAmount = booking.getTotalAmount().multiply(percentage);
+            if (voucher.getMaxDiscount() != null && discountAmount.compareTo(voucher.getMaxDiscount()) > 0) {
+                discountAmount = voucher.getMaxDiscount();
+            }
         } else {
             discountAmount = voucher.getDiscountValue();
         }
@@ -78,14 +81,6 @@ public class VoucherServiceImpl implements VoucherService {
         booking.setDiscountAmount(discountAmount);
         booking.setFinalPrice(finalPrice);
 
-        // Update voucher usage
-        if (voucher.getCurrentUsage() == null) {
-            voucher.setCurrentUsage(1);
-        } else {
-            voucher.setCurrentUsage(voucher.getCurrentUsage() + 1);
-        }
-
-        voucherRepository.save(voucher);
         return bookingRepository.save(booking);
     }
 

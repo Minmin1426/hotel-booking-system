@@ -30,6 +30,7 @@ export default function ProfilePage() {
   // Booking history state
   const [bookings, setBookings] = useState([]);
   const [bookingsLoading, setBookingsLoading] = useState(false);
+  const [cancelingBookingId, setCancelingBookingId] = useState(null);
 
   // Vouchers state
   const [vouchers, setVouchers] = useState([]);
@@ -118,10 +119,6 @@ export default function ProfilePage() {
   }, [activeTab, profile.role]);
 
   const handleCancelBooking = async (bookingId, bookingCode) => {
-    if (!window.confirm(`Are you sure you want to cancel booking ${bookingCode}?`)) {
-      return;
-    }
-
     setIsLoading(true);
     setError(null);
     setMessage(null);
@@ -129,6 +126,7 @@ export default function ProfilePage() {
       await BookingService.cancelBooking(bookingId);
       setMessage(`Booking ${bookingCode} cancelled successfully.`);
       loadBookingHistory();
+      setCancelingBookingId(null);
     } catch (err) {
       setError(err.message || "Failed to cancel booking.");
     } finally {
@@ -426,12 +424,30 @@ export default function ProfilePage() {
 
                         {(booking.status === 'PENDING' || booking.status === 'CONFIRMED') && (
                           <div className="mt-4 pt-3 border-t border-[#f5f5fa] flex justify-end">
-                            <button
-                              onClick={() => handleCancelBooking(booking.bookingId, booking.bookingCode)}
-                              className="px-3 py-1 rounded-full bg-red-50 text-red-650 border border-red-100 hover:bg-red-100 text-[10px] font-bold transition-all cursor-pointer"
-                            >
-                              Cancel Booking
-                            </button>
+                            {cancelingBookingId === booking.bookingId ? (
+                              <div className="flex gap-2 items-center">
+                                <span className="text-[10px] text-red-600 font-bold mr-2">Are you sure?</span>
+                                <button
+                                  onClick={() => handleCancelBooking(booking.bookingId, booking.bookingCode)}
+                                  className="px-3 py-1 rounded-full bg-red-600 text-white hover:bg-red-700 text-[10px] font-bold transition-all cursor-pointer"
+                                >
+                                  Yes, Cancel
+                                </button>
+                                <button
+                                  onClick={() => setCancelingBookingId(null)}
+                                  className="px-3 py-1 rounded-full bg-slate-100 text-slate-600 hover:bg-slate-200 text-[10px] font-bold transition-all cursor-pointer"
+                                >
+                                  No, Keep it
+                                </button>
+                              </div>
+                            ) : (
+                              <button
+                                onClick={() => setCancelingBookingId(booking.bookingId)}
+                                className="px-3 py-1 rounded-full bg-red-50 text-red-600 border border-red-100 hover:bg-red-100 text-[10px] font-bold transition-all cursor-pointer"
+                              >
+                                Cancel Booking
+                              </button>
+                            )}
                           </div>
                         )}
                       </div>
@@ -480,11 +496,16 @@ export default function ProfilePage() {
                     const valueStr = isPercentage ? `${v.discountValue}%` : `$${v.discountValue}`;
                     const minSpendStr = v.minBookingValue > 0 ? `Min spend $${v.minBookingValue}` : 'No minimum spend';
                     const expiryDate = v.endDate ? new Date(v.endDate).toLocaleDateString('vi-VN') : 'No expiry';
+                    const isExpired = v.endDate && new Date(v.endDate) < new Date();
+                    const isFullyUsed = v.maxUsage !== null && v.currentUsage >= v.maxUsage;
+                    const isInvalid = isExpired || isFullyUsed;
                     
                     return (
                       <div 
                         key={v.voucherId} 
-                        className="bg-gradient-to-tr from-[#f9fafb] to-white border border-[#e8e8ed] hover:border-[#0066cc]/30 rounded-3xl p-6 shadow-sm hover:shadow-md transition-all flex flex-col justify-between relative overflow-hidden"
+                        className={`bg-gradient-to-tr from-[#f9fafb] to-white border border-[#e8e8ed] rounded-3xl p-6 transition-all flex flex-col justify-between relative overflow-hidden ${
+                          isInvalid ? 'opacity-50 grayscale' : 'hover:border-[#0066cc]/30 shadow-sm hover:shadow-md'
+                        }`}
                       >
                         {/* Cutouts for voucher ticket aesthetic */}
                         <div className="absolute left-[-8px] top-1/2 -translate-y-1/2 w-4 h-6 bg-[#f5f7fa] border-r border-[#e8e8ed] rounded-r-full" />
@@ -513,14 +534,17 @@ export default function ProfilePage() {
                             {v.code}
                           </div>
                           <button
-                            onClick={() => handleCopyCode(v.code)}
-                            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all active:scale-95 cursor-pointer ${
-                              copiedCode === v.code
-                                ? 'bg-green-600 text-white shadow-sm'
-                                : 'bg-[#0066cc] hover:bg-[#0055b3] text-white shadow-sm'
+                            onClick={() => !isInvalid && handleCopyCode(v.code)}
+                            disabled={isInvalid}
+                            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+                              isInvalid 
+                                ? 'bg-slate-200 text-slate-500 cursor-not-allowed'
+                                : copiedCode === v.code
+                                  ? 'bg-green-600 text-white shadow-sm active:scale-95 cursor-pointer'
+                                  : 'bg-[#0066cc] hover:bg-[#0055b3] text-white shadow-sm active:scale-95 cursor-pointer'
                             }`}
                           >
-                            {copiedCode === v.code ? '✓ Copied' : 'Copy Code'}
+                            {isExpired ? 'Expired' : isFullyUsed ? 'Fully Used' : copiedCode === v.code ? '✓ Copied' : 'Copy Code'}
                           </button>
                         </div>
                       </div>

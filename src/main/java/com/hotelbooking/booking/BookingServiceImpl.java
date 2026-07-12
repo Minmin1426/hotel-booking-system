@@ -119,6 +119,12 @@ public class BookingServiceImpl implements BookingService {
             throw new BusinessException(validation.getMessage());
         }
 
+        Integer adults = request.getAdults() != null ? request.getAdults() : 1;
+        Integer children = request.getChildren() != null ? request.getChildren() : 0;
+        if (adults + children < 1) {
+            throw new BusinessException("Total guests must be at least 1");
+        }
+
         User user = userRepository.findByEmail(currentUserEmail)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found: " + currentUserEmail));
 
@@ -141,7 +147,22 @@ public class BookingServiceImpl implements BookingService {
         }
 
         long nights = validation.getNights();
-        BigDecimal totalAmount = totalRoomPricePerNight.multiply(BigDecimal.valueOf(nights));
+        BigDecimal baseTotalAmount = totalRoomPricePerNight.multiply(BigDecimal.valueOf(nights));
+
+        // Surcharge logic
+        BigDecimal surchargePerNight = BigDecimal.ZERO;
+        if (adults > 2) {
+            surchargePerNight = surchargePerNight.add(BigDecimal.valueOf((long) (adults - 2) * 20));
+        }
+        if (children > 0) {
+            surchargePerNight = surchargePerNight.add(BigDecimal.valueOf((long) children * 10));
+        }
+        BigDecimal totalSurcharge = surchargePerNight.multiply(BigDecimal.valueOf(nights));
+        
+        BigDecimal subTotal = baseTotalAmount.add(totalSurcharge);
+        BigDecimal serviceFee = subTotal.multiply(BigDecimal.valueOf(0.05)); // 5% Service Fee
+        BigDecimal taxes = subTotal.multiply(BigDecimal.valueOf(0.10)); // 10% Taxes
+        BigDecimal totalAmount = subTotal.add(serviceFee).add(taxes);
 
         // Generate booking code
         String bookingCode = "BK-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
@@ -153,7 +174,11 @@ public class BookingServiceImpl implements BookingService {
                 .checkInDate(request.getCheckInDate().atStartOfDay())
                 .checkOutDate(request.getCheckOutDate().atStartOfDay())
                 .totalAmount(totalAmount)
+                .serviceFee(serviceFee)
+                .taxes(taxes)
                 .status("PENDING")
+                .adults(adults)
+                .children(children)
                 .build();
 
         calculateAndApplyVoucher(booking, request.getVoucherCode());
@@ -237,13 +262,6 @@ public class BookingServiceImpl implements BookingService {
         }
 
         booking.setStatus("FAILED");
-        if (booking.getVoucher() != null) {
-            Voucher voucher = booking.getVoucher();
-            if (voucher.getCurrentUsage() != null && voucher.getCurrentUsage() > 0) {
-                voucher.setCurrentUsage(voucher.getCurrentUsage() - 1);
-                voucherRepository.save(voucher);
-            }
-        }
         Booking savedBooking = bookingRepository.save(booking);
 
         // Release the locks
@@ -318,6 +336,7 @@ public class BookingServiceImpl implements BookingService {
 
         LocalDateTime now = LocalDateTime.now();
         booking.setStatus("CONFIRMED");
+        booking.setPaymentStatus("SUCCESS");
         booking.setConfirmedAt(now);
         bookingRepository.save(booking);
 
@@ -341,6 +360,8 @@ public class BookingServiceImpl implements BookingService {
                 .checkInDate(booking.getCheckInDate())
                 .checkOutDate(booking.getCheckOutDate())
                 .discountAmount(booking.getDiscountAmount())
+                .serviceFee(booking.getServiceFee())
+                .taxes(booking.getTaxes())
                 .finalPrice(booking.getFinalPrice())
                 .voucherCode(booking.getVoucher() != null ? booking.getVoucher().getCode() : null)
                 .build();
@@ -435,6 +456,7 @@ public class BookingServiceImpl implements BookingService {
 
     // UC-14: Hủy đặt phòng
     @Override
+    @Transactional
     public CancelBookingResponse cancelBooking(Long bookingId, Long customerId) {
         log.info("UC-14: Cancelling booking ID: {} for customer ID: {}", bookingId, customerId);
         
@@ -453,13 +475,6 @@ public class BookingServiceImpl implements BookingService {
         }
         
         booking.setStatus("CANCELLED");
-        if (booking.getVoucher() != null) {
-            Voucher voucher = booking.getVoucher();
-            if (voucher.getCurrentUsage() != null && voucher.getCurrentUsage() > 0) {
-                voucher.setCurrentUsage(voucher.getCurrentUsage() - 1);
-                voucherRepository.save(voucher);
-            }
-        }
         bookingRepository.save(booking);
         
         try {
@@ -508,8 +523,12 @@ public class BookingServiceImpl implements BookingService {
                 .roomIds(roomIds)
                 .lockExpiresAt(lockExpiresAt)
                 .discountAmount(booking.getDiscountAmount())
+                .serviceFee(booking.getServiceFee())
+                .taxes(booking.getTaxes())
                 .finalPrice(booking.getFinalPrice())
                 .voucherCode(booking.getVoucher() != null ? booking.getVoucher().getCode() : null)
+                .adults(booking.getAdults())
+                .children(booking.getChildren())
                 .build();
     }
 
@@ -522,6 +541,9 @@ public class BookingServiceImpl implements BookingService {
                 .checkInDate(booking.getCheckInDate())
                 .checkOutDate(booking.getCheckOutDate())
                 .totalAmount(booking.getTotalAmount())
+                .discountAmount(booking.getDiscountAmount())
+                .serviceFee(booking.getServiceFee())
+                .taxes(booking.getTaxes())
                 .status(booking.getStatus())
                 .confirmedAt(booking.getConfirmedAt())
                 .createdAt(booking.getCreatedAt())
@@ -609,6 +631,9 @@ public class BookingServiceImpl implements BookingService {
         if ("PERCENTAGE".equalsIgnoreCase(voucher.getDiscountType())) {
             BigDecimal percentage = voucher.getDiscountValue().divide(BigDecimal.valueOf(100));
             discountAmount = booking.getTotalAmount().multiply(percentage);
+            if (voucher.getMaxDiscount() != null && discountAmount.compareTo(voucher.getMaxDiscount()) > 0) {
+                discountAmount = voucher.getMaxDiscount();
+            }
         } else {
             discountAmount = voucher.getDiscountValue();
         }
@@ -623,14 +648,6 @@ public class BookingServiceImpl implements BookingService {
         booking.setVoucher(voucher);
         booking.setDiscountAmount(discountAmount);
         booking.setFinalPrice(finalPrice);
-
-        // Update voucher usage
-        if (voucher.getCurrentUsage() == null) {
-            voucher.setCurrentUsage(1);
-        } else {
-            voucher.setCurrentUsage(voucher.getCurrentUsage() + 1);
-        }
-        voucherRepository.save(voucher);
     }
 
     @Override

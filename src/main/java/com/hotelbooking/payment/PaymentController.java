@@ -25,8 +25,8 @@ public class PaymentController {
     @PostMapping("/verify")
     public ResponseEntity<String> verifyPayment(@RequestParam String paymentIntentId) {
         try {
-            paymentService.verifyPayment(paymentIntentId);
-            return ResponseEntity.ok("Payment verified successfully");
+            String status = paymentService.verifyPayment(paymentIntentId);
+            return ResponseEntity.ok(status);
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(e.getMessage());
         }
@@ -37,5 +37,26 @@ public class PaymentController {
     public ResponseEntity<String> processRefund(@PathVariable Long bookingId) {
         paymentService.processRefund(bookingId);
         return ResponseEntity.ok("Refund processed successfully.");
+    }
+    
+    @PostMapping("/{paymentId}/confirm-cash")
+    @PreAuthorize("hasAnyRole('STAFF', 'ADMIN', 'DIRECTOR')")
+    public ResponseEntity<String> confirmCashPayment(@PathVariable Long paymentId) {
+        paymentService.confirmCashPayment(paymentId);
+        return ResponseEntity.ok("Cash payment confirmed successfully.");
+    }
+
+    @PostMapping("/{paymentId}/confirm-bank")
+    @PreAuthorize("hasAnyRole('STAFF', 'ADMIN', 'DIRECTOR')")
+    public ResponseEntity<String> confirmBankTransfer(@PathVariable Long paymentId) {
+        paymentService.confirmBankTransfer(paymentId);
+        return ResponseEntity.ok("Bank transfer confirmed successfully.");
+    }
+
+    @PostMapping("/simulate-bank-transfer")
+    // Intentionally left open or authenticated for testing purposes
+    public ResponseEntity<String> simulateBankTransfer(@RequestParam String bookingCode) {
+        paymentService.simulateBankTransferWebhook(bookingCode);
+        return ResponseEntity.ok("Bank transfer webhook simulated successfully.");
     }
 }

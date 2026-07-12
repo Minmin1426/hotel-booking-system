@@ -30,7 +30,7 @@ export const BookingService = {
   },
 
   // Create booking & lock room (UC-11 & UC-33)
-  createBooking: async (hotelId, checkInDate, checkOutDate, roomIds, paymentMethod = "ONLINE", voucherCode = "") => {
+  createBooking: async (hotelId, checkInDate, checkOutDate, roomIds, paymentMethod = "ONLINE", voucherCode = "", adults = 1, children = 0) => {
     const response = await fetch(`${API_BASE_URL}/bookings`, {
       method: "POST",
       headers: getHeaders(),
@@ -41,6 +41,8 @@ export const BookingService = {
         roomIds,
         paymentMethod,
         voucherCode,
+        adults,
+        children
       }),
     });
 
@@ -92,11 +94,18 @@ export const BookingService = {
       headers: getHeaders(),
     });
 
-    const data = await response.json();
+    const text = await response.text();
+    let data;
+    try {
+      data = text ? JSON.parse(text) : {};
+    } catch (e) {
+      throw new Error(`Invalid JSON response from server: ${text || 'Empty response'}`);
+    }
+
     if (!response.ok) {
       throw new Error(data.message || "Failed to cancel booking");
     }
-    return data.data;
+    return data;
   },
 
   // View my booking history (UC-15)

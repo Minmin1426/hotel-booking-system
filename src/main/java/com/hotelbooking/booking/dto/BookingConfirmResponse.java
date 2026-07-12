@@ -24,6 +24,8 @@ public class BookingConfirmResponse {
     private LocalDateTime checkInDate;
     private LocalDateTime checkOutDate;
     private BigDecimal discountAmount;
+    private BigDecimal serviceFee;
+    private BigDecimal taxes;
     private BigDecimal finalPrice;
     private String voucherCode;
 }

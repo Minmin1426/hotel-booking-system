@@ -13,4 +13,13 @@ public class PaymentResponseDTO {
     private String paymentUrl;
     private String transactionId;
     private String clientSecret;
+    
+    // Bank transfer details
+    private String bankName;
+    private String accountHolder;
+    private String accountNumber;
+    private String referenceCode;
+    private String branch;
+    private String swiftCode;
+    private String qrCodeUrl;
 }
