@@ -19,3 +19,8 @@
 - [x] T010 Implement `RoomLockCleanupScheduler` using `@Scheduled` annotation
 - [x] T011 Implement lock release logic that deletes locks and marks corresponding pending bookings as `FAILED`
 - [x] T012 Write unit tests in `RoomLockCleanupSchedulerTest` verifying background execution and expired record deletions
+
+## Phase 4: Non-functional & Security Verification
+- [x] T013 Verify JWT Authentication Filter is applied to all booking-related endpoints (except room search and `/api/v1/bookings/validate-dates`)
+- [x] T014 Verify centralized `GlobalExceptionHandler` formats validation and state errors into standard JSON format
+- [x] T015 Verify concurrency controls using database locks to prevent double-booking

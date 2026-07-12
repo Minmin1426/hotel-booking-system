@@ -1,8 +1,8 @@
 # Validation Checklist: 003-booking-management
 
-**Purpose**: Verifies stays validation, transactions, room locks, and cleanup schedulers.
+**Purpose**: Verifies stays validation, transactions, room locks, cleanup schedulers, error handling, security, and performance.
 **Created**: 2026-06-23
-**Feature**: [spec.md](file:///c:/Users/Minmin/Documents/GitHub/hotel-booking-system/specs/003-booking-management/spec.md)
+**Feature**: [spec.md](file:///c:/Users/minhn/OneDrive/Ta%CC%80i%20li%C3%AA%CC%A3u/GitHub/hotel-booking-system/specs/003-booking-management/spec.md)
 
 ## Stay Date Validation
 
@@ -21,3 +21,9 @@
 - [ ] CHK007 Verify scheduler fires and deletes expired locks based on configured setting minutes.
 - [ ] CHK008 Verify lock cleanup releases the room and updates corresponding pending booking status to `FAILED`.
 - [ ] CHK009 Verify active booking payments turn room locks to inactive/completed state.
+
+## Non-functional & Security Requirements
+
+- [ ] CHK010 Verify all `/api/v1/bookings` endpoints (except room search and `/api/v1/bookings/validate-dates`) reject requests without a valid JWT token (HTTP 401/403).
+- [ ] CHK011 Verify response times for booking status retrieval and booking requests are under 500ms on average under load.
+- [ ] CHK012 Verify exception handling responses exactly match the standardized JSON structure defined in `GlobalExceptionHandler` (with fields `timestamp`, `status`, `error`, `message`, `path`).
