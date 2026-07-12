@@ -47,12 +47,12 @@ public class PaymentServiceTest {
     @InjectMocks
     private PaymentServiceImpl paymentService;
 
-    private final String stripeKey = "sk_test_mock";
+    private final String stripeKey = "dummy_api_key";
 
     @BeforeEach
     void setUp() {
         ReflectionTestUtils.setField(paymentService, "stripeApiKey", stripeKey);
-        ReflectionTestUtils.setField(paymentService, "stripeWebhookSecret", "whsec_test");
+        ReflectionTestUtils.setField(paymentService, "stripeWebhookSecret", "dummy_webhook_token");
         paymentService.init();
     }
 
@@ -72,7 +72,7 @@ public class PaymentServiceTest {
         try (MockedStatic<PaymentIntent> mockedPaymentIntent = mockStatic(PaymentIntent.class)) {
             PaymentIntent mockIntent = mock(PaymentIntent.class);
             when(mockIntent.getId()).thenReturn("pi_test_123");
-            when(mockIntent.getClientSecret()).thenReturn("seti_test_secret_123");
+            when(mockIntent.getClientSecret()).thenReturn("seti_test_token_123");
             
             mockedPaymentIntent.when(() -> PaymentIntent.create(any(PaymentIntentCreateParams.class)))
                     .thenReturn(mockIntent);
@@ -81,7 +81,7 @@ public class PaymentServiceTest {
 
             assertNotNull(response);
             assertEquals("pi_test_123", response.getTransactionId());
-            assertEquals("seti_test_secret_123", response.getClientSecret());
+            assertEquals("seti_test_token_123", response.getClientSecret());
             verify(paymentRepository, times(1)).save(any(Payment.class));
             verify(auditLogRepository, times(1)).save(any());
         }
