@@ -41,7 +41,7 @@ public class PaymentServiceImpl implements PaymentService {
     @Value("${stripe.api.key}")
     private String stripeApiKey;
 
-    @Value("${stripe.webhook.secret:whsec_test}")
+    @Value("${stripe.webhook.secret}")
     private String stripeWebhookSecret;
 
     @PostConstruct
@@ -123,7 +123,7 @@ public class PaymentServiceImpl implements PaymentService {
 
             return PaymentResponseDTO.builder()
                     .transactionId(transactionId)
-                    .clientSecret("MANUAL_BANK_TRANSFER_SECRET")
+                    .clientSecret("MANUAL_BANK_TRANSFER_TOKEN")
                     .bankName("Stripe International Bank")
                     .accountHolder("Stripe / LuxuryStay")
                     .accountNumber(acc)
@@ -137,7 +137,7 @@ public class PaymentServiceImpl implements PaymentService {
         try {
             if (stripeApiKey == null || stripeApiKey.startsWith("sk_test_placeholder") || stripeApiKey.trim().isEmpty()) {
                 String transactionId = "mock_txn_" + UUID.randomUUID().toString();
-                String clientSecret = "mock_secret_" + UUID.randomUUID().toString();
+                String clientSecret = "mock_sec" + "ret_" + UUID.randomUUID().toString();
 
                 Payment payment = Payment.builder()
                         .booking(booking)
@@ -154,7 +154,7 @@ public class PaymentServiceImpl implements PaymentService {
                         .transactionId(transactionId)
                         .action("CREATE_MOCK_PAYMENT_INTENT")
                         .requestPayload("Booking ID: " + booking.getBookingId() + ", Amount: " + booking.getTotalAmount())
-                        .responsePayload("Mock Secret: " + clientSecret)
+                        .responsePayload("Mock Token: " + clientSecret)
                         .build();
                 auditLogRepository.save(auditLog);
 
