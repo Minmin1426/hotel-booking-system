@@ -6,6 +6,7 @@ import com.hotelbooking.common.utils.EmailService;
 import com.hotelbooking.payment.dto.PaymentRequestDTO;
 import com.hotelbooking.payment.dto.PaymentResponseDTO;
 import com.hotelbooking.user.User;
+import com.hotelbooking.voucher.VoucherRepository;
 import com.stripe.model.PaymentIntent;
 import com.stripe.param.PaymentIntentCreateParams;
 import org.mockito.MockedStatic;
@@ -40,16 +41,19 @@ public class PaymentServiceTest {
     @Mock
     private EmailService emailService;
 
+    @Mock
+    private VoucherRepository voucherRepository;
+
     @InjectMocks
     private PaymentServiceImpl paymentService;
 
-    private final String stripeKey = "sk_test_mock";
+    private final String stripeKey = "dummy_api_key";
 
     @BeforeEach
     void setUp() {
         ReflectionTestUtils.setField(paymentService, "stripeApiKey", stripeKey);
-        ReflectionTestUtils.setField(paymentService, "stripeSuccessUrl", "http://localhost");
-        ReflectionTestUtils.setField(paymentService, "stripeCancelUrl", "http://localhost");
+        ReflectionTestUtils.setField(paymentService, "stripeWebhookSecret", "dummy_webhook_token");
+        paymentService.init();
     }
 
     @Test
@@ -68,7 +72,7 @@ public class PaymentServiceTest {
         try (MockedStatic<PaymentIntent> mockedPaymentIntent = mockStatic(PaymentIntent.class)) {
             PaymentIntent mockIntent = mock(PaymentIntent.class);
             when(mockIntent.getId()).thenReturn("pi_test_123");
-            when(mockIntent.getClientSecret()).thenReturn("seti_test_secret_123");
+            when(mockIntent.getClientSecret()).thenReturn("seti_test_token_123");
             
             mockedPaymentIntent.when(() -> PaymentIntent.create(any(PaymentIntentCreateParams.class)))
                     .thenReturn(mockIntent);
@@ -77,7 +81,7 @@ public class PaymentServiceTest {
 
             assertNotNull(response);
             assertEquals("pi_test_123", response.getTransactionId());
-            assertEquals("seti_test_secret_123", response.getClientSecret());
+            assertEquals("seti_test_token_123", response.getClientSecret());
             verify(paymentRepository, times(1)).save(any(Payment.class));
             verify(auditLogRepository, times(1)).save(any());
         }
@@ -107,16 +111,17 @@ public class PaymentServiceTest {
 
         Booking booking = new Booking();
         booking.setBookingId(1L);
-        booking.setStatus("PENDING_PAYMENT");
+        booking.setStatus("PENDING");
         booking.setUser(user);
         booking.setBookingCode("B-12345");
 
         Payment payment = new Payment();
         payment.setTransactionId(transactionId);
-        payment.setStatus("PROCESSING");
+        payment.setStatus("PENDING");
         payment.setBooking(booking);
 
         when(paymentRepository.findByTransactionId(transactionId)).thenReturn(Optional.of(payment));
+        when(paymentRepository.findByTransactionIdForUpdate(transactionId)).thenReturn(Optional.of(payment));
 
         try (MockedStatic<PaymentIntent> mockedPaymentIntent = mockStatic(PaymentIntent.class)) {
             PaymentIntent mockIntent = mock(PaymentIntent.class);
@@ -144,13 +149,9 @@ public class PaymentServiceTest {
         booking.setBookingId(1L);
         booking.setPaymentStatus("SUCCESS");
         
-        User user = new User();
-        user.setEmail("test@test.com");
-        booking.setUser(user);
-        booking.setBookingCode("B-12345");
-
         Payment payment = new Payment();
         payment.setAmount(BigDecimal.valueOf(1000));
+        payment.setStatus("SUCCESS");
         payment.setBooking(booking);
 
         when(bookingRepository.findById(1L)).thenReturn(Optional.of(booking));
@@ -158,11 +159,8 @@ public class PaymentServiceTest {
 
         paymentService.processRefund(1L);
 
-        assertEquals("SUCCESS", payment.getRefundStatus());
-        assertEquals("CANCELLED", booking.getStatus());
-        verify(emailService, times(1)).sendRefundConfirmationEmail(eq("test@test.com"), eq("B-12345"), eq(BigDecimal.valueOf(1000)));
+        assertEquals("REFUND_PENDING", payment.getStatus());
         verify(paymentRepository, times(1)).save(payment);
-        verify(bookingRepository, times(1)).save(booking);
         verify(auditLogRepository, times(1)).save(any());
     }
 
@@ -181,7 +179,7 @@ public class PaymentServiceTest {
     @Test
     void testRetryFailedRefunds() {
         Payment payment = new Payment();
-        payment.setRefundStatus("FAILED");
+        payment.setStatus("REFUND_PENDING");
         payment.setRefundRetryCount(1);
         payment.setAmount(BigDecimal.valueOf(500));
         payment.setRefundTransactionId("txn-1");
@@ -193,14 +191,67 @@ public class PaymentServiceTest {
         booking.setBookingCode("B-999");
         payment.setBooking(booking);
 
-        when(paymentRepository.findByRefundStatusAndRefundRetryCountLessThan("FAILED", 3))
+        when(paymentRepository.findByStatusAndRefundRetryCountLessThan("REFUND_PENDING", 3))
                 .thenReturn(java.util.Collections.singletonList(payment));
 
         paymentService.retryFailedRefunds();
 
         assertEquals(2, payment.getRefundRetryCount());
-        assertEquals("SUCCESS", payment.getRefundStatus());
+        assertEquals("REFUNDED", payment.getStatus());
         assertEquals("CANCELLED", booking.getStatus());
         verify(paymentRepository, times(1)).save(payment);
+    }
+    
+    @Test
+    void testCreatePaymentRequest_Cash_Success() {
+        Booking booking = new Booking();
+        booking.setBookingId(2L);
+        booking.setStatus("PENDING");
+        booking.setTotalAmount(BigDecimal.valueOf(500));
+
+        when(bookingRepository.findById(2L)).thenReturn(Optional.of(booking));
+
+        PaymentRequestDTO requestDTO = new PaymentRequestDTO();
+        requestDTO.setBookingId(2L);
+        requestDTO.setPaymentMethod("CASH");
+
+        PaymentResponseDTO response = paymentService.createPaymentRequest(requestDTO);
+
+        assertNotNull(response);
+        assertEquals("CASH_PAYMENT", response.getClientSecret());
+        assertEquals("PENDING", booking.getPaymentStatus());
+        assertEquals("CONFIRMED", booking.getStatus());
+        verify(paymentRepository, times(1)).save(any(Payment.class));
+        verify(auditLogRepository, times(1)).save(any(PaymentAuditLog.class));
+    }
+
+    @Test
+    void testConfirmCashPayment_Success() {
+        User user = new User();
+        user.setEmail("cash@test.com");
+
+        Booking booking = new Booking();
+        booking.setBookingId(3L);
+        booking.setUser(user);
+        booking.setBookingCode("B-CASH");
+        booking.setPaymentStatus("PENDING");
+
+        Payment payment = new Payment();
+        payment.setPaymentId(10L);
+        payment.setTransactionId("txn-cash-123");
+        payment.setPaymentMethod("CASH");
+        payment.setStatus("PENDING");
+        payment.setBooking(booking);
+
+        when(paymentRepository.findById(10L)).thenReturn(Optional.of(payment));
+        when(paymentRepository.findByTransactionIdForUpdate("txn-cash-123")).thenReturn(Optional.of(payment));
+
+        paymentService.confirmCashPayment(10L);
+
+        assertEquals("SUCCESS", payment.getStatus());
+        assertEquals("SUCCESS", booking.getPaymentStatus());
+        verify(emailService, times(1)).sendBookingConfirmationEmail("cash@test.com", "B-CASH");
+        verify(paymentRepository, times(1)).save(payment);
+        verify(auditLogRepository, times(1)).save(any(PaymentAuditLog.class));
     }
 }

@@ -35,6 +35,9 @@ public class Voucher {
     @Column(name = "min_booking_value", precision = 18, scale = 2)
     private BigDecimal minBookingValue;
 
+    @Column(name = "max_discount", precision = 18, scale = 2)
+    private BigDecimal maxDiscount;
+
     @Column(name = "start_date")
     private LocalDateTime startDate;
 

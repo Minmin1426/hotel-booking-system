@@ -35,7 +35,7 @@ public class VoucherServiceTest {
     void testApplyVoucher_Success_Percentage() {
         Booking booking = new Booking();
         booking.setBookingId(1L);
-        booking.setStatus("PENDING_PAYMENT");
+        booking.setStatus("PENDING");
         booking.setTotalAmount(BigDecimal.valueOf(1000));
 
         Voucher voucher = new Voucher();
@@ -54,14 +54,13 @@ public class VoucherServiceTest {
         assertNotNull(result);
         assertEquals(BigDecimal.valueOf(200.0), result.getDiscountAmount());
         assertEquals(BigDecimal.valueOf(800.0), result.getFinalPrice());
-        assertEquals(1, voucher.getCurrentUsage());
     }
 
     @Test
     void testApplyVoucher_Expired() {
         Booking booking = new Booking();
         booking.setBookingId(1L);
-        booking.setStatus("PENDING_PAYMENT");
+        booking.setStatus("PENDING");
         booking.setTotalAmount(BigDecimal.valueOf(1000));
 
         Voucher voucher = new Voucher();
@@ -80,7 +79,7 @@ public class VoucherServiceTest {
     void testApplyVoucher_MinBookingValueNotMet() {
         Booking booking = new Booking();
         booking.setBookingId(1L);
-        booking.setStatus("PENDING_PAYMENT");
+        booking.setStatus("PENDING");
         booking.setTotalAmount(BigDecimal.valueOf(500));
 
         Voucher voucher = new Voucher();

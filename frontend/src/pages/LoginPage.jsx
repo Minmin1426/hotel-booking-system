@@ -82,7 +82,7 @@ export default function LoginPage() {
       } else if (data.role === 'HOUSEKEEPER' || data.role === 'RECEPTIONIST') {
         window.location.href = '/staff/rooms';
       } else {
-        window.location.href = '/profile';
+        window.location.href = '/';
       }
     } catch (err) {
       setError(err.message);

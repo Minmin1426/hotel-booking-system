@@ -8,6 +8,7 @@ import { PaymentService } from '../services/PaymentService';
 import { Elements } from '@stripe/react-stripe-js';
 import { loadStripe } from '@stripe/stripe-js';
 import CheckoutForm from '../components/CheckoutForm';
+import BankTransferUI from '../components/BankTransferUI';
 import Header from '../components/Header';
 
 // You must replace this with your actual Stripe publishable key that matches your Secret key
@@ -49,6 +50,7 @@ function HotelDetailPage() {
 
   // Stripe Elements state
   const [clientSecret, setClientSecret] = useState('');
+  const [bankTransferDetails, setBankTransferDetails] = useState(null);
   const [transactionId, setTransactionId] = useState('');
 
   // Guest details verification states
@@ -57,6 +59,10 @@ function HotelDetailPage() {
   const [guestPhone, setGuestPhone] = useState('');
   const [guestIdNumber, setGuestIdNumber] = useState('');
   const [voucherCode, setVoucherCode] = useState('');
+  const [availableVouchers, setAvailableVouchers] = useState([]);
+  const [adults, setAdults] = useState(1);
+  const [children, setChildren] = useState(0);
+  const [cashConfirmChecked, setCashConfirmChecked] = useState(false);
 
   // Reviews states
   const [reviews, setReviews] = useState([]);
@@ -116,6 +122,18 @@ function HotelDetailPage() {
 
     return () => clearInterval(timer);
   }, [timeLeft, bookingStatus]);
+
+  // Prevent body scroll when modal is open
+  useEffect(() => {
+    if (showBookingModal) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [showBookingModal]);
 
   const formatTime = (seconds) => {
     const mins = Math.floor(seconds / 60);
@@ -186,6 +204,14 @@ function HotelDetailPage() {
       setGuestEmail(profileData.email || '');
       setGuestPhone(profileData.phoneNumber || '');
       setGuestIdNumber(profileData.identificationNumber || '');
+      
+      try {
+        const vouchersData = await BookingService.getActiveVouchers();
+        setAvailableVouchers(vouchersData || []);
+      } catch (err) {
+        console.error("Failed to load active vouchers", err);
+      }
+
       setShowBookingModal(true);
       setBookingError('');
     } catch (err) {
@@ -226,12 +252,16 @@ function HotelDetailPage() {
         checkIn,
         checkOut,
         [selectedRoom.roomId],
-        paymentMethod,
-        voucherCode
+        'ONLINE',
+        voucherCode,
+        adults,
+        children
       );
+
       setBookingDetails(res);
       setBookingStatus(res.status);
 
+      // 4. Initialize timer immediately so it doesn't instantly expire on payment error
       const expires = parseLocalDateTime(res.lockExpiresAt);
       if (expires) {
         const now = new Date();
@@ -252,16 +282,17 @@ function HotelDetailPage() {
     setBookingError('');
     try {
       const response = await PaymentService.createPaymentRequest(bookingDetails.bookingId, "ONLINE");
-      if (response && response.clientSecret) {
-        setClientSecret(response.clientSecret);
-        if (response.transactionId) {
-          setTransactionId(response.transactionId);
+      const secret = response?.data?.clientSecret || response?.clientSecret;
+      if (secret) {
+        setClientSecret(secret);
+        if (response?.transactionId || response?.data?.transactionId) {
+          setTransactionId(response.transactionId || response.data.transactionId);
         }
       } else {
         throw new Error("No client secret received from Stripe.");
       }
     } catch (err) {
-      setBookingError(err.message || "Failed to initiate Stripe payment.");
+      setBookingError(err.message || "Failed to confirm details and initiate reservation.");
     } finally {
       setIsBookingInProgress(false);
     }
@@ -579,27 +610,7 @@ function HotelDetailPage() {
         <div className="fixed inset-0 z-[100] bg-slate-50 flex flex-col h-screen overflow-hidden animate-fade-in">
           
           {/* Top Header */}
-          <div className="bg-white border-b border-slate-200 px-6 py-4 flex justify-between items-center shrink-0 shadow-sm z-10">
-            <div className="flex items-center gap-2">
-              <span className="text-2xl">🏢</span>
-              <span className="text-xl font-black tracking-tighter text-[#1A3B85]">StayZone<span className="text-cyan-500 font-medium">Hotel</span></span>
-            </div>
-            
-            <div className="flex items-center gap-6">
-              <div className="flex items-center gap-2 text-slate-600 font-medium text-sm">
-                <span>🔒</span>
-                <span>Secure Checkout</span>
-              </div>
-              {!isBookingInProgress && bookingStatus !== 'PENDING' && (
-                <button 
-                  onClick={() => setShowBookingModal(false)}
-                  className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-500 font-bold transition-all cursor-pointer"
-                >
-                  ✕
-                </button>
-              )}
-            </div>
-          </div>
+          <Header />
           
           {/* Progress Indicator */}
           <div className="bg-white px-6 py-5 border-b border-slate-100 shrink-0">
@@ -669,7 +680,71 @@ function HotelDetailPage() {
                             </div>
                             <div>
                               <label className="text-xs font-bold text-slate-700 uppercase tracking-wide block mb-2">Promo Code (Optional)</label>
-                              <input type="text" className="w-full px-5 py-3.5 rounded-xl border border-slate-300 text-sm focus:outline-none focus:border-[#1A3B85] focus:ring-1 focus:ring-[#1A3B85] uppercase transition-all" value={voucherCode} onChange={(e) => setVoucherCode(e.target.value)} placeholder="WELCOME10" />
+                              <div className="relative">
+                                <input type="text" className="w-full px-5 py-3.5 rounded-xl border border-slate-300 text-sm focus:outline-none focus:border-[#1A3B85] focus:ring-1 focus:ring-[#1A3B85] uppercase transition-all" value={voucherCode} onChange={(e) => setVoucherCode(e.target.value)} placeholder="Enter code or select below" />
+                              </div>
+                              {availableVouchers && availableVouchers.length > 0 && (
+                                <div className="mt-3 flex flex-wrap gap-2">
+                                  {availableVouchers.map(v => {
+                                    const isExpired = v.endDate && new Date(v.endDate) < new Date();
+                                    const isFullyUsed = v.maxUsage !== null && v.currentUsage >= v.maxUsage;
+                                    
+                                    // Calculate subtotal to check minSpend
+                                    const nights = calculateNights(checkIn, checkOut);
+                                    const roomPrice = selectedRoom?.price || 0;
+                                    const roomTotal = roomPrice * nights;
+                                    const serviceFee = roomTotal * 0.05;
+                                    const taxes = roomTotal * 0.10;
+                                    const guestSurcharge = (adults + children > 2) ? 20 : 0;
+                                    const subtotal = roomTotal + serviceFee + taxes + guestSurcharge;
+
+                                    const isMinSpendMet = !v.minBookingValue || subtotal >= v.minBookingValue;
+                                    const isInvalid = isExpired || isFullyUsed || !isMinSpendMet;
+                                    
+                                    if (isExpired || isFullyUsed) return null; // Don't even show expired ones here
+                                    
+                                    const discountText = v.discountType === 'PERCENTAGE' ? `${v.discountValue}% OFF` : `$${v.discountValue} OFF`;
+                                    
+                                    return (
+                                      <button
+                                        key={v.voucherId}
+                                        type="button"
+                                        disabled={isInvalid}
+                                        onClick={() => setVoucherCode(v.code)}
+                                        className={`px-3 py-1.5 rounded-lg text-[10px] font-bold border transition-all ${
+                                          voucherCode === v.code
+                                            ? 'bg-blue-50 border-blue-200 text-blue-700 ring-1 ring-blue-500'
+                                            : isInvalid
+                                              ? 'bg-slate-50 border-slate-200 text-slate-400 cursor-not-allowed'
+                                              : 'bg-white border-slate-200 text-slate-600 hover:border-blue-300 hover:bg-blue-50 cursor-pointer'
+                                        }`}
+                                        title={!isMinSpendMet ? `Requires minimum spend of $${v.minBookingValue}` : ''}
+                                      >
+                                        <span className="font-mono">{v.code}</span>
+                                        <span className="ml-1 px-1 bg-slate-100 rounded text-[9px]">{discountText}</span>
+                                      </button>
+                                    );
+                                  })}
+                                </div>
+                              )}
+                            </div>
+                            <div className="grid grid-cols-2 gap-5 mt-5">
+                              <div>
+                                <label className="text-xs font-bold text-slate-700 uppercase tracking-wide block mb-2">Adults (≥ 1)</label>
+                                <div className="flex items-center gap-3">
+                                  <button type="button" onClick={() => setAdults(Math.max(1, adults - 1))} className="w-10 h-10 rounded-xl bg-slate-100 text-slate-600 font-bold hover:bg-slate-200 transition-colors">-</button>
+                                  <span className="font-semibold text-slate-800 text-center w-8">{adults}</span>
+                                  <button type="button" onClick={() => setAdults(adults + 1)} className="w-10 h-10 rounded-xl bg-slate-100 text-slate-600 font-bold hover:bg-slate-200 transition-colors">+</button>
+                                </div>
+                              </div>
+                              <div>
+                                <label className="text-xs font-bold text-slate-700 uppercase tracking-wide block mb-2">Children (≥ 0)</label>
+                                <div className="flex items-center gap-3">
+                                  <button type="button" onClick={() => setChildren(Math.max(0, children - 1))} className="w-10 h-10 rounded-xl bg-slate-100 text-slate-600 font-bold hover:bg-slate-200 transition-colors">-</button>
+                                  <span className="font-semibold text-slate-800 text-center w-8">{children}</span>
+                                  <button type="button" onClick={() => setChildren(children + 1)} className="w-10 h-10 rounded-xl bg-slate-100 text-slate-600 font-bold hover:bg-slate-200 transition-colors">+</button>
+                                </div>
+                              </div>
                             </div>
                           </div>
 
@@ -693,13 +768,13 @@ function HotelDetailPage() {
                           <div className="flex justify-between items-start">
                             <div>
                               <h3 className="text-2xl font-bold text-slate-800 tracking-tight">Payment</h3>
-                              <p className="text-sm text-slate-500 mt-1">Complete your booking securely with Stripe.</p>
+                              <p className="text-sm text-slate-500 mt-1">Select your preferred payment method.</p>
                             </div>
                             {/* Card Icons */}
                             <div className="flex gap-2 bg-slate-50 px-3 py-2 rounded-lg border border-slate-100">
-                               <img src="https://upload.wikimedia.org/wikipedia/commons/4/41/Visa_Logo.png" alt="Visa" className="h-4 object-contain" />
-                               <img src="https://upload.wikimedia.org/wikipedia/commons/b/b7/MasterCard_Logo.svg" alt="Mastercard" className="h-4 object-contain" />
-                               <img src="https://upload.wikimedia.org/wikipedia/commons/3/30/American_Express_logo.svg" alt="Amex" className="h-4 object-contain" />
+                               <img src="https://raw.githubusercontent.com/muhammederdem/credit-card-form/master/src/assets/images/visa.png" alt="Visa" className="h-4 object-contain" />
+                               <img src="https://raw.githubusercontent.com/muhammederdem/credit-card-form/master/src/assets/images/mastercard.png" alt="Mastercard" className="h-4 object-contain" />
+                               <img src="https://raw.githubusercontent.com/muhammederdem/credit-card-form/master/src/assets/images/amex.png" alt="Amex" className="h-4 object-contain" />
                             </div>
                           </div>
 
@@ -709,8 +784,8 @@ function HotelDetailPage() {
                             <p className="text-sm font-medium text-amber-800">Your room is reserved for <strong className="font-mono text-base ml-1">{formatTime(timeLeft)}</strong></p>
                           </div>
 
-                          {/* Stripe Payment Method */}
-                          <div className="space-y-6">
+                          {/* Payment Action */}
+                          <div className="space-y-6 mt-4">
                             {!clientSecret ? (
                               <button
                                 onClick={handleOnlinePayment}
@@ -760,7 +835,10 @@ function HotelDetailPage() {
                                 ) : (
                                   <Elements stripe={stripePromise} options={{ clientSecret, locale: 'en' }}>
                                     <CheckoutForm 
-                                      onCancel={() => setClientSecret('')} 
+                                      onCancel={() => {
+                                        setClientSecret('');
+                                        if (typeof setBookingStatus === 'function') setBookingStatus('');
+                                      }} 
                                       amount={`$${((bookingDetails ? bookingDetails.finalPrice : (selectedRoom.pricePerNight * calculateNights(checkIn, checkOut)) * 1.15).toLocaleString())}`} 
                                     />
                                   </Elements>
@@ -868,35 +946,48 @@ function HotelDetailPage() {
                        </div>
                        <div>
                          <span className="block text-xs text-slate-400 font-bold uppercase tracking-wider mb-2">Guests</span>
-                         <span className="font-medium text-slate-800">2 guests</span>
+                         <span className="font-medium text-slate-800">{bookingDetails ? (bookingDetails.adults + bookingDetails.children) : (adults + children)} guests</span>
+                         <span className="block text-slate-500 mt-1 text-[11px]">({bookingDetails ? bookingDetails.adults : adults} adults, {bookingDetails ? bookingDetails.children : children} children)</span>
                        </div>
                      </div>
 
-                     <div className="space-y-4 text-sm text-slate-600">
-                       <div className="flex justify-between items-center">
-                         <span>Room Rate ({calculateNights(checkIn, checkOut)} nights)</span>
-                         <span className="font-semibold text-slate-800">${((selectedRoom.pricePerNight * calculateNights(checkIn, checkOut)).toLocaleString())}</span>
+
+                     <div className="space-y-3 pt-6 border-t border-dashed border-slate-200">
+                       <div className="flex justify-between items-center text-sm">
+                         <span className="text-slate-500">Room Rate</span>
+                         <span className="font-semibold text-slate-800">
+                           ${bookingDetails ? bookingDetails.totalAmount : ((selectedRoom.pricePerNight * calculateNights(checkIn, checkOut)) + (Math.max(0, adults - 2) * 20 + children * 10) * calculateNights(checkIn, checkOut)).toLocaleString()}
+                         </span>
                        </div>
-                       <div className="flex justify-between items-center">
-                         <span>Service Fee</span>
-                         <span className="font-semibold text-slate-800">${(((selectedRoom.pricePerNight * calculateNights(checkIn, checkOut)) * 0.05).toLocaleString())}</span>
+                       
+                       <div className="flex justify-between items-center text-sm">
+                         <span className="text-slate-500">Service Fee (5%)</span>
+                         <span className="font-semibold text-slate-800">
+                           ${bookingDetails ? bookingDetails.serviceFee : (((selectedRoom.pricePerNight * calculateNights(checkIn, checkOut)) + (Math.max(0, adults - 2) * 20 + children * 10) * calculateNights(checkIn, checkOut)) * 0.05).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                         </span>
                        </div>
-                       <div className="flex justify-between items-center">
-                         <span>Taxes (10%)</span>
-                         <span className="font-semibold text-slate-800">${(((selectedRoom.pricePerNight * calculateNights(checkIn, checkOut)) * 0.1).toLocaleString())}</span>
+
+                       <div className="flex justify-between items-center text-sm">
+                         <span className="text-slate-500">Taxes & Fees (10%)</span>
+                         <span className="font-semibold text-slate-800">
+                           ${bookingDetails ? bookingDetails.taxes : (((selectedRoom.pricePerNight * calculateNights(checkIn, checkOut)) + (Math.max(0, adults - 2) * 20 + children * 10) * calculateNights(checkIn, checkOut)) * 0.10).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                         </span>
                        </div>
-                       {bookingDetails && bookingDetails.discountAmount > 0 && (
-                         <div className="flex justify-between items-center text-emerald-600 bg-emerald-50 px-3 py-2 rounded-lg mt-2">
-                           <span className="font-medium">Discount Code</span>
-                           <span className="font-bold">-${((bookingDetails.discountAmount).toLocaleString())}</span>
+
+                       {(bookingDetails?.discountAmount > 0 || voucherCode) && (
+                         <div className="flex justify-between items-center text-sm">
+                           <span className="text-emerald-600 font-semibold">Discount {bookingDetails?.voucherCode || voucherCode}</span>
+                           <span className="font-bold text-emerald-600">
+                             -${bookingDetails ? bookingDetails.discountAmount : '---'}
+                           </span>
                          </div>
                        )}
                      </div>
 
-                     <div className="border-t border-dashed border-slate-200 pt-6 flex justify-between items-end">
+                     <div className="border-t border-slate-200 pt-4 flex justify-between items-end">
                        <span className="font-bold text-slate-800 uppercase tracking-widest text-sm">Total Amount</span>
                        <span className="text-3xl font-black text-[#1A3B85] tracking-tight">
-                         ${((bookingDetails ? bookingDetails.finalPrice : (selectedRoom.pricePerNight * calculateNights(checkIn, checkOut)) * 1.15).toLocaleString())}
+                         ${bookingDetails ? bookingDetails.finalPrice : (((selectedRoom.pricePerNight * calculateNights(checkIn, checkOut)) + (Math.max(0, adults - 2) * 20 + children * 10) * calculateNights(checkIn, checkOut)) * 1.15).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
                        </span>
                      </div>
 

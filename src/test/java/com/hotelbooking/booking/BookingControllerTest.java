@@ -83,6 +83,8 @@ class BookingControllerTest {
                 .checkInDate(LocalDate.now().plusDays(1))
                 .checkOutDate(LocalDate.now().plusDays(3))
                 .roomIds(List.of(101L))
+                .adults(2)
+                .children(0)
                 .build();
 
         BookingResponse response = BookingResponse.builder()

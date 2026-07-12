@@ -23,12 +23,13 @@ public class PaymentController {
     }
 
     @PostMapping("/verify")
+    @PreAuthorize("hasAnyRole('CUSTOMER', 'STAFF', 'ADMIN', 'DIRECTOR', 'RECEPTIONIST')")
     public ResponseEntity<String> verifyPayment(@RequestParam String paymentIntentId) {
         try {
-            paymentService.verifyPayment(paymentIntentId);
-            return ResponseEntity.ok("Payment verified successfully");
+            String status = paymentService.verifyPayment(paymentIntentId);
+            return ResponseEntity.ok(status);
         } catch (Exception e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
+            return ResponseEntity.badRequest().body("Failed to verify payment");
         }
     }
 
@@ -37,5 +38,26 @@ public class PaymentController {
     public ResponseEntity<String> processRefund(@PathVariable Long bookingId) {
         paymentService.processRefund(bookingId);
         return ResponseEntity.ok("Refund processed successfully.");
+    }
+    
+    @PostMapping("/{paymentId}/confirm-cash")
+    @PreAuthorize("hasAnyRole('STAFF', 'ADMIN', 'DIRECTOR')")
+    public ResponseEntity<String> confirmCashPayment(@PathVariable Long paymentId) {
+        paymentService.confirmCashPayment(paymentId);
+        return ResponseEntity.ok("Cash payment confirmed successfully.");
+    }
+
+    @PostMapping("/{paymentId}/confirm-bank")
+    @PreAuthorize("hasAnyRole('STAFF', 'ADMIN', 'DIRECTOR')")
+    public ResponseEntity<String> confirmBankTransfer(@PathVariable Long paymentId) {
+        paymentService.confirmBankTransfer(paymentId);
+        return ResponseEntity.ok("Bank transfer confirmed successfully.");
+    }
+
+    @PostMapping("/simulate-bank-transfer")
+    @PreAuthorize("hasAnyRole('CUSTOMER', 'STAFF', 'ADMIN', 'DIRECTOR', 'RECEPTIONIST')")
+    public ResponseEntity<String> simulateBankTransfer(@RequestParam String bookingCode) {
+        paymentService.simulateBankTransferWebhook(bookingCode);
+        return ResponseEntity.ok("Bank transfer webhook simulated successfully.");
     }
 }

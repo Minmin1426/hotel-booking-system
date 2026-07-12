@@ -13,6 +13,13 @@ function PaymentStatusPage({ status }) {
 
   useEffect(() => {
     if (status === 'success') {
+      const isManual = searchParams.get('manual') === 'true';
+      if (isManual) {
+        setSuccessMsg('Your reservation has been successfully received!');
+        setLoading(false);
+        return;
+      }
+
       const paymentIntentId = searchParams.get('payment_intent');
       if (!paymentIntentId) {
         setError('No payment intent ID found.');
@@ -56,7 +63,7 @@ function PaymentStatusPage({ status }) {
             <p className="text-sm text-slate-500">A confirmation email has been sent to your registered address.</p>
             <div className="pt-6">
               <Link 
-                to="/profile" 
+                to="/profile?tab=bookings" 
                 className="inline-block px-8 py-3 rounded-full bg-slate-900 text-white font-bold tracking-wide hover:bg-slate-800 transition-all shadow-md"
               >
                 View My Bookings

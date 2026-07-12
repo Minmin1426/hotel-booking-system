@@ -70,6 +70,22 @@ public class Booking {
     @Column(name = "final_price", precision = 18, scale = 2)
     private BigDecimal finalPrice;
 
+    @Column(name = "service_fee", precision = 18, scale = 2)
+    @Builder.Default
+    private BigDecimal serviceFee = BigDecimal.ZERO;
+
+    @Column(name = "taxes", precision = 18, scale = 2)
+    @Builder.Default
+    private BigDecimal taxes = BigDecimal.ZERO;
+
+    @Column(nullable = false)
+    @Builder.Default
+    private Integer adults = 2;
+
+    @Column(nullable = false)
+    @Builder.Default
+    private Integer children = 0;
+
     @OneToMany(mappedBy = "booking", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
     private List<BookingRoom> bookingRooms = new java.util.ArrayList<>();

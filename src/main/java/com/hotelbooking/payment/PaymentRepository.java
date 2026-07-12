@@ -2,8 +2,10 @@ package com.hotelbooking.payment;
 import com.hotelbooking.report.dto.HotelRevenueDto;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import jakarta.persistence.LockModeType;
 import org.springframework.stereotype.Repository;
 
 import java.math.BigDecimal;
@@ -20,9 +22,13 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
 
     Optional<Payment> findByTransactionId(String transactionId);
 
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT p FROM Payment p WHERE p.transactionId = :transactionId")
+    Optional<Payment> findByTransactionIdForUpdate(@Param("transactionId") String transactionId);
+
     boolean existsByTransactionId(String transactionId);
 
-    List<Payment> findByRefundStatusAndRefundRetryCountLessThan(String status, Integer maxRetry);
+    List<Payment> findByStatusAndRefundRetryCountLessThan(String status, Integer maxRetry);
 
     @Query("SELECT COALESCE(SUM(p.amount), 0) FROM Payment p " +
            "WHERE p.status = 'SUCCESS' AND p.createdAt >= :startDate AND p.createdAt <= :endDate")

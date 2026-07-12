@@ -30,4 +30,10 @@ public class BookingRequest {
     private String paymentMethod; // e.g., ONLINE, CASH, BANK_TRANSFER
 
     private String voucherCode;
+
+    @NotNull(message = "Adults count cannot be null")
+    private Integer adults;
+
+    @NotNull(message = "Children count cannot be null")
+    private Integer children;
 }

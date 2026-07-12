@@ -4,7 +4,11 @@ import com.hotelbooking.payment.dto.PaymentResponseDTO;
 
 public interface PaymentService {
     PaymentResponseDTO createPaymentRequest(PaymentRequestDTO requestDTO);
-    void verifyPayment(String paymentIntentId);
+    String verifyPayment(String paymentIntentId);
     void processRefund(Long bookingId);
     void retryFailedRefunds();
+    void processStripeWebhook(String payload, String sigHeader);
+    void confirmCashPayment(Long paymentId);
+    void confirmBankTransfer(Long paymentId);
+    void simulateBankTransferWebhook(String bookingCode);
 }

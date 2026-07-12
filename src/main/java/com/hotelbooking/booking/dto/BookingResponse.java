@@ -24,7 +24,11 @@ public class BookingResponse {
     private List<Long> roomIds;
     private LocalDateTime lockExpiresAt;
     private BigDecimal discountAmount;
+    private BigDecimal serviceFee;
+    private BigDecimal taxes;
     private BigDecimal finalPrice;
     private String voucherCode;
+    private Integer adults;
+    private Integer children;
     private Boolean isReviewed;
 }

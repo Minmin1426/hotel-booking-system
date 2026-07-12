@@ -18,18 +18,18 @@ public class PaymentAuditLog {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "log_id")
-    private Long logId;
+    private Long auditId;
 
     @Column(name = "transaction_id", length = 100)
     private String transactionId;
 
-    @Column(nullable = false, length = 100)
-    private String action; // e.g., CREATE_REQUEST, WEBHOOK_RECEIVED, VERIFY_FAILED
+    @Column(name = "action", nullable = false, length = 100)
+    private String action;
 
-    @Column(name = "request_payload", columnDefinition = "NVARCHAR(MAX)")
+    @Column(name = "request_payload", columnDefinition = "TEXT")
     private String requestPayload;
 
-    @Column(name = "response_payload", columnDefinition = "NVARCHAR(MAX)")
+    @Column(name = "response_payload", columnDefinition = "TEXT")
     private String responsePayload;
 
     @CreationTimestamp

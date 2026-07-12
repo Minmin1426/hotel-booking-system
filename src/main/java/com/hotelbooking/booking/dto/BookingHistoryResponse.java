@@ -20,6 +20,9 @@ public class BookingHistoryResponse {
     private LocalDateTime checkInDate;
     private LocalDateTime checkOutDate;
     private BigDecimal totalAmount;
+    private BigDecimal discountAmount;
+    private BigDecimal serviceFee;
+    private BigDecimal taxes;
     private String status;          // PENDING | CONFIRMED | CANCELLED | COMPLETED
     private LocalDateTime confirmedAt;
     private LocalDateTime createdAt;

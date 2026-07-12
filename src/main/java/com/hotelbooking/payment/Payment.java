@@ -34,9 +34,9 @@ public class Payment {
     private BigDecimal amount;
 
     @Column(nullable = false)
-    private String status; // PENDING | SUCCESS | FAILED | REFUNDED
+    private String status; // PENDING | SUCCESS | FAILED | REFUND_PENDING | REFUNDED | MANUAL_REFUND_REQUIRED
 
-    @Column(name = "transaction_id")
+    @Column(name = "transaction_id", unique = true)
     private String transactionId;
 
     @Column(name = "gateway")
@@ -45,14 +45,14 @@ public class Payment {
     @Column(name = "payment_time")
     private LocalDateTime paymentTime;
 
+    @Column(name = "refund_status", length = 50)
+    private String refundStatus;
+
     @Column(name = "refund_amount", precision = 18, scale = 2)
     private BigDecimal refundAmount;
 
     @Column(name = "refund_time")
     private LocalDateTime refundTime;
-
-    @Column(name = "refund_status")
-    private String refundStatus;
 
     @Column(name = "refund_transaction_id")
     private String refundTransactionId;
