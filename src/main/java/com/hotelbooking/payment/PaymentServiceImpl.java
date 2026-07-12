@@ -135,7 +135,7 @@ public class PaymentServiceImpl implements PaymentService {
         }
 
         try {
-            if (stripeApiKey == null || stripeApiKey.startsWith("sk_test_placeholder") || stripeApiKey.trim().isEmpty()) {
+            if (stripeApiKey == null || stripeApiKey.startsWith("dummy_api_key_placeholder") || stripeApiKey.trim().isEmpty()) {
                 String transactionId = "mock_txn_" + UUID.randomUUID().toString();
                 String clientSecret = "mock_sec" + "ret_" + UUID.randomUUID().toString();
 
@@ -329,7 +329,7 @@ public class PaymentServiceImpl implements PaymentService {
 
         try {
             String paymentStatus;
-            if (paymentIntentId.startsWith("mock_txn_") || stripeApiKey == null || stripeApiKey.startsWith("sk_test_placeholder")) {
+            if (paymentIntentId.startsWith("mock_txn_") || stripeApiKey == null || stripeApiKey.startsWith("dummy_api_key_placeholder")) {
                 paymentStatus = "succeeded";
             } else {
                 PaymentIntent intent = PaymentIntent.retrieve(paymentIntentId);
