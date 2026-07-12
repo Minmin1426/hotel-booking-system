@@ -18,6 +18,9 @@ graph TD
     Search["UC-06/07: Tìm kiếm & Lọc Khách sạn"] --> Detail["UC-08: Xem chi tiết Khách sạn"]
     Detail --> Availability["UC-09: Kiểm tra Phòng trống"]
 
+    %% Cập nhật dọn dẹp phòng từ nhân viên
+    StaffUpdate["UC-36: Cập nhật trạng thái phòng (Receptionist/Housekeeper)"] -->|Đánh dấu Clean/Dirty| Availability
+
     %% Phân hệ Đặt phòng & Khóa phòng
     Availability -->|Chọn phòng & ngày| CheckDates["UC-10: Chọn & Validate Ngày"]
     CheckDates -->|Hợp lệ| CreateBooking["UC-11: Đặt phòng (Tạo Booking PENDING)"]
@@ -51,13 +54,14 @@ Khi bị chất vấn trong buổi review, bạn hãy chia câu trả lời thà
 
 ### Cấp độ 1: Liên kết theo Luồng Nghiệp vụ (Business Flow Dependency)
 Các tính năng không hoạt động độc lập mà kế thừa kết quả của nhau theo chuỗi mắt xích:
-1.  **Chuỗi Tìm kiếm - Đặt phòng:** Khách hàng không thể Đặt phòng (`UC-11`) nếu chưa đi qua luồng Tìm kiếm (`UC-06/07`), Xem phòng trống (`UC-09`) và Validate ngày (`UC-10`). Thông tin phòng trống hiển thị phải loại trừ các phòng đang bị khóa bởi tính năng `Room Lock`.
+1.  **Chuỗi Tìm kiếm - Đặt phòng:** Khách hàng không thể Đặt phòng (`UC-11`) nếu chưa đi qua luồng Tìm kiếm (`UC-06/07`), Xem phòng trống (`UC-09`) và Validate ngày (`UC-10`). Thông tin phòng trống hiển thị phải loại trừ các phòng đang bị khóa bởi tính năng `Room Lock` hoặc đang ở trạng thái bảo trì/chưa dọn dẹp (`UNAVAILABLE` do dọn phòng cập nhật qua `UC-36`).
 2.  **Chuỗi Đặt phòng - Khóa phòng - Thanh toán (Core Transaction):** 
     *   Đặt phòng (`UC-11`) thành công sẽ tự động kích hoạt tính năng Tạm giữ phòng (`UC-33`) để khóa phòng trong 10 phút.
     *   Tính năng Thanh toán trực tuyến (`UC-13`) phụ thuộc vào đơn hàng đã tạo.
     *   Nếu thanh toán thành công, Webhook (`UC-12`) sẽ xác nhận đơn và tự động tắt khóa phòng. Nếu hết 10 phút chưa thanh toán, hệ thống tác vụ ngầm (`RoomLockCleanupScheduler`) sẽ tự động hủy đơn và mở khóa phòng.
-3.  **Vòng lặp Đánh giá (Feedback Loop):** Đặt phòng thành công (`CONFIRMED`) và hoàn thành kỳ nghỉ là điều kiện cần để viết đánh giá. Đánh giá sau khi được kiểm duyệt (`UC-31`) sẽ tự động cập nhật lại số sao trung bình hiển thị tại trang Chi tiết khách sạn (`UC-08`), ảnh hưởng trực tiếp đến bộ lọc tìm kiếm theo đánh giá (`UC-07`).
-4.  **Luồng Dữ liệu Báo cáo (Analytical Flow):** Các báo cáo Doanh thu (`UC-25`), Thống kê đặt phòng (`UC-24`) và Hiệu suất phòng (`UC-26`) trực tiếp đọc dữ liệu lịch sử được kết xuất từ các đơn hàng thành công và các giao dịch thanh toán thành công.
+3.  **Vòng lặp Đánh giá (Feedback Loop):** Đặt phòng thành công (`CONFIRMED`) và hoàn thành kỳ nghỉ (`COMPLETED`) là điều kiện cần để viết đánh giá. Đánh giá sau khi đăng hoặc kiểm duyệt (`UC-31`) sẽ tự động cập nhật lại số sao trung bình hiển thị tại trang Chi tiết khách sạn (`UC-08`), ảnh hưởng trực tiếp đến bộ lọc tìm kiếm theo đánh giá (`UC-07`).
+4.  **Luồng Dọn dẹp phòng (Staff Operations Flow):** Khi khách check-out, lễ tân chuyển trạng thái phòng sang `UNAVAILABLE` (Bẩn). Nhân viên buồng phòng dọn dẹp xong cập nhật trạng thái phòng thành `AVAILABLE` (Sạch sẽ). Luồng này cập nhật trực tiếp vào trường `status` của bảng `rooms`, ngay lập tức đồng bộ với danh sách tìm kiếm phòng trống của khách hàng.
+5.  **Luồng Dữ liệu Báo cáo (Analytical Flow):** Các báo cáo Doanh thu (`UC-25`), Thống kê đặt phòng (`UC-24`) và Hiệu suất phòng (`UC-26`) trực tiếp đọc dữ liệu lịch sử được kết xuất từ các đơn hàng thành công và các giao dịch thanh toán thành công.
 
 ### Cấp độ 2: Liên kết ở tầng Cơ sở dữ liệu (Database/Entity Relationships)
 Tính liên kết thể hiện qua các ràng buộc khóa ngoại (Foreign Keys) giữa các Entity JPA:
@@ -67,6 +71,7 @@ Tính liên kết thể hiện qua các ràng buộc khóa ngoại (Foreign Keys
 *   `BookingRoom` (Bảng trung gian) liên kết nhiều-nhiều giữa `Booking` và `Room` để biết đơn hàng gồm những phòng nào và lưu lại giá tại thời điểm đặt (`priceAtBooking`).
 *   `RoomLock` liên kết với `Booking` và `Room` để giữ chỗ.
 *   `Payment` liên kết trực tiếp với `Booking` để đối soát hóa đơn.
+*   `Review` liên kết với `User`, `Hotel` và `Booking` (ràng buộc duy nhất `UNIQUE` trên `booking_id`).
 
 ### Cấp độ 3: Liên kết ở tầng Mã nguồn (Class Dependency / Java Collaboration)
 Trong code Spring Boot, các lớp Service gọi lẫn nhau để hoàn thành nghiệp vụ phức tạp:
@@ -76,6 +81,9 @@ Trong code Spring Boot, các lớp Service gọi lẫn nhau để hoàn thành n
     *   `PaymentRepository` để tạo bản ghi thanh toán.
 *   [PaymentServiceImpl.java](file:///C:/Users/Minmin/Documents/GitHub/hotel-booking-system/src/main/java/com/hotelbooking/payment/PaymentServiceImpl.java) phụ thuộc vào và gọi:
     *   `EmailService` để gửi thư xác nhận đặt phòng khi nhận webhook thành công.
+*   [ReviewServiceImpl.java](file:///C:/Users/Minmin/Documents/GitHub/hotel-booking-system/src/main/java/com/hotelbooking/hotel/ReviewServiceImpl.java) phụ thuộc vào:
+    *   `BookingRepository` để xác thực quyền sở hữu và trạng thái `COMPLETED` của booking.
+    *   `HotelRepository` để cập nhật lại điểm rating trung bình của khách sạn khi có đánh giá mới.
 *   [ReportServiceImpl.java](file:///C:/Users/Minmin/Documents/GitHub/hotel-booking-system/src/main/java/com/hotelbooking/report/ReportServiceImpl.java) phụ thuộc vào nhiều repositories (`BookingRepository`, `PaymentRepository`, `ReviewRepository`) để tổng hợp dữ liệu chéo từ các phân hệ khác nhau.
 
 ---

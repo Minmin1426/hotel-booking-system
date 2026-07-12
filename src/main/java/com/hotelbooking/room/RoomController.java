@@ -77,7 +77,7 @@ public class RoomController {
      * Update room availability (Admin only)
      */
     @PutMapping("/{id}/availability")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'RECEPTIONIST', 'HOUSEKEEPER')")
     public ResponseEntity<ApiResponse<Void>> updateAvailability(
             @PathVariable("id") Long id,
             @RequestParam("available") boolean available) {
@@ -90,7 +90,7 @@ public class RoomController {
      * Get all rooms for a hotel (Admin/Staff only)
      */
     @GetMapping("/hotel/{hotelId}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF', 'RECEPTIONIST', 'HOUSEKEEPER')")
     public ResponseEntity<ApiResponse<List<RoomAvailabilityResponse>>> getRoomsByHotelId(@PathVariable Long hotelId) {
         log.info("Received request to get all rooms for hotel ID: {}", hotelId);
         List<RoomAvailabilityResponse> rooms = roomService.getRoomsByHotelId(hotelId);

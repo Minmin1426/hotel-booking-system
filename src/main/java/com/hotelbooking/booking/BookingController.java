@@ -39,7 +39,7 @@ public class BookingController {
     }
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('CUSTOMER', 'STAFF', 'ADMIN', 'DIRECTOR')")
+    @PreAuthorize("hasAnyRole('CUSTOMER', 'STAFF', 'ADMIN', 'DIRECTOR', 'RECEPTIONIST')")
     public ResponseEntity<ApiResponse<BookingResponse>> createBooking(
             @AuthenticationPrincipal User currentUser,
             @Valid @RequestBody BookingRequest request) {
@@ -52,7 +52,7 @@ public class BookingController {
 
     // UC-33: Tạm giữ phòng (Room Lock) - Gia hạn lock room
     @PutMapping("/{id}/lock/renew")
-    @PreAuthorize("hasAnyRole('CUSTOMER', 'STAFF', 'ADMIN', 'DIRECTOR')")
+    @PreAuthorize("hasAnyRole('CUSTOMER', 'STAFF', 'ADMIN', 'DIRECTOR', 'RECEPTIONIST')")
     public ResponseEntity<ApiResponse<Void>> renewLock(
             @PathVariable("id") Long bookingId) {
         log.info("UC-33 API: Renewing room locks for booking ID: {}", bookingId);
@@ -62,7 +62,7 @@ public class BookingController {
 
     // UC-12: Xác nhận booking (payment callback)
     @PostMapping("/confirm")
-    @PreAuthorize("hasAnyRole('CUSTOMER', 'STAFF', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('CUSTOMER', 'STAFF', 'ADMIN', 'RECEPTIONIST')")
     public ResponseEntity<ApiResponse<BookingConfirmResponse>> confirmBooking(
             @Valid @RequestBody PaymentConfirmRequest request) {
         log.info("UC-12 API: Confirming booking for bookingCode={}", request.getBookingCode());
@@ -99,7 +99,7 @@ public class BookingController {
 
     // Retrieve single booking by ID
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('CUSTOMER', 'STAFF', 'ADMIN', 'DIRECTOR')")
+    @PreAuthorize("hasAnyRole('CUSTOMER', 'STAFF', 'ADMIN', 'DIRECTOR', 'RECEPTIONIST')")
     public ResponseEntity<ApiResponse<BookingResponse>> getBooking(
             @PathVariable("id") Long bookingId) {
         log.info("API: Retrieving booking ID: {}", bookingId);

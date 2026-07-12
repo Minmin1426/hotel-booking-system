@@ -12,6 +12,7 @@ import com.hotelbooking.common.exception.BusinessException;
 import com.hotelbooking.common.exception.ResourceNotFoundException;
 import com.hotelbooking.hotel.Hotel;
 import com.hotelbooking.hotel.HotelRepository;
+import com.hotelbooking.hotel.ReviewRepository;
 import com.hotelbooking.payment.Payment;
 import com.hotelbooking.payment.PaymentRepository;
 import com.hotelbooking.payment.dto.PaymentConfirmRequest;
@@ -62,6 +63,7 @@ public class BookingServiceImpl implements BookingService {
     private final PaymentRepository paymentRepository;
     private final SystemSettingService systemSettingService;
     private final VoucherRepository voucherRepository;
+    private final ReviewRepository reviewRepository;
 
     @Override
     @Transactional(readOnly = true)
@@ -511,6 +513,8 @@ public class BookingServiceImpl implements BookingService {
                 .map(br -> br.getRoom().getRoomId())
                 .collect(Collectors.toList());
 
+        boolean reviewed = reviewRepository.existsByBookingBookingId(booking.getBookingId());
+
         return BookingResponse.builder()
                 .bookingId(booking.getBookingId())
                 .bookingCode(booking.getBookingCode())
@@ -529,10 +533,12 @@ public class BookingServiceImpl implements BookingService {
                 .voucherCode(booking.getVoucher() != null ? booking.getVoucher().getCode() : null)
                 .adults(booking.getAdults())
                 .children(booking.getChildren())
+                .isReviewed(reviewed)
                 .build();
     }
 
     private BookingHistoryResponse toHistoryResponse(Booking booking) {
+        boolean reviewed = reviewRepository.existsByBookingBookingId(booking.getBookingId());
         return BookingHistoryResponse.builder()
                 .bookingId(booking.getBookingId())
                 .bookingCode(booking.getBookingCode())
@@ -547,6 +553,7 @@ public class BookingServiceImpl implements BookingService {
                 .status(booking.getStatus())
                 .confirmedAt(booking.getConfirmedAt())
                 .createdAt(booking.getCreatedAt())
+                .isReviewed(reviewed)
                 .build();
     }
 

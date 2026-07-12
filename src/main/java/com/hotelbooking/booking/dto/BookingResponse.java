@@ -30,4 +30,5 @@ public class BookingResponse {
     private String voucherCode;
     private Integer adults;
     private Integer children;
+    private Boolean isReviewed;
 }

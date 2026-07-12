@@ -94,11 +94,24 @@ Tài liệu này tập hợp tất cả các quy tắc nghiệp vụ (Business R
 
 ---
 
-## BR-07: Quy tắc Kiểm duyệt Đánh giá (Review Moderation Rules)
+## BR-07: Quy tắc Gửi & Kiểm duyệt Đánh giá (Review & Moderation Rules)
 
-1. **Tính hợp lệ khi gửi đánh giá:**
-   - Khách hàng chỉ có thể gửi đánh giá khách sạn khi đơn đặt phòng của họ có trạng thái `COMPLETED` (đã hoàn tất thời gian lưu trú thực tế).
-   - Mỗi đơn đặt phòng (`booking_id`) chỉ được phép tạo tối đa **1 đánh giá** (đảm bảo tính khách quan của điểm số).
+1. **Tính Hợp Lệ khi Gửi Đánh Giá:**
+   - Khách hàng chỉ có thể gửi đánh giá khách sạn khi đơn đặt phòng (`booking_id`) của họ có trạng thái `COMPLETED` (đã hoàn tất check-out lưu trú).
+   - Chỉ người dùng sở hữu đơn đặt phòng (`booking.user_id = current_user_id`) mới được phép gửi đánh giá cho đơn đặt phòng đó.
+   - Mỗi đơn đặt phòng (`booking_id`) chỉ được phép tạo tối đa **1 đánh giá** duy nhất (quy định ràng buộc UNIQUE trên database).
 2. **Kiểm duyệt Đánh giá của Admin (Moderation):**
-   - Khi Admin thực hiện ẩn một đánh giá vi phạm quy định (`status = 'HIDDEN'`), đánh giá đó sẽ lập tức bị loại bỏ khỏi danh sách hiển thị công khai.
-   - Điểm số đánh giá trung bình (`rating`) của khách sạn liên quan sẽ tự động được hệ thống tính toán lại, bỏ qua hoàn toàn điểm số của các đánh giá đã bị ẩn.
+   - Khi Admin thực hiện ẩn một đánh giá vi phạm quy định (`status` đổi thành `HIDDEN`), đánh giá đó sẽ lập tức bị loại bỏ khỏi các truy vấn hiển thị công khai.
+   - Điểm số đánh giá trung bình (`rating`) của khách sạn liên quan sẽ tự động được hệ thống tính toán lại dựa trên tất cả các đánh giá hợp lệ (`status = 'VISIBLE'`), bỏ qua hoàn toàn các đánh giá đã bị ẩn.
+
+---
+
+## BR-08: Quy tắc Cập nhật Trạng thái Buồng phòng (Staff Room Status Rules)
+
+1. **Phân Quyền Vận Hành (Staff Role Permissions):**
+   - Chỉ các vai trò nhân viên buồng phòng (`HOUSEKEEPER`), lễ tân (`RECEPTIONIST`) và quản trị viên (`ADMIN`) mới được phép thay đổi trạng thái dọn dẹp/bảo trì của phòng (`status`).
+2. **Quy Tắc Chuyển Trạng Thái Phòng:**
+   - **Chuyển sang `UNAVAILABLE` (Bẩn/Cần dọn dẹp/Bảo trì):** Thực hiện khi khách check-out, hoặc phòng phát sinh sự cố cần khóa tạm thời. Khi phòng ở trạng thái `UNAVAILABLE`, hệ thống tìm kiếm phòng trống (`UC-09`) sẽ tự động loại bỏ phòng này khỏi danh sách khả dụng cho các lượt đặt phòng mới.
+   - **Chuyển sang `AVAILABLE` (Đã dọn dẹp sạch sẽ/Sẵn sàng):** Thực hiện sau khi nhân viên buồng phòng hoàn thành vệ sinh phòng và xác nhận phòng sẵn sàng đón lượt khách tiếp theo.
+3. **Ràng Buộc Đặt Phòng Trước Khi Khóa Phòng:**
+   - Nghiêm cấm chuyển trạng thái phòng sang `UNAVAILABLE` hoặc `MAINTENANCE` nếu phòng đó đang nằm trong lịch check-in của bất kỳ đơn đặt phòng nào có trạng thái `CONFIRMED` hoặc `PENDING` đang hoạt động trong tương lai, trừ các trường hợp khẩn cấp có sự duyệt duyệt thủ công của quản trị viên cấp cao.

@@ -8,6 +8,7 @@ import com.hotelbooking.payment.dto.PaymentResponseDTO;
 import com.hotelbooking.user.User;
 import com.hotelbooking.voucher.VoucherRepository;
 import com.stripe.model.PaymentIntent;
+import com.stripe.param.PaymentIntentCreateParams;
 import org.mockito.MockedStatic;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -68,19 +69,19 @@ public class PaymentServiceTest {
         requestDTO.setBookingId(1L);
         requestDTO.setPaymentMethod("STRIPE");
 
-        try (MockedStatic<PaymentIntent> mockedIntent = mockStatic(PaymentIntent.class)) {
-            PaymentIntent mockIntent = new PaymentIntent();
-            mockIntent.setId("cs_test_123");
-            mockIntent.setClientSecret("secret_test_123");
+        try (MockedStatic<PaymentIntent> mockedPaymentIntent = mockStatic(PaymentIntent.class)) {
+            PaymentIntent mockIntent = mock(PaymentIntent.class);
+            when(mockIntent.getId()).thenReturn("pi_test_123");
+            when(mockIntent.getClientSecret()).thenReturn("seti_test_secret_123");
             
-            mockedIntent.when(() -> PaymentIntent.create(any(com.stripe.param.PaymentIntentCreateParams.class)))
+            mockedPaymentIntent.when(() -> PaymentIntent.create(any(PaymentIntentCreateParams.class)))
                     .thenReturn(mockIntent);
 
             PaymentResponseDTO response = paymentService.createPaymentRequest(requestDTO);
 
             assertNotNull(response);
-            assertEquals("cs_test_123", response.getTransactionId());
-            assertEquals("secret_test_123", response.getClientSecret());
+            assertEquals("pi_test_123", response.getTransactionId());
+            assertEquals("seti_test_secret_123", response.getClientSecret());
             verify(paymentRepository, times(1)).save(any(Payment.class));
             verify(auditLogRepository, times(1)).save(any());
         }
@@ -103,7 +104,7 @@ public class PaymentServiceTest {
 
     @Test
     void testVerifyPayment_Success() {
-        String transactionId = "cs_test_123";
+        String transactionId = "pi_test_123";
 
         User user = new User();
         user.setEmail("test@test.com");
@@ -122,11 +123,11 @@ public class PaymentServiceTest {
         when(paymentRepository.findByTransactionId(transactionId)).thenReturn(Optional.of(payment));
         when(paymentRepository.findByTransactionIdForUpdate(transactionId)).thenReturn(Optional.of(payment));
 
-        try (MockedStatic<PaymentIntent> mockedIntent = mockStatic(PaymentIntent.class)) {
-            PaymentIntent mockIntent = new PaymentIntent();
-            mockIntent.setStatus("succeeded");
+        try (MockedStatic<PaymentIntent> mockedPaymentIntent = mockStatic(PaymentIntent.class)) {
+            PaymentIntent mockIntent = mock(PaymentIntent.class);
+            when(mockIntent.getStatus()).thenReturn("succeeded");
             
-            mockedIntent.when(() -> PaymentIntent.retrieve(transactionId))
+            mockedPaymentIntent.when(() -> PaymentIntent.retrieve(transactionId))
                     .thenReturn(mockIntent);
 
             paymentService.verifyPayment(transactionId);

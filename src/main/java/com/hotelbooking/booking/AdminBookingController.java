@@ -16,7 +16,7 @@ import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/v1/admin/bookings")
-@PreAuthorize("hasRole('ADMIN')")
+@PreAuthorize("hasAnyRole('ADMIN', 'RECEPTIONIST')")
 @RequiredArgsConstructor
 @Slf4j
 public class AdminBookingController {
@@ -65,6 +65,7 @@ public class AdminBookingController {
     }
 
     @DeleteMapping("/{bookingId}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<Void>> adminDeleteBooking(
             @PathVariable Long bookingId) {
         log.info("Admin request received to delete bookingId={}", bookingId);

@@ -6,6 +6,7 @@ import ForgotPasswordPage from './pages/ForgotPasswordPage';
 import ResetPasswordPage from './pages/ResetPasswordPage';
 import ProfilePage from './pages/ProfilePage';
 import AdminDashboardPage from './pages/AdminDashboardPage';
+import StaffRoomPage from './pages/StaffRoomPage';
 import TermsPage from './pages/TermsPage';
 import PrivacyPage from './pages/PrivacyPage';
 import HotelsPage from './pages/HotelsPage';
@@ -22,6 +23,7 @@ function App() {
   const getRedirectPath = () => {
     if (isAdmin) return "/admin/users?tab=users";
     if (isDirector) return "/admin/users?tab=reports";
+    if (userRole === "HOUSEKEEPER" || userRole === "RECEPTIONIST") return "/staff/rooms";
     return "/profile";
   };
 
@@ -41,6 +43,7 @@ function App() {
         {/* Protected routes */}
         <Route path="/profile" element={isAuthenticated ? <ProfilePage /> : <Navigate to="/login" replace />} />
         <Route path="/admin/users" element={isAuthenticated && isAdminOrDirector ? <AdminDashboardPage /> : <Navigate to="/login" replace />} />
+        <Route path="/staff/rooms" element={isAuthenticated && (userRole === "HOUSEKEEPER" || userRole === "RECEPTIONIST") ? <StaffRoomPage /> : <Navigate to="/login" replace />} />
 
         {/* Payment routes */}
         <Route path="/payment/success" element={<PaymentStatusPage status="success" />} />

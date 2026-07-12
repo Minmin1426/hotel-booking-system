@@ -905,7 +905,9 @@ export default function AdminDashboardPage() {
                   >
                     <option value="ALL">All Roles</option>
                     <option value="CUSTOMER">Customer</option>
-                    <option value="STAFF">Staff</option>
+                    <option value="STAFF">Staff (Legacy)</option>
+                    <option value="RECEPTIONIST">Receptionist</option>
+                    <option value="HOUSEKEEPER">Housekeeper</option>
                     <option value="ADMIN">Admin</option>
                   </select>
                   <select
@@ -956,7 +958,11 @@ export default function AdminDashboardPage() {
                           <td className="p-4 text-sm text-[#1d1d1f] font-mono break-all">{user.email}</td>
                           <td className="p-4">
                             <span className={`text-xs font-semibold inline-block px-2.5 py-0.5 rounded-full ${
-                              user.role === 'ADMIN' ? 'bg-purple-50 text-purple-600' : 'bg-blue-50 text-blue-600'
+                              user.role === 'ADMIN' ? 'bg-purple-50 text-purple-600' :
+                              user.role === 'DIRECTOR' ? 'bg-amber-50 text-amber-600' :
+                              user.role === 'RECEPTIONIST' ? 'bg-emerald-50 text-emerald-600' :
+                              user.role === 'HOUSEKEEPER' ? 'bg-cyan-50 text-cyan-600' :
+                              user.role === 'STAFF' ? 'bg-blue-50 text-blue-600' : 'bg-gray-50 text-gray-600'
                             }`}>
                               {user.role}
                             </span>
@@ -1918,7 +1924,9 @@ export default function AdminDashboardPage() {
                     onChange={(e) => setUserRoleState(e.target.value)}
                   >
                     <option value="CUSTOMER">Customer</option>
-                    <option value="STAFF">Staff</option>
+                    <option value="STAFF">Staff (Legacy)</option>
+                    <option value="RECEPTIONIST">Receptionist</option>
+                    <option value="HOUSEKEEPER">Housekeeper</option>
                     <option value="ADMIN">Admin</option>
                   </select>
                 </div>
