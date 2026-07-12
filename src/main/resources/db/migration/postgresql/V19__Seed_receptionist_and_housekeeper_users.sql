@@ -1,6 +1,6 @@
 -- V15__Seed_receptionist_and_housekeeper_users.sql
 -- Description: Thêm tài khoản receptionist và housekeeper phục vụ kiểm thử và phân quyền mới
--- Mật khẩu mặc định: "Password123"
+-- Mật khẩu mặc định đã được mã hóa (Bcrypt)
 
 INSERT INTO users (email, password_hash, full_name, role, status, phone_number, identification_number, created_at, updated_at)
 VALUES 

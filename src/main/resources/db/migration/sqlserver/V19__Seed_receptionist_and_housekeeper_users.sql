@@ -1,6 +1,6 @@
 -- V15: Seed receptionist and housekeeper accounts
 -- Description: Thêm tài khoản receptionist và housekeeper phục vụ kiểm thử và phân quyền mới
--- Mật khẩu mặc định: "Password123"
+-- Mật khẩu mặc định đã được mã hóa (Bcrypt)
 
 IF NOT EXISTS (SELECT 1 FROM users WHERE email = 'receptionist@hotel.com')
 BEGIN
