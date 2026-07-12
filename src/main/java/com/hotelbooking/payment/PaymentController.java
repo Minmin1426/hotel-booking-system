@@ -23,12 +23,13 @@ public class PaymentController {
     }
 
     @PostMapping("/verify")
+    @PreAuthorize("hasAnyRole('CUSTOMER', 'STAFF', 'ADMIN', 'DIRECTOR', 'RECEPTIONIST')")
     public ResponseEntity<String> verifyPayment(@RequestParam String paymentIntentId) {
         try {
             String status = paymentService.verifyPayment(paymentIntentId);
             return ResponseEntity.ok(status);
         } catch (Exception e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
+            return ResponseEntity.badRequest().body("Failed to verify payment");
         }
     }
 
@@ -54,7 +55,7 @@ public class PaymentController {
     }
 
     @PostMapping("/simulate-bank-transfer")
-    // Intentionally left open or authenticated for testing purposes
+    @PreAuthorize("hasAnyRole('CUSTOMER', 'STAFF', 'ADMIN', 'DIRECTOR', 'RECEPTIONIST')")
     public ResponseEntity<String> simulateBankTransfer(@RequestParam String bookingCode) {
         paymentService.simulateBankTransferWebhook(bookingCode);
         return ResponseEntity.ok("Bank transfer webhook simulated successfully.");
