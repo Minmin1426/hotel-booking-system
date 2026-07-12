@@ -270,6 +270,12 @@ function HotelDetailPage() {
       } else {
         setTimeLeft(600);
       }
+    } catch (err) {
+      setBookingError(err.message || "Failed to confirm details and initiate reservation.");
+    } finally {
+      setIsBookingInProgress(false);
+    }
+  };
 
   const handleOnlinePayment = async () => {
     setIsBookingInProgress(true);
@@ -781,10 +787,18 @@ function HotelDetailPage() {
                           {/* Payment Action */}
                           <div className="space-y-6 mt-4">
                             {!clientSecret ? (
-                              <div className="flex flex-col items-center justify-center p-12 bg-white rounded-xl border border-slate-200">
-                                <div className="w-10 h-10 border-4 border-[#1A3B85]/20 border-t-[#1A3B85] rounded-full animate-spin mb-4"></div>
-                                <p className="text-slate-500 font-medium animate-pulse">Initializing secure payment...</p>
-                              </div>
+                              <button
+                                onClick={handleOnlinePayment}
+                                disabled={isBookingInProgress}
+                                className="w-full py-5 rounded-xl border-2 border-dashed border-slate-300 hover:border-[#1A3B85] hover:bg-blue-50/50 text-[#1A3B85] font-bold text-base transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3 group"
+                              >
+                                {isBookingInProgress ? "Connecting securely..." : (
+                                  <>
+                                    <span>Proceed to Card Entry</span>
+                                    <span className="group-hover:translate-x-1 transition-transform">➔</span>
+                                  </>
+                                )}
+                              </button>
                             ) : (
                               <div className="space-y-6 animate-fade-in">
                                 {clientSecret.startsWith("mock_secret_") ? (
