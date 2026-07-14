@@ -20,5 +20,6 @@ COPY --from=build /app/target/*.jar app.jar
 # Khai báo port ứng dụng chạy trong container
 EXPOSE 8080
 
-# Chạy ứng dụng Spring Boot
-ENTRYPOINT ["java", "-jar", "app.jar"]
+# Chạy ứng dụng Spring Boot với cấu hình giới hạn RAM (tránh lỗi OOM exit 137 trên Render Free)
+ENTRYPOINT ["java", "-Xmx320m", "-XX:+UseSerialGC", "-jar", "app.jar"]
+
