@@ -1,0 +1,14 @@
+target/
+*.jar
+.git/
+.gitignore
+frontend/
+node_modules/
+.gemini/
+.vscode/
+README.md
+AGENTS.md
+FEATURES.md
+USECASE.md
+PROJECTAGENT.md
+analysis_results.md

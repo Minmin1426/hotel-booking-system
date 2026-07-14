@@ -1,4 +1,6 @@
-const API_URL = "http://localhost:8080/api/v1/payments";
+const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8080/api/v1";
+const API_URL = `${API_BASE_URL}/payments`;
+
 
 export const PaymentService = {
   createPaymentRequest: async (bookingId, paymentMethod) => {
