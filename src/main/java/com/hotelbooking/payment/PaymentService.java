@@ -10,5 +10,4 @@ public interface PaymentService {
     void processStripeWebhook(String payload, String sigHeader);
     void confirmCashPayment(Long paymentId);
     void confirmBankTransfer(Long paymentId);
-    void simulateBankTransferWebhook(String bookingCode);
 }

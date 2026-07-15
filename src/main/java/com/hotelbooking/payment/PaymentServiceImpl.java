@@ -13,8 +13,10 @@ import com.stripe.exception.SignatureVerificationException;
 import com.stripe.model.Event;
 import com.stripe.model.PaymentIntent;
 import com.stripe.model.StripeObject;
+import com.stripe.model.Refund;
 import com.stripe.net.Webhook;
 import com.stripe.param.PaymentIntentCreateParams;
+import com.stripe.param.RefundCreateParams;
 
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
@@ -30,6 +32,7 @@ import java.util.UUID;
 @Service
 @RequiredArgsConstructor
 @Slf4j
+@SuppressWarnings("null")
 public class PaymentServiceImpl implements PaymentService {
 
     private final BookingRepository bookingRepository;
@@ -114,12 +117,6 @@ public class PaymentServiceImpl implements PaymentService {
 
             String ref = "BK-" + booking.getBookingId().toString().toUpperCase();
             String acc = "123456789";
-            String amt = booking.getTotalAmount().toString();
-            String qrData = "bank:Stripe Bank|acc:" + acc + "|ref:" + ref + "|amt:" + amt;
-            
-            try {
-                qrData = java.net.URLEncoder.encode(qrData, "UTF-8");
-            } catch (Exception e) {}
 
             return PaymentResponseDTO.builder()
                     .transactionId(transactionId)
@@ -130,40 +127,10 @@ public class PaymentServiceImpl implements PaymentService {
                     .referenceCode(ref)
                     .branch("San Francisco Main")
                     .swiftCode("STRIPESF")
-                    .qrCodeUrl("https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=" + qrData)
                     .build();
         }
 
         try {
-            if (stripeApiKey == null || stripeApiKey.startsWith("dummy_api_key_placeholder") || stripeApiKey.trim().isEmpty()) {
-                String transactionId = "mock_txn_" + UUID.randomUUID().toString();
-                String clientSecret = "mock_sec" + "ret_" + UUID.randomUUID().toString();
-
-                Payment payment = Payment.builder()
-                        .booking(booking)
-                        .paymentMethod(requestDTO.getPaymentMethod())
-                        .amount(booking.getTotalAmount())
-                        .status("PROCESSING")
-                        .transactionId(transactionId)
-                        .gateway("STRIPE_MOCK")
-                        .build();
-
-                paymentRepository.save(payment);
-
-                PaymentAuditLog auditLog = PaymentAuditLog.builder()
-                        .transactionId(transactionId)
-                        .action("CREATE_MOCK_PAYMENT_INTENT")
-                        .requestPayload("Booking ID: " + booking.getBookingId() + ", Amount: " + booking.getTotalAmount())
-                        .responsePayload("Mock Token: " + clientSecret)
-                        .build();
-                auditLogRepository.save(auditLog);
-
-                return PaymentResponseDTO.builder()
-                        .transactionId(transactionId)
-                        .clientSecret(clientSecret)
-                        .build();
-            }
-
             PaymentIntentCreateParams.Builder paramsBuilder = PaymentIntentCreateParams.builder()
                     .setAmount(booking.getTotalAmount().multiply(new BigDecimal(100)).longValue())
                     .setCurrency("usd")
@@ -328,13 +295,8 @@ public class PaymentServiceImpl implements PaymentService {
         }
 
         try {
-            String paymentStatus;
-            if (paymentIntentId.startsWith("mock_txn_") || stripeApiKey == null || stripeApiKey.startsWith("dummy_api_key_placeholder")) {
-                paymentStatus = "succeeded";
-            } else {
-                PaymentIntent intent = PaymentIntent.retrieve(paymentIntentId);
-                paymentStatus = intent.getStatus();
-            }
+            PaymentIntent intent = PaymentIntent.retrieve(paymentIntentId);
+            String paymentStatus = intent.getStatus();
 
             if ("succeeded".equals(paymentStatus)) {
                 handlePaymentSuccess(paymentIntentId, "Polled Status: Succeeded");
@@ -374,22 +336,6 @@ public class PaymentServiceImpl implements PaymentService {
         }
         
         handlePaymentSuccess(payment.getTransactionId(), "Manual Bank Transfer Confirmation");
-    }
-
-    @Override
-    @Transactional
-    public void simulateBankTransferWebhook(String bookingCode) {
-        Booking booking = bookingRepository.findByBookingCode(bookingCode)
-                .orElseThrow(() -> new ResourceNotFoundException("Booking", "bookingCode", bookingCode));
-        
-        Payment payment = paymentRepository.findByBooking_BookingId(booking.getBookingId())
-                .orElseThrow(() -> new BusinessException("No payment found for booking " + bookingCode));
-
-        if (!"BANK_TRANSFER".equalsIgnoreCase(payment.getPaymentMethod())) {
-            throw new BusinessException("Only BANK_TRANSFER payments can be simulated via this webhook.");
-        }
-
-        handlePaymentSuccess(payment.getTransactionId(), "Simulated Bank Webhook Success");
     }
 
     @Override
@@ -435,10 +381,13 @@ public class PaymentServiceImpl implements PaymentService {
             payment.setRefundRetryCount(currentRetry + 1);
             
             try {
-                // Mock gateway call
-                boolean isGatewaySuccess = true; // Assuming retry succeeds
+                RefundCreateParams params = RefundCreateParams.builder()
+                        .setPaymentIntent(payment.getTransactionId())
+                        .setAmount(payment.getRefundAmount().multiply(new BigDecimal(100)).longValue())
+                        .build();
+                Refund refund = Refund.create(params);
                 
-                if (isGatewaySuccess) {
+                if ("succeeded".equals(refund.getStatus()) || "pending".equals(refund.getStatus())) {
                     payment.setStatus("REFUNDED");
                     payment.setRefundTime(LocalDateTime.now());
                     

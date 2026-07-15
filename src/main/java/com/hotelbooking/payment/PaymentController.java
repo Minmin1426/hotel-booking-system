@@ -53,11 +53,4 @@ public class PaymentController {
         paymentService.confirmBankTransfer(paymentId);
         return ResponseEntity.ok("Bank transfer confirmed successfully.");
     }
-
-    @PostMapping("/simulate-bank-transfer")
-    @PreAuthorize("hasAnyRole('CUSTOMER', 'STAFF', 'ADMIN', 'DIRECTOR', 'RECEPTIONIST')")
-    public ResponseEntity<String> simulateBankTransfer(@RequestParam String bookingCode) {
-        paymentService.simulateBankTransferWebhook(bookingCode);
-        return ResponseEntity.ok("Bank transfer webhook simulated successfully.");
-    }
 }

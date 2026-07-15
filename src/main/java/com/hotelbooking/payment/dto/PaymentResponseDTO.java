@@ -21,5 +21,4 @@ public class PaymentResponseDTO {
     private String referenceCode;
     private String branch;
     private String swiftCode;
-    private String qrCodeUrl;
 }
