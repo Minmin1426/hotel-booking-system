@@ -1,5 +1,22 @@
 package com.hotelbooking.booking;
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.UUID;
+import java.util.stream.Collectors;
+
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
 import com.hotelbooking.booking.dto.AdminBookingResponse;
+import com.hotelbooking.booking.dto.AdminCreateBookingRequest;
+import com.hotelbooking.booking.dto.AdminUpdateBookingRequest;
 import com.hotelbooking.booking.dto.BookingConfirmResponse;
 import com.hotelbooking.booking.dto.BookingHistoryResponse;
 import com.hotelbooking.booking.dto.BookingRequest;
@@ -24,27 +41,11 @@ import com.hotelbooking.room.RoomRepository;
 import com.hotelbooking.setting.SystemSettingService;
 import com.hotelbooking.user.User;
 import com.hotelbooking.user.UserRepository;
-import com.hotelbooking.voucher.VoucherRepository;
 import com.hotelbooking.voucher.Voucher;
-import com.hotelbooking.booking.dto.AdminCreateBookingRequest;
-import com.hotelbooking.booking.dto.AdminUpdateBookingRequest;
+import com.hotelbooking.voucher.VoucherRepository;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
-import java.math.BigDecimal;
-import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.time.temporal.ChronoUnit;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.UUID;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -299,7 +300,7 @@ public class BookingServiceImpl implements BookingService {
         roomLockService.renewLocksForBooking(bookingId);
     }
 
-    // UC-12: Auto-confirm booking sau khi online payment thành công
+    // Auto-confirm booking sau khi online payment thành công
     @Override
     public BookingConfirmResponse confirmBooking(PaymentConfirmRequest request) {
         log.info("UC-12: Confirming booking for bookingCode={}, transactionId={}",
@@ -369,7 +370,7 @@ public class BookingServiceImpl implements BookingService {
                 .build();
     }
 
-    // UC-15: Lấy lịch sử đặt phòng của user hiện tại
+    // Lấy lịch sử đặt phòng của user hiện tại
     @Override
     @Transactional(readOnly = true)
     public PagedResponse<BookingHistoryResponse> getBookingHistory(Long userId, int page, int size) {
@@ -396,7 +397,7 @@ public class BookingServiceImpl implements BookingService {
                 .build();
     }
 
-    // UC-22: Admin processing manual/offline bookings
+    // Admin processing manual/offline bookings
     @Override
     public AdminBookingResponse processBooking(Long bookingId, UpdateBookingStatusRequest request) {
         log.info("UC-22: Processing bookingId={} with target status={}", bookingId, request.status());
@@ -456,11 +457,11 @@ public class BookingServiceImpl implements BookingService {
         );
     }
 
-    // UC-14: Hủy đặt phòng
+    // Hủy đặt phòng
     @Override
     @Transactional
     public CancelBookingResponse cancelBooking(Long bookingId, Long customerId) {
-        log.info("UC-14: Cancelling booking ID: {} for customer ID: {}", bookingId, customerId);
+        log.info("Cancelling booking ID: {} for customer ID: {}", bookingId, customerId);
         
         Booking booking = bookingRepository.findById(bookingId)
                 .orElseThrow(() -> new ResourceNotFoundException("Booking not found with ID: " + bookingId));

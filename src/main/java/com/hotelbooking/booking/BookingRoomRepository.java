@@ -1,19 +1,17 @@
 package com.hotelbooking.booking;
-import com.hotelbooking.room.Room;
+import java.time.LocalDateTime;
+import java.util.List;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
-import java.time.LocalDateTime;
-import java.util.List;
-
 @Repository
 public interface BookingRoomRepository extends JpaRepository<BookingRoom, Long> {
 
     /**
-     * UC-26: Thống kê số đêm đặt phòng theo loại phòng trong khoảng thời gian.
+     * Thống kê số đêm đặt phòng theo loại phòng trong khoảng thời gian.
      * Trả về [roomType, totalNights, totalBookings, totalRevenue]
      */
     @Query("""
@@ -33,7 +31,7 @@ public interface BookingRoomRepository extends JpaRepository<BookingRoom, Long> 
                                      @Param("to") LocalDateTime to);
 
     /**
-     * UC-26: Tổng số phòng hiện có theo loại (để tính tỷ lệ sử dụng).
+     * Tổng số phòng hiện có theo loại (để tính tỷ lệ sử dụng).
      */
     @Query("""
         SELECT r.roomType, COUNT(r)

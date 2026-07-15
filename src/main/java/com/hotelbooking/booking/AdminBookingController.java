@@ -1,18 +1,28 @@
 package com.hotelbooking.booking;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
 import com.hotelbooking.booking.dto.AdminBookingResponse;
-import com.hotelbooking.booking.dto.UpdateBookingStatusRequest;
 import com.hotelbooking.booking.dto.AdminCreateBookingRequest;
 import com.hotelbooking.booking.dto.AdminUpdateBookingRequest;
 import com.hotelbooking.booking.dto.BookingResponse;
+import com.hotelbooking.booking.dto.UpdateBookingStatusRequest;
 import com.hotelbooking.common.dto.ApiResponse;
 import com.hotelbooking.common.dto.PagedResponse;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/v1/admin/bookings")
@@ -35,7 +45,7 @@ public class AdminBookingController {
         return ResponseEntity.ok(ApiResponse.success("All bookings retrieved successfully", response));
     }
 
-    // UC-22: Process (Confirm / Reject) manual/offline bookings.
+    // Process (Confirm / Reject) manual/offline bookings.
     @PatchMapping("/{bookingId}/status")
     public ResponseEntity<ApiResponse<AdminBookingResponse>> processBooking(
             @PathVariable Long bookingId,
