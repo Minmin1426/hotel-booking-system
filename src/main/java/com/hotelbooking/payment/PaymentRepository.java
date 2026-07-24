@@ -60,4 +60,20 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
             @Param("startDate") LocalDateTime startDate,
             @Param("endDate") LocalDateTime endDate
     );
+
+    @Query("SELECT p FROM Payment p JOIN p.booking b " +
+           "WHERE b.hotel.hotelId = :hotelId AND p.status = 'SUCCESS' " +
+           "AND p.createdAt >= :startDate AND p.createdAt <= :endDate")
+    List<Payment> findSuccessfulPaymentsByHotelAndDate(
+            @Param("hotelId") Long hotelId,
+            @Param("startDate") LocalDateTime startDate,
+            @Param("endDate") LocalDateTime endDate
+    );
+
+    @Query("SELECT COALESCE(SUM(p.amount), 0) FROM Payment p " +
+           "WHERE p.status = 'REFUNDED' AND p.createdAt >= :startDate AND p.createdAt <= :endDate")
+    BigDecimal sumRefunds(
+            @Param("startDate") LocalDateTime startDate,
+            @Param("endDate") LocalDateTime endDate
+    );
 }

@@ -165,4 +165,9 @@ public class EmailServiceImpl implements EmailService {
             }
         });
     }
+
+    @Override
+    public void sendEmail(String to, String subject, String body) {
+        sendEmailAsync(to, subject, body);
+    }
 }

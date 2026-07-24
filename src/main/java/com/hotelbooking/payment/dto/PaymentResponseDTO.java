@@ -21,4 +21,8 @@ public class PaymentResponseDTO {
     private String referenceCode;
     private String branch;
     private String swiftCode;
+
+    private java.time.LocalDateTime countdownEndTime;
+    private Boolean isDeposit;
+    private java.math.BigDecimal depositRatio;
 }

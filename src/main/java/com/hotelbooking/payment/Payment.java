@@ -61,6 +61,32 @@ public class Payment {
     @Builder.Default
     private Integer refundRetryCount = 0;
 
+    @Column(name = "is_deposit", nullable = false)
+    @Builder.Default
+    private Boolean isDeposit = false;
+
+    @Column(name = "deposit_ratio", nullable = false, precision = 5, scale = 2)
+    @Builder.Default
+    private BigDecimal depositRatio = BigDecimal.ONE;
+
+    @Column(name = "countdown_end_time")
+    private LocalDateTime countdownEndTime;
+
+    @Column(name = "meal_refund_amount", precision = 18, scale = 2)
+    private BigDecimal mealRefundAmount;
+
+    @Column(name = "invoice_company_name")
+    private String invoiceCompanyName;
+
+    @Column(name = "invoice_tax_id", length = 50)
+    private String invoiceTaxId;
+
+    @Column(name = "invoice_company_address", length = 500)
+    private String invoiceCompanyAddress;
+
+    @Column(name = "invoice_company_email")
+    private String invoiceCompanyEmail;
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;

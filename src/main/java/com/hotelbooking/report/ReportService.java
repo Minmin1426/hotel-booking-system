@@ -1,13 +1,17 @@
 package com.hotelbooking.report;
+import java.time.LocalDate;
+import java.util.List;
+
 import com.hotelbooking.common.dto.PagedResponse;
 import com.hotelbooking.hotel.dto.ModerationRequest;
 import com.hotelbooking.hotel.dto.ReviewResponse;
 import com.hotelbooking.report.dto.BookingStatsResponse;
+import com.hotelbooking.report.dto.CancellationReportResponse;
+import com.hotelbooking.report.dto.GroupRevenueReportResponse;
+import com.hotelbooking.report.dto.GroupSegmentReportResponse;
+import com.hotelbooking.report.dto.RestaurantRevenueResponse;
 import com.hotelbooking.report.dto.RevenueReportResponse;
 import com.hotelbooking.report.dto.RoomUsageResponse;
-
-import java.time.LocalDate;
-import java.util.List;
 
 public interface ReportService {
 
@@ -44,4 +48,14 @@ public interface ReportService {
      * UC-31: Ẩn hoặc hiện review vi phạm. Lưu audit log.
      */
     ReviewResponse moderateReview(Long reviewId, ModerationRequest request, Long adminId);
+
+    CancellationReportResponse getCancellationReport(LocalDate startDate, LocalDate endDate);
+
+    GroupRevenueReportResponse getExecutiveRevenueReport(LocalDate startDate, LocalDate endDate);
+
+    GroupSegmentReportResponse getGroupVsLeisureReport(LocalDate startDate, LocalDate endDate);
+
+    RestaurantRevenueResponse getRestaurantRevenueReport(LocalDate startDate, LocalDate endDate);
+
+    byte[] exportExecutiveReport(LocalDate startDate, LocalDate endDate);
 }

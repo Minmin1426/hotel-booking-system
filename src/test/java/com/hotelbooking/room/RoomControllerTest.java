@@ -24,8 +24,13 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.hotelbooking.common.exception.GlobalExceptionHandler;
+import org.springframework.context.annotation.Import;
+
 @WebMvcTest(RoomController.class)
+@Import(GlobalExceptionHandler.class)
 @AutoConfigureMockMvc(addFilters = false)
+
 class RoomControllerTest {
 
     @Autowired

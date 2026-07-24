@@ -10,9 +10,11 @@ import org.springframework.security.authentication.LockedException;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.context.request.WebRequest;
+
 
 import java.time.LocalDateTime;
 import java.util.HashMap;
@@ -54,6 +56,14 @@ public class GlobalExceptionHandler {
         log.warn("Illegal argument: {}", ex.getMessage());
         return buildError(HttpStatus.BAD_REQUEST, ex.getMessage(), request);
     }
+
+    @ExceptionHandler(MissingServletRequestParameterException.class)
+    public ResponseEntity<ErrorResponse> handleMissingParams(
+            MissingServletRequestParameterException ex, WebRequest request) {
+        log.warn("Missing request parameter: {}", ex.getMessage());
+        return buildError(HttpStatus.BAD_REQUEST, ex.getMessage(), request);
+    }
+
 
     @ExceptionHandler(AccessDeniedException.class)
     public ResponseEntity<ErrorResponse> handleAccessDenied(
@@ -132,9 +142,27 @@ public class GlobalExceptionHandler {
         return ResponseEntity.badRequest().body(body);
     }
 
+    @ExceptionHandler(org.springframework.transaction.TransactionSystemException.class)
+    public ResponseEntity<?> handleTransactionSystemException(
+            org.springframework.transaction.TransactionSystemException ex, WebRequest request) {
+        Throwable cause = ex.getRootCause();
+        if (cause instanceof BusinessException) {
+            return handleBusiness((BusinessException) cause, request);
+        }
+        if (cause instanceof IllegalArgumentException) {
+            return handleIllegalArgument((IllegalArgumentException) cause, request);
+        }
+        if (cause instanceof AccessDeniedException) {
+            return handleAccessDenied((AccessDeniedException) cause, request);
+        }
+        log.error("Transaction exception: {}", ex.getMessage(), ex);
+        return buildError(HttpStatus.INTERNAL_SERVER_ERROR, "Transaction error occurred", request);
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponse> handleGeneral(
             Exception ex, WebRequest request) {
+
         log.error("Unhandled exception at {}: {}", request.getDescription(false), ex.getMessage(), ex);
         return buildError(HttpStatus.INTERNAL_SERVER_ERROR, "An unexpected error occurred", request);
     }

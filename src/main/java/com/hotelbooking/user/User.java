@@ -64,6 +64,75 @@ public class User implements UserDetails {
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
 
+    // --- 007-customer-portal-profile: Account type ---
+    @Column(name = "account_type")
+    @Builder.Default
+    private String accountType = "CUSTOMER"; // "CUSTOMER" | "CORPORATE_MEMBER"
+
+    @Column(name = "google_subject_id", unique = true)
+    private String googleSubjectId;
+
+    // --- Corporate Tax Profile (CTP) fields ---
+    @Column(name = "company_name")
+    private String companyName;
+
+    @Column(name = "tax_code")
+    private String taxCode;
+
+    @Column(name = "company_address", columnDefinition = "TEXT")
+    private String companyAddress;
+
+    @Column(name = "billing_email")
+    private String billingEmail;
+
+    @Column(name = "ctp_status")
+    @Builder.Default
+    private String ctpStatus = "NOT_SUBMITTED"; // "NOT_SUBMITTED" | "PENDING" | "VERIFIED" | "REJECTED"
+
+    @Column(name = "ctp_verified_at")
+    private LocalDateTime ctpVerifiedAt;
+
+    @Column(name = "ctp_verified_by")
+    private Long ctpVerifiedBy;
+
+    // 011-loyalty-membership-tiers: Loyalty tier fields
+    @Column(name = "current_tier")
+    @Builder.Default
+    private String currentTier = "BRONZE"; // BRONZE, SILVER, GOLD, PLATINUM, *_BUSINESS variants
+
+    @Column(name = "tier_evaluated_at")
+    private LocalDateTime tierEvaluatedAt;
+
+    // --- 015-admin-customer-management: VIP fields ---
+    @Column(name = "is_vip")
+    @Builder.Default
+    private Boolean isVip = false;
+
+
+
+    @Column(name = "vip_marked_at")
+    private LocalDateTime vipMarkedAt;
+
+    @Column(name = "vip_marked_by")
+    private Long vipMarkedBy;
+
+    // --- Helper methods ---
+    public boolean isCorporateMember() {
+        return "CORPORATE_MEMBER".equalsIgnoreCase(accountType);
+    }
+
+    public boolean isCtpVerified() {
+        return "VERIFIED".equalsIgnoreCase(ctpStatus);
+    }
+
+    public boolean isBronzeTier() {
+        return "BRONZE".equalsIgnoreCase(currentTier) || "BRONZE_BUSINESS".equalsIgnoreCase(currentTier);
+    }
+
+    public boolean isPlatinumTier() {
+        return "PLATINUM".equalsIgnoreCase(currentTier) || "PLATINUM_BUSINESS".equalsIgnoreCase(currentTier);
+    }
+
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
         return List.of(new SimpleGrantedAuthority("ROLE_" + this.role));

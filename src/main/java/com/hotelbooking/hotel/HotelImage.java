@@ -37,8 +37,9 @@ public class HotelImage {
     @JoinColumn(name = "hotel_id", nullable = false)
     private Hotel hotel;
 
-    @Column(name = "image_url", nullable = false, columnDefinition = "varchar(max)")
+    @Column(name = "image_url", nullable = false, columnDefinition = "TEXT")
     private String imageUrl;
+
 
     @Column(name = "image_format", length = 50)
     private String imageFormat;

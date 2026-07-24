@@ -1,16 +1,13 @@
 package com.hotelbooking.report;
-import com.hotelbooking.booking.Booking;
-import com.hotelbooking.booking.BookingRoomRepository;
-import com.hotelbooking.common.dto.PagedResponse;
-import com.hotelbooking.common.exception.BusinessException;
-import com.hotelbooking.common.exception.ResourceNotFoundException;
-import com.hotelbooking.hotel.Hotel;
-import com.hotelbooking.hotel.Review;
-import com.hotelbooking.hotel.ReviewRepository;
-import com.hotelbooking.hotel.dto.ModerationRequest;
-import com.hotelbooking.hotel.dto.ReviewResponse;
-import com.hotelbooking.report.dto.RoomUsageResponse;
-import com.hotelbooking.user.User;
+import static org.assertj.core.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.*;
+
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Optional;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -23,20 +20,28 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 
-import java.math.BigDecimal;
-import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.util.List;
-import java.util.Optional;
-
-import static org.assertj.core.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.*;
-import static org.mockito.Mockito.*;
+import com.hotelbooking.booking.Booking;
+import com.hotelbooking.booking.BookingRepository;
+import com.hotelbooking.booking.BookingRoomRepository;
+import com.hotelbooking.common.dto.PagedResponse;
+import com.hotelbooking.common.exception.BusinessException;
+import com.hotelbooking.common.exception.ResourceNotFoundException;
+import com.hotelbooking.hotel.Hotel;
+import com.hotelbooking.hotel.Review;
+import com.hotelbooking.hotel.ReviewRepository;
+import com.hotelbooking.hotel.dto.ModerationRequest;
+import com.hotelbooking.hotel.dto.ReviewResponse;
+import com.hotelbooking.payment.PaymentRepository;
+import com.hotelbooking.report.dto.CancellationReportResponse;
+import com.hotelbooking.report.dto.RoomUsageResponse;
+import com.hotelbooking.user.User;
 
 @ExtendWith(MockitoExtension.class)
 @DisplayName("ReportServiceImpl Tests — UC-26, UC-30, UC-31")
 class ReportServiceImplTest {
 
+    @Mock private BookingRepository bookingRepository;
+    @Mock private PaymentRepository paymentRepository;
     @Mock private BookingRoomRepository bookingRoomRepository;
     @Mock private ReviewRepository reviewRepository;
 
@@ -266,5 +271,22 @@ class ReportServiceImplTest {
                 r.getModeratedAt() != null &&
                 "HIDDEN".equals(r.getStatus())
         ));
+    }
+
+    @Test
+    @DisplayName("UC-08-TC01: Báo cáo huỷ phòng tổng hợp đúng số lượng và số tiền hoàn trả")
+    void getCancellationReport_returnsSummary() {
+        when(bookingRepository.findCancellationStats(any(), any())).thenReturn(List.of(
+                new Object[]{"HOTEL_FULL", 2L, new BigDecimal("500000")},
+                new Object[]{"CUSTOMER_CHANGED_PLAN", 1L, new BigDecimal("200000")}
+        ));
+        when(paymentRepository.sumRefunds(any(), any())).thenReturn(new BigDecimal("700000"));
+
+        CancellationReportResponse response = reportService.getCancellationReport(
+                LocalDate.of(2026, 1, 1), LocalDate.of(2026, 1, 31));
+
+        assertThat(response.getTotalCancelledBookings()).isEqualTo(3L);
+        assertThat(response.getTotalRefundAmount()).isEqualByComparingTo("700000");
+        assertThat(response.getBreakdown()).hasSize(2);
     }
 }

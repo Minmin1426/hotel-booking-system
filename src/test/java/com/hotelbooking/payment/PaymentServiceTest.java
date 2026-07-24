@@ -10,6 +10,7 @@ import com.hotelbooking.voucher.VoucherRepository;
 import com.stripe.model.PaymentIntent;
 import com.stripe.param.PaymentIntentCreateParams;
 import org.mockito.MockedStatic;
+import java.time.LocalDateTime;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -43,6 +44,12 @@ public class PaymentServiceTest {
 
     @Mock
     private VoucherRepository voucherRepository;
+
+    @Mock
+    private VnpayService vnpayService;
+
+    @Mock
+    private PayoutRepository payoutRepository;
 
     @InjectMocks
     private PaymentServiceImpl paymentService;
@@ -148,6 +155,7 @@ public class PaymentServiceTest {
         Booking booking = new Booking();
         booking.setBookingId(1L);
         booking.setPaymentStatus("SUCCESS");
+        booking.setCheckInDate(LocalDateTime.now().plusDays(10));
         
         Payment payment = new Payment();
         payment.setAmount(BigDecimal.valueOf(1000));
@@ -182,6 +190,7 @@ public class PaymentServiceTest {
         payment.setStatus("REFUND_PENDING");
         payment.setRefundRetryCount(1);
         payment.setAmount(BigDecimal.valueOf(500));
+        payment.setRefundAmount(BigDecimal.valueOf(500));
         payment.setRefundTransactionId("txn-1");
 
         Booking booking = new Booking();
@@ -253,5 +262,135 @@ public class PaymentServiceTest {
         verify(emailService, times(1)).sendBookingConfirmationEmail("cash@test.com", "B-CASH");
         verify(paymentRepository, times(1)).save(payment);
         verify(auditLogRepository, times(1)).save(any(PaymentAuditLog.class));
+    }
+
+    @Test
+    void testCreatePaymentRequest_Deposit_Vnpay() {
+        Booking booking = new Booking();
+        booking.setBookingId(4L);
+        booking.setStatus("PENDING");
+        booking.setTotalAmount(BigDecimal.valueOf(1000));
+        booking.setBookingCode("B-DEPOSIT");
+
+        when(bookingRepository.findById(4L)).thenReturn(Optional.of(booking));
+        when(vnpayService.createPaymentUrl(any(), any(), any())).thenReturn("http://mock-vnpay-url.com");
+
+        PaymentRequestDTO requestDTO = new PaymentRequestDTO();
+        requestDTO.setBookingId(4L);
+        requestDTO.setPaymentMethod("VNPAY");
+        requestDTO.setIsDeposit(true);
+        requestDTO.setDepositRatio(new BigDecimal("0.50"));
+        requestDTO.setCompanyName("Test Company");
+        requestDTO.setTaxId("12345");
+
+        PaymentResponseDTO response = paymentService.createPaymentRequest(requestDTO);
+
+        assertNotNull(response);
+        assertEquals("http://mock-vnpay-url.com", response.getPaymentUrl());
+        assertEquals(true, response.getIsDeposit());
+        assertEquals(new BigDecimal("0.50"), response.getDepositRatio());
+        verify(paymentRepository, times(1)).save(any(Payment.class));
+    }
+
+    @Test
+    void testCheckExpiredPaymentHolds() {
+        Booking booking = new Booking();
+        booking.setBookingId(5L);
+        booking.setPaymentStatus("PENDING");
+        booking.setStatus("PENDING");
+
+        Payment payment = new Payment();
+        payment.setTransactionId("txn-expired");
+        payment.setStatus("PENDING");
+        payment.setCountdownEndTime(LocalDateTime.now().minusMinutes(1));
+        payment.setBooking(booking);
+
+        when(paymentRepository.findAll()).thenReturn(java.util.Collections.singletonList(payment));
+
+        paymentService.checkExpiredPaymentHolds();
+
+        assertEquals("FAILED", payment.getStatus());
+        assertEquals("FAILED", booking.getStatus());
+        assertEquals("FAILED", booking.getPaymentStatus());
+        verify(paymentRepository, times(1)).save(payment);
+        verify(bookingRepository, times(1)).save(booking);
+    }
+
+    @Test
+    void testRefundUnusedMealTickets_Success() {
+        Booking booking = new Booking();
+        booking.setBookingId(6L);
+
+        Payment payment = new Payment();
+        payment.setAmount(BigDecimal.valueOf(500));
+        payment.setStatus("SUCCESS");
+        payment.setBooking(booking);
+
+        when(bookingRepository.findById(6L)).thenReturn(Optional.of(booking));
+        when(paymentRepository.findByBooking_BookingId(6L)).thenReturn(Optional.of(payment));
+
+        paymentService.refundUnusedMealTickets(6L, BigDecimal.valueOf(50));
+
+        assertEquals(BigDecimal.valueOf(50), payment.getMealRefundAmount());
+        assertEquals(BigDecimal.valueOf(50), payment.getRefundAmount());
+        verify(paymentRepository, times(1)).save(payment);
+    }
+
+    @Test
+    void testGenerateInvoicePdf_Success() {
+        Booking booking = new Booking();
+        booking.setBookingCode("B-INVOICE");
+
+        Payment payment = new Payment();
+        payment.setPaymentId(100L);
+        payment.setTransactionId("txn-invoice");
+        payment.setAmount(BigDecimal.valueOf(300));
+        payment.setBooking(booking);
+        payment.setInvoiceCompanyName("Test Corp");
+        payment.setInvoiceTaxId("TAX-999");
+
+        when(paymentRepository.findById(100L)).thenReturn(Optional.of(payment));
+
+        byte[] pdfBytes = paymentService.generateInvoicePdf(100L);
+
+        assertNotNull(pdfBytes);
+        assertTrue(pdfBytes.length > 0);
+    }
+
+    @Test
+    void testCalculateMonthlyPayout() {
+        Payment payment1 = new Payment();
+        payment1.setAmount(BigDecimal.valueOf(100));
+        Payment payment2 = new Payment();
+        payment2.setAmount(BigDecimal.valueOf(200));
+
+        LocalDateTime start = LocalDateTime.now().minusDays(30);
+        LocalDateTime end = LocalDateTime.now();
+
+        when(paymentRepository.findSuccessfulPaymentsByHotelAndDate(1L, start, end))
+                .thenReturn(java.util.List.of(payment1, payment2));
+        when(payoutRepository.save(any(Payout.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        Payout payout = paymentService.calculateMonthlyPayout(1L, start, end);
+
+        assertNotNull(payout);
+        assertEquals(new BigDecimal("300"), payout.getTotalRevenue());
+        assertEquals(new BigDecimal("270.00"), payout.getPayoutAmount()); // 300 - 10% commission
+    }
+
+    @Test
+    void testApprovePayout() {
+        Payout payout = new Payout();
+        payout.setPayoutId(10L);
+        payout.setStatus("PENDING");
+        payout.setHotelId(1L);
+        payout.setPayoutAmount(BigDecimal.valueOf(270));
+
+        when(payoutRepository.findById(10L)).thenReturn(Optional.of(payout));
+
+        paymentService.approvePayout(10L);
+
+        assertEquals("PAID", payout.getStatus());
+        verify(payoutRepository, times(1)).save(payout);
     }
 }

@@ -17,4 +17,13 @@ public class PaymentRequestDTO {
 
     @NotBlank(message = "Payment method is required")
     private String paymentMethod;
+
+    private Boolean isDeposit;
+    private java.math.BigDecimal depositRatio;
+
+    // VAT Invoice details (Optional)
+    private String companyName;
+    private String taxId;
+    private String companyAddress;
+    private String companyEmail;
 }

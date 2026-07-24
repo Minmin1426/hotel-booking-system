@@ -54,8 +54,9 @@ public class Booking {
     @Column(name = "confirmed_at")
     private LocalDateTime confirmedAt;
 
-    @Column(columnDefinition = "NVARCHAR(MAX)")
+    @Column(columnDefinition = "TEXT")
     private String notes;
+
 
     @Column(name = "payment_status")
     private String paymentStatus;

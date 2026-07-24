@@ -209,6 +209,6 @@ public class AdminUserServiceTest {
         verify(userRepository, times(1)).findById(userId);
         verify(bookingRepository, times(1)).countByUser_UserId(userId);
         verify(reviewRepository, never()).deleteByUser_UserId(anyLong());
-        verify(userRepository, never()).delete(any());
+        verify(userRepository, never()).delete((User) any());
     }
 }

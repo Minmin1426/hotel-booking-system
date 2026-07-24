@@ -31,8 +31,11 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.hotelbooking.common.exception.GlobalExceptionHandler;
+
 @WebMvcTest(AdminUserController.class)
-@Import(SecurityConfig.class)
+@Import({SecurityConfig.class, GlobalExceptionHandler.class})
+
 public class AdminUserControllerTest {
 
     @Autowired
@@ -43,6 +46,9 @@ public class AdminUserControllerTest {
 
     @MockBean
     private AdminUserService adminUserService;
+
+    @MockBean
+    private com.hotelbooking.user.ctp.CtpService ctpService;
 
     @MockBean
     private JwtService jwtService;

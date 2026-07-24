@@ -27,7 +27,12 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+import java.io.ByteArrayOutputStream;
+import com.lowagie.text.*;
+import com.lowagie.text.pdf.PdfWriter;
 
 @Service
 @RequiredArgsConstructor
@@ -40,6 +45,8 @@ public class PaymentServiceImpl implements PaymentService {
     private final PaymentAuditLogRepository auditLogRepository;
     private final EmailService emailService;
     private final VoucherRepository voucherRepository;
+    private final VnpayService vnpayService;
+    private final PayoutRepository payoutRepository;
 
     @Value("${stripe.api.key}")
     private String stripeApiKey;
@@ -62,16 +69,34 @@ public class PaymentServiceImpl implements PaymentService {
             throw new BusinessException("Booking is not in PENDING status");
         }
 
+        BigDecimal originalAmount = booking.getFinalPrice() != null ? booking.getFinalPrice() : booking.getTotalAmount();
+        boolean isDeposit = requestDTO.getIsDeposit() != null && requestDTO.getIsDeposit();
+        BigDecimal depositRatio = isDeposit ? (requestDTO.getDepositRatio() != null ? requestDTO.getDepositRatio() : new BigDecimal("0.30")) : BigDecimal.ONE;
+        BigDecimal amountToPay = originalAmount.multiply(depositRatio);
+
+        String companyName = requestDTO.getCompanyName();
+        String taxId = requestDTO.getTaxId();
+        String companyAddress = requestDTO.getCompanyAddress();
+        String companyEmail = requestDTO.getCompanyEmail();
+        LocalDateTime countdownEndTime = LocalDateTime.now().plusMinutes(10);
+
         if ("CASH".equalsIgnoreCase(requestDTO.getPaymentMethod())) {
             String transactionId = "CASH-" + UUID.randomUUID().toString();
 
             Payment payment = Payment.builder()
                     .booking(booking)
                     .paymentMethod("CASH")
-                    .amount(booking.getTotalAmount())
+                    .amount(amountToPay)
                     .status("PENDING")
                     .transactionId(transactionId)
                     .gateway("CASH")
+                    .isDeposit(isDeposit)
+                    .depositRatio(depositRatio)
+                    .countdownEndTime(countdownEndTime)
+                    .invoiceCompanyName(companyName)
+                    .invoiceTaxId(taxId)
+                    .invoiceCompanyAddress(companyAddress)
+                    .invoiceCompanyEmail(companyEmail)
                     .build();
             paymentRepository.save(payment);
             
@@ -89,6 +114,9 @@ public class PaymentServiceImpl implements PaymentService {
             return PaymentResponseDTO.builder()
                     .transactionId(transactionId)
                     .clientSecret("CASH_PAYMENT")
+                    .isDeposit(isDeposit)
+                    .depositRatio(depositRatio)
+                    .countdownEndTime(countdownEndTime)
                     .build();
         }
 
@@ -98,10 +126,17 @@ public class PaymentServiceImpl implements PaymentService {
             Payment payment = Payment.builder()
                     .booking(booking)
                     .paymentMethod("BANK_TRANSFER")
-                    .amount(booking.getTotalAmount())
+                    .amount(amountToPay)
                     .status("PENDING")
                     .transactionId(transactionId)
                     .gateway("MANUAL_BANK")
+                    .isDeposit(isDeposit)
+                    .depositRatio(depositRatio)
+                    .countdownEndTime(countdownEndTime)
+                    .invoiceCompanyName(companyName)
+                    .invoiceTaxId(taxId)
+                    .invoiceCompanyAddress(companyAddress)
+                    .invoiceCompanyEmail(companyEmail)
                     .build();
             paymentRepository.save(payment);
             
@@ -127,12 +162,57 @@ public class PaymentServiceImpl implements PaymentService {
                     .referenceCode(ref)
                     .branch("San Francisco Main")
                     .swiftCode("STRIPESF")
+                    .isDeposit(isDeposit)
+                    .depositRatio(depositRatio)
+                    .countdownEndTime(countdownEndTime)
+                    .build();
+        }
+
+        if ("VNPAY".equalsIgnoreCase(requestDTO.getPaymentMethod())) {
+            String transactionId = "VNPAY-" + UUID.randomUUID().toString();
+
+            Payment payment = Payment.builder()
+                    .booking(booking)
+                    .paymentMethod("VNPAY")
+                    .amount(amountToPay)
+                    .status("PENDING")
+                    .transactionId(transactionId)
+                    .gateway("VNPAY")
+                    .isDeposit(isDeposit)
+                    .depositRatio(depositRatio)
+                    .countdownEndTime(countdownEndTime)
+                    .invoiceCompanyName(companyName)
+                    .invoiceTaxId(taxId)
+                    .invoiceCompanyAddress(companyAddress)
+                    .invoiceCompanyEmail(companyEmail)
+                    .build();
+            paymentRepository.save(payment);
+
+            booking.setPaymentStatus("PENDING");
+            bookingRepository.save(booking);
+
+            PaymentAuditLog auditLog = PaymentAuditLog.builder()
+                    .transactionId(transactionId)
+                    .action("CREATE_VNPAY_PAYMENT")
+                    .requestPayload("Booking ID: " + booking.getBookingId())
+                    .build();
+            auditLogRepository.save(auditLog);
+
+            String payUrl = vnpayService.createPaymentUrl(transactionId, amountToPay, "Thanh toan booking " + booking.getBookingCode());
+
+            return PaymentResponseDTO.builder()
+                    .transactionId(transactionId)
+                    .clientSecret(payUrl)
+                    .paymentUrl(payUrl)
+                    .isDeposit(isDeposit)
+                    .depositRatio(depositRatio)
+                    .countdownEndTime(countdownEndTime)
                     .build();
         }
 
         try {
             PaymentIntentCreateParams.Builder paramsBuilder = PaymentIntentCreateParams.builder()
-                    .setAmount(booking.getTotalAmount().multiply(new BigDecimal(100)).longValue())
+                    .setAmount(amountToPay.multiply(new BigDecimal(100)).longValue())
                     .setCurrency("usd")
                     .putMetadata("bookingId", booking.getBookingId().toString())
                     .addPaymentMethodType("card");
@@ -145,10 +225,17 @@ public class PaymentServiceImpl implements PaymentService {
             Payment payment = Payment.builder()
                     .booking(booking)
                     .paymentMethod(requestDTO.getPaymentMethod())
-                    .amount(booking.getTotalAmount())
+                    .amount(amountToPay)
                     .status("PENDING")
                     .transactionId(transactionId)
                     .gateway("STRIPE")
+                    .isDeposit(isDeposit)
+                    .depositRatio(depositRatio)
+                    .countdownEndTime(countdownEndTime)
+                    .invoiceCompanyName(companyName)
+                    .invoiceTaxId(taxId)
+                    .invoiceCompanyAddress(companyAddress)
+                    .invoiceCompanyEmail(companyEmail)
                     .build();
 
             paymentRepository.save(payment);
@@ -163,6 +250,9 @@ public class PaymentServiceImpl implements PaymentService {
             return PaymentResponseDTO.builder()
                     .transactionId(transactionId)
                     .clientSecret(intent.getClientSecret())
+                    .isDeposit(isDeposit)
+                    .depositRatio(depositRatio)
+                    .countdownEndTime(countdownEndTime)
                     .build();
         } catch (Exception e) {
             log.error("Stripe payment intent creation failed", e);
@@ -351,13 +441,51 @@ public class PaymentServiceImpl implements PaymentService {
         Payment payment = paymentRepository.findByBooking_BookingId(bookingId)
                 .orElseThrow(() -> new BusinessException("No payment record found for this booking."));
 
-        if (!"SUCCESS".equals(payment.getStatus())) {
-            throw new BusinessException("Only SUCCESS payments can be refunded.");
+        if (!"SUCCESS".equals(payment.getStatus()) && !"REFUND_PENDING".equals(payment.getStatus())) {
+            throw new BusinessException("Only SUCCESS or REFUND_PENDING payments can be refunded.");
+        }
+
+        if ("REFUND_PENDING".equals(payment.getStatus()) && payment.getRefundAmount() != null) {
+            throw new BusinessException("Refund is already processed or pending in gateway.");
+        }
+
+        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime checkIn = booking.getCheckInDate();
+        BigDecimal refundRatio = BigDecimal.ZERO;
+
+        if (checkIn != null) {
+            if (now.isBefore(checkIn.minusDays(7))) {
+                refundRatio = BigDecimal.ONE; // 100%
+            } else if (now.isBefore(checkIn.minusDays(3))) {
+                refundRatio = new BigDecimal("0.50"); // 50%
+            } else {
+                refundRatio = BigDecimal.ZERO; // 0%
+            }
+        }
+
+        BigDecimal refundAmount = payment.getAmount().multiply(refundRatio);
+
+        if (refundAmount.compareTo(BigDecimal.ZERO) == 0) {
+            payment.setStatus("REFUNDED");
+            payment.setRefundAmount(BigDecimal.ZERO);
+            payment.setRefundTime(now);
+            paymentRepository.save(payment);
+
+            booking.setStatus("CANCELLED");
+            bookingRepository.save(booking);
+
+            PaymentAuditLog auditLog = PaymentAuditLog.builder()
+                    .transactionId(UUID.randomUUID().toString())
+                    .action("REFUND_ZERO_BY_POLICY")
+                    .requestPayload("Booking ID: " + bookingId + ", Refund Amount: 0 (Cancellation policy)")
+                    .build();
+            auditLogRepository.save(auditLog);
+            return;
         }
 
         String refundTxnId = UUID.randomUUID().toString();
         payment.setRefundTransactionId(refundTxnId);
-        payment.setRefundAmount(payment.getAmount());
+        payment.setRefundAmount(refundAmount);
         payment.setStatus("REFUND_PENDING");
 
         paymentRepository.save(payment);
@@ -377,9 +505,33 @@ public class PaymentServiceImpl implements PaymentService {
         java.util.List<Payment> pendingRefunds = paymentRepository.findByStatusAndRefundRetryCountLessThan("REFUND_PENDING", 3);
         
         for (Payment payment : pendingRefunds) {
+            if (payment.getRefundAmount() == null) {
+                continue;
+            }
             int currentRetry = payment.getRefundRetryCount() == null ? 0 : payment.getRefundRetryCount();
             payment.setRefundRetryCount(currentRetry + 1);
             
+            // Cash/VNPAY/Bank Transfer simulated refund
+            if (!"STRIPE".equalsIgnoreCase(payment.getGateway())) {
+                payment.setStatus("REFUNDED");
+                payment.setRefundTime(LocalDateTime.now());
+                
+                Booking booking = payment.getBooking();
+                booking.setStatus("CANCELLED");
+                bookingRepository.save(booking);
+                
+                log.info("Simulated refund successful for gateway {} on txn {}", payment.getGateway(), payment.getTransactionId());
+                
+                PaymentAuditLog auditLog = PaymentAuditLog.builder()
+                        .transactionId(payment.getRefundTransactionId())
+                        .action("REFUND_SUCCESS_SIMULATED")
+                        .requestPayload("Refunded Amount: " + payment.getRefundAmount())
+                        .build();
+                auditLogRepository.save(auditLog);
+                paymentRepository.save(payment);
+                continue;
+            }
+
             try {
                 RefundCreateParams params = RefundCreateParams.builder()
                         .setPaymentIntent(payment.getTransactionId())
@@ -419,7 +571,6 @@ public class PaymentServiceImpl implements PaymentService {
     private void handleRefundFailure(Payment payment, int attemptCount) {
         if (attemptCount >= 3) {
             payment.setStatus("MANUAL_REFUND_REQUIRED");
-            // send alert to admin
             log.warn("Manual refund required for payment: {}", payment.getPaymentId());
         }
         
@@ -429,5 +580,191 @@ public class PaymentServiceImpl implements PaymentService {
                 .requestPayload("Attempt: " + attemptCount)
                 .build();
         auditLogRepository.save(auditLog);
+    }
+
+    @Override
+    @Transactional
+    public void processVnpayCallback(Map<String, String> params) {
+        boolean verified = vnpayService.verifyCallback(params);
+        if (!verified) {
+            PaymentAuditLog auditLog = PaymentAuditLog.builder()
+                    .action("VNPAY_CALLBACK_VERIFICATION_FAILED")
+                    .requestPayload("Params: " + params.toString())
+                    .build();
+            auditLogRepository.save(auditLog);
+            throw new SecurityException("VNPAY secure hash verification failed");
+        }
+
+        String transactionId = params.get("vnp_TxnRef");
+        String responseCode = params.get("vnp_ResponseCode");
+
+        if ("00".equals(responseCode)) {
+            handlePaymentSuccess(transactionId, "VNPAY callback success: " + params.toString());
+        } else {
+            handlePaymentFailed(transactionId, "VNPAY callback failed (Code: " + responseCode + "): " + params.toString());
+        }
+    }
+
+    @Override
+    @org.springframework.scheduling.annotation.Scheduled(fixedDelay = 60000)
+    @Transactional
+    public void checkExpiredPaymentHolds() {
+        log.debug("Checking for expired payment holds");
+        List<Payment> pendingPayments = paymentRepository.findAll().stream()
+                .filter(p -> "PENDING".equals(p.getStatus()) && p.getCountdownEndTime() != null && p.getCountdownEndTime().isBefore(LocalDateTime.now()))
+                .toList();
+
+        for (Payment payment : pendingPayments) {
+            payment.setStatus("FAILED");
+            paymentRepository.save(payment);
+
+            Booking booking = payment.getBooking();
+            booking.setPaymentStatus("FAILED");
+            booking.setStatus("FAILED");
+            bookingRepository.save(booking);
+
+            PaymentAuditLog auditLog = PaymentAuditLog.builder()
+                    .transactionId(payment.getTransactionId())
+                    .action("PAYMENT_HOLD_EXPIRED")
+                    .requestPayload("Hold expired for booking: " + booking.getBookingId())
+                    .build();
+            auditLogRepository.save(auditLog);
+
+            log.info("Expired payment hold cancelled for transaction {} and booking {}", payment.getTransactionId(), booking.getBookingId());
+        }
+    }
+
+    @Override
+    @Transactional
+    public void refundUnusedMealTickets(Long bookingId, BigDecimal unusedAmount) {
+        Booking booking = bookingRepository.findById(bookingId)
+                .orElseThrow(() -> new ResourceNotFoundException("Booking", "id", bookingId.toString()));
+
+        Payment payment = paymentRepository.findByBooking_BookingId(bookingId)
+                .orElseThrow(() -> new BusinessException("No payment record found for this booking."));
+
+        if (!"SUCCESS".equals(payment.getStatus())) {
+            throw new BusinessException("Cannot refund meals for an unpaid booking.");
+        }
+
+        BigDecimal totalRefunded = payment.getRefundAmount() != null ? payment.getRefundAmount() : BigDecimal.ZERO;
+        BigDecimal newTotalRefund = totalRefunded.add(unusedAmount);
+
+        if (newTotalRefund.compareTo(payment.getAmount()) > 0) {
+            throw new BusinessException("Refund amount exceeds total payment amount.");
+        }
+
+        payment.setMealRefundAmount(unusedAmount);
+        payment.setRefundAmount(newTotalRefund);
+        paymentRepository.save(payment);
+
+        PaymentAuditLog auditLog = PaymentAuditLog.builder()
+                .transactionId(payment.getTransactionId())
+                .action("MEAL_REFUND_SUCCESS")
+                .requestPayload("Booking ID: " + bookingId + ", Refund Amount: " + unusedAmount)
+                .build();
+        auditLogRepository.save(auditLog);
+
+        log.info("Refunded unused meal tickets for booking {}: Amount {}", bookingId, unusedAmount);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public byte[] generateInvoicePdf(Long paymentId) {
+        Payment payment = paymentRepository.findById(paymentId)
+                .orElseThrow(() -> new ResourceNotFoundException("Payment", "id", paymentId.toString()));
+
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        try {
+            Document document = new Document();
+            PdfWriter.getInstance(document, baos);
+            document.open();
+
+            Font titleFont = new Font(Font.HELVETICA, 18, Font.BOLD);
+            Font sectionFont = new Font(Font.HELVETICA, 12, Font.BOLD);
+            Font normalFont = new Font(Font.HELVETICA, 10, Font.NORMAL);
+
+            document.add(new Paragraph("VAT INVOICE / HOA DON GTGT", titleFont));
+            document.add(new Paragraph("========================================", normalFont));
+            document.add(new Paragraph("Transaction ID: " + payment.getTransactionId(), normalFont));
+            document.add(new Paragraph("Booking Code: " + payment.getBooking().getBookingCode(), normalFont));
+            document.add(new Paragraph("Payment Method: " + payment.getPaymentMethod(), normalFont));
+            document.add(new Paragraph("Amount Paid: $" + payment.getAmount(), normalFont));
+            document.add(new Paragraph("Payment Date: " + (payment.getPaymentTime() != null ? payment.getPaymentTime() : payment.getCreatedAt()), normalFont));
+
+            if (payment.getInvoiceCompanyName() != null && !payment.getInvoiceCompanyName().isEmpty()) {
+                document.add(new Paragraph("\nCUSTOMER BILLING DETAILS / THONG TIN DOANH NGHIEP", sectionFont));
+                document.add(new Paragraph("Company: " + payment.getInvoiceCompanyName(), normalFont));
+                document.add(new Paragraph("Tax ID: " + payment.getInvoiceTaxId(), normalFont));
+                document.add(new Paragraph("Address: " + payment.getInvoiceCompanyAddress(), normalFont));
+                document.add(new Paragraph("Email: " + payment.getInvoiceCompanyEmail(), normalFont));
+            }
+
+            document.add(new Paragraph("\n========================================", normalFont));
+            document.add(new Paragraph("Thank you for choosing LuxuryStay Hotels!", normalFont));
+            
+            document.close();
+        } catch (Exception e) {
+            log.error("Failed to generate PDF", e);
+            throw new BusinessException("Failed to generate invoice PDF: " + e.getMessage());
+        }
+
+        return baos.toByteArray();
+    }
+
+    @Override
+    @Transactional
+    public Payout calculateMonthlyPayout(Long hotelId, LocalDateTime start, LocalDateTime end) {
+        List<Payment> successfulPayments = paymentRepository.findSuccessfulPaymentsByHotelAndDate(hotelId, start, end);
+
+        BigDecimal totalRevenue = BigDecimal.ZERO;
+        for (Payment payment : successfulPayments) {
+            totalRevenue = totalRevenue.add(payment.getAmount());
+        }
+
+        BigDecimal commissionRate = new BigDecimal("0.10"); // Default 10%
+        BigDecimal commissionAmount = totalRevenue.multiply(commissionRate);
+        BigDecimal payoutAmount = totalRevenue.subtract(commissionAmount);
+
+        Payout payout = Payout.builder()
+                .hotelId(hotelId)
+                .periodStart(start)
+                .periodEnd(end)
+                .totalRevenue(totalRevenue)
+                .commissionRate(commissionRate.multiply(new BigDecimal("100"))) // Save as percentage (e.g. 10.0)
+                .payoutAmount(payoutAmount)
+                .status("PENDING")
+                .build();
+
+        return payoutRepository.save(payout);
+    }
+
+    @Override
+    @Transactional
+    public void approvePayout(Long payoutId) {
+        Payout payout = payoutRepository.findById(payoutId)
+                .orElseThrow(() -> new ResourceNotFoundException("Payout", "id", payoutId.toString()));
+
+        if (!"PENDING".equals(payout.getStatus())) {
+            throw new BusinessException("Payout is already processed (Status: " + payout.getStatus() + ")");
+        }
+
+        payout.setStatus("PAID");
+        payoutRepository.save(payout);
+
+        PaymentAuditLog auditLog = PaymentAuditLog.builder()
+                .transactionId("PAYOUT-" + payoutId)
+                .action("PAYOUT_APPROVED")
+                .requestPayload("Hotel ID: " + payout.getHotelId() + ", Amount: " + payout.getPayoutAmount())
+                .build();
+        auditLogRepository.save(auditLog);
+
+        log.info("Payout {} approved and marked as PAID", payoutId);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<Payout> getPayoutsByHotel(Long hotelId) {
+        return payoutRepository.findByHotelId(hotelId);
     }
 }

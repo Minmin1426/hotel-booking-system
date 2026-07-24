@@ -132,4 +132,33 @@ public class VoucherServiceTest {
         assertEquals(1, result.size());
         assertEquals("ACTIVE1", result.get(0).getCode());
     }
+
+    @Test
+    void testApplyVoucher_Combo() {
+        Booking booking = new Booking();
+        booking.setBookingId(1L);
+        booking.setStatus("PENDING");
+        booking.setTotalAmount(BigDecimal.valueOf(1000));
+
+        Voucher voucher = new Voucher();
+        voucher.setCode("COMBOMEAL");
+        voucher.setDiscountType("FIXED_AMOUNT");
+        voucher.setDiscountValue(BigDecimal.valueOf(50));
+        voucher.setVoucherType("ROOM_MEAL_COMBO");
+        voucher.setComboMealBenefit("FREE_BREAKFAST");
+        voucher.setCurrentUsage(0);
+        voucher.setMaxUsage(10);
+
+        when(bookingRepository.findById(1L)).thenReturn(Optional.of(booking));
+        when(voucherRepository.findByCode("COMBOMEAL")).thenReturn(Optional.of(voucher));
+        when(bookingRepository.save(any(Booking.class))).thenReturn(booking);
+
+        Booking result = voucherService.applyVoucher(1L, "COMBOMEAL");
+
+        assertNotNull(result);
+        assertEquals(BigDecimal.valueOf(50), result.getDiscountAmount());
+        assertEquals(BigDecimal.valueOf(950), result.getFinalPrice());
+        assertEquals("ROOM_MEAL_COMBO", result.getVoucher().getVoucherType());
+        assertEquals("FREE_BREAKFAST", result.getVoucher().getComboMealBenefit());
+    }
 }

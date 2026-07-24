@@ -50,6 +50,34 @@ public class Voucher {
     @Column(name = "current_usage")
     private Integer currentUsage;
 
+    // 010-voucher-store-front: Extended fields
+    @Column(name = "name")
+    private String name;
+
+    @Column(name = "description", columnDefinition = "TEXT")
+    private String description;
+
+    @Column(name = "for_account_type", length = 30)
+    @Builder.Default
+    private String forAccountType = "ALL";
+
+    @Column(name = "voucher_type", length = 50)
+    @Builder.Default
+    private String voucherType = "ROOM";
+
+    @Column(name = "combo_meal_benefit", length = 255)
+    private String comboMealBenefit;
+
+    @Column(name = "is_active")
+    @Builder.Default
+    private Boolean isActive = true;
+
+
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "created_by")
+    private com.hotelbooking.user.User createdBy;
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
@@ -57,4 +85,23 @@ public class Voucher {
     @UpdateTimestamp
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
+
+    // ── Helpers ──────────────────────────────────────────────────────────────────
+
+    public boolean hasAvailability() {
+        if (!isActive) return false;
+        if (currentUsage != null && maxUsage != null && currentUsage >= maxUsage) return false;
+        LocalDateTime now = LocalDateTime.now();
+        if (startDate != null && now.isBefore(startDate)) return false;
+        if (endDate != null && now.isAfter(endDate)) return false;
+        return true;
+    }
+
+    public boolean isForAccountType(String accountType) {
+        return "ALL".equals(forAccountType) || forAccountType.equals(forAccountType);
+    }
+
+    public void incrementUsage() {
+        this.currentUsage = (this.currentUsage == null ? 1 : this.currentUsage + 1);
+    }
 }

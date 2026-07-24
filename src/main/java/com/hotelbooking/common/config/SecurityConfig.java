@@ -34,10 +34,6 @@ public class SecurityConfig {
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
     private final UserRepository userRepository;
 
-    @org.springframework.beans.factory.annotation.Value("${cors.allowed-origins:http://localhost:5173,http://127.0.0.1:5173}")
-    private List<String> allowedOrigins;
-
-
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
@@ -48,9 +44,7 @@ public class SecurityConfig {
                 // Allow public auth endpoints
                 .requestMatchers("/api/v1/auth/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/v1/rooms/search").permitAll()
-                .requestMatchers(HttpMethod.HEAD, "/api/v1/rooms/search").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/v1/hotels/**").permitAll()
-                .requestMatchers(HttpMethod.HEAD, "/api/v1/hotels/**").permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/v1/bookings/validate-dates").permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/v1/payments/webhook").permitAll()
                 // Require auth for everything else
@@ -64,9 +58,8 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(allowedOrigins);
+        configuration.setAllowedOrigins(List.of("http://localhost:5173", "http://127.0.0.1:5173"));
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
-
         configuration.setAllowedHeaders(List.of("Authorization", "Content-Type", "Cache-Control"));
         configuration.setExposedHeaders(List.of("Authorization"));
         configuration.setAllowCredentials(true);

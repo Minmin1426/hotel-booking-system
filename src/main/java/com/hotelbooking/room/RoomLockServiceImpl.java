@@ -48,7 +48,8 @@ public class RoomLockServiceImpl implements RoomLockService {
     }
 
     @Override
-    public List<RoomLock> lockRoomsForBooking(Booking booking, List<Long> roomIds) {
+    public synchronized List<RoomLock> lockRoomsForBooking(Booking booking, List<Long> roomIds) {
+
         log.info("Attempting to lock rooms {} for booking: {}", roomIds, booking.getBookingCode());
         
         List<RoomLock> locks = new ArrayList<>();

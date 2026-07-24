@@ -1,5 +1,7 @@
 package com.hotelbooking.booking;
-import com.hotelbooking.report.dto.DailyBookingStats;
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Optional;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -8,9 +10,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
-import java.time.LocalDateTime;
-import java.util.List;
-import java.util.Optional;
+import com.hotelbooking.report.dto.DailyBookingStats;
 
 @Repository
 public interface BookingRepository extends JpaRepository<Booking, Long> {
@@ -69,6 +69,12 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
 
     @Query("SELECT COUNT(b) > 0 FROM Booking b JOIN b.bookingRooms br WHERE br.room.roomId = :roomId AND b.status IN :statuses")
     boolean existsByRoomIdAndStatusIn(@Param("roomId") Long roomId, @Param("statuses") List<String> statuses);
+
+    @Query("SELECT b.notes, COUNT(b), COALESCE(SUM(b.finalPrice), 0) FROM Booking b " +
+           "WHERE b.status = 'CANCELLED' AND b.updatedAt >= :startDate AND b.updatedAt <= :endDate " +
+           "GROUP BY b.notes")
+    List<Object[]> findCancellationStats(@Param("startDate") LocalDateTime startDate,
+                                         @Param("endDate") LocalDateTime endDate);
 
     long countByUser_UserId(Long userId);
 }

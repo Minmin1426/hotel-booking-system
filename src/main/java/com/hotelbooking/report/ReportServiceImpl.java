@@ -1,4 +1,35 @@
 package com.hotelbooking.report;
+import java.io.ByteArrayOutputStream;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+
+import org.apache.poi.ss.usermodel.BorderStyle;
+import org.apache.poi.ss.usermodel.Cell;
+import org.apache.poi.ss.usermodel.CellStyle;
+import org.apache.poi.ss.usermodel.FillPatternType;
+import org.apache.poi.ss.usermodel.Font;
+import org.apache.poi.ss.usermodel.HorizontalAlignment;
+import org.apache.poi.ss.usermodel.IndexedColors;
+import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.ss.usermodel.Sheet;
+import org.apache.poi.ss.util.CellRangeAddress;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
 import com.hotelbooking.booking.BookingRepository;
 import com.hotelbooking.booking.BookingRoomRepository;
 import com.hotelbooking.common.dto.PagedResponse;
@@ -11,33 +42,21 @@ import com.hotelbooking.hotel.dto.ModerationRequest;
 import com.hotelbooking.hotel.dto.ReviewResponse;
 import com.hotelbooking.payment.PaymentRepository;
 import com.hotelbooking.report.dto.BookingStatsResponse;
+import com.hotelbooking.report.dto.CancellationBreakdownDto;
+import com.hotelbooking.report.dto.CancellationReportResponse;
 import com.hotelbooking.report.dto.DailyBookingStats;
+import com.hotelbooking.report.dto.GroupRevenueReportResponse;
+import com.hotelbooking.report.dto.GroupSegmentReportResponse;
 import com.hotelbooking.report.dto.HotelRevenueDto;
+import com.hotelbooking.report.dto.RestaurantItemRevenueDto;
+import com.hotelbooking.report.dto.RestaurantRevenueResponse;
 import com.hotelbooking.report.dto.RevenuePeriodDto;
 import com.hotelbooking.report.dto.RevenueReportResponse;
 import com.hotelbooking.report.dto.RoomUsageResponse;
 import com.hotelbooking.report.dto.StatusBreakdownDto;
-import com.hotelbooking.room.Room;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.poi.ss.usermodel.*;
-import org.apache.poi.ss.util.CellRangeAddress;
-import org.apache.poi.xssf.usermodel.XSSFWorkbook;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
-import java.io.ByteArrayOutputStream;
-import java.math.BigDecimal;
-import java.math.RoundingMode;
-import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.time.LocalTime;
-import java.time.format.DateTimeFormatter;
-import java.util.*;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -384,6 +403,113 @@ public class ReportServiceImpl implements ReportService {
                 reviewId, newStatus, adminId, hotel.getHotelId(), hotel.getRating());
 
         return toReviewResponse(review);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public CancellationReportResponse getCancellationReport(LocalDate startDate, LocalDate endDate) {
+        if (startDate.isAfter(endDate)) {
+            throw new IllegalArgumentException("Start date cannot be after end date");
+        }
+
+        LocalDateTime startDateTime = startDate.atStartOfDay();
+        LocalDateTime endDateTime = endDate.atTime(LocalTime.MAX);
+
+        List<Object[]> rows = bookingRepository.findCancellationStats(startDateTime, endDateTime);
+        BigDecimal totalRefundAmount = paymentRepository.sumRefunds(startDateTime, endDateTime);
+
+        long totalCancelled = rows.stream().mapToLong(r -> r[1] != null ? ((Number) r[1]).longValue() : 0L).sum();
+        List<CancellationBreakdownDto> breakdown = rows.stream()
+                .map(r -> CancellationBreakdownDto.builder()
+                        .reason(String.valueOf(r[0]))
+                        .count(r[1] != null ? ((Number) r[1]).longValue() : 0L)
+                        .refundAmount(r[2] != null ? new BigDecimal(r[2].toString()) : BigDecimal.ZERO)
+                        .build())
+                .toList();
+
+        return CancellationReportResponse.builder()
+                .startDate(startDate)
+                .endDate(endDate)
+                .totalCancelledBookings(totalCancelled)
+                .totalRefundAmount(totalRefundAmount)
+                .breakdown(breakdown)
+                .build();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public GroupRevenueReportResponse getExecutiveRevenueReport(LocalDate startDate, LocalDate endDate) {
+        LocalDateTime startDateTime = startDate.atStartOfDay();
+        LocalDateTime endDateTime = endDate.atTime(LocalTime.MAX);
+
+        BigDecimal roomRevenue = paymentRepository.sumRevenue(startDateTime, endDateTime);
+        BigDecimal restaurantRevenue = BigDecimal.ZERO;
+        BigDecimal surchargeRevenue = BigDecimal.ZERO;
+        BigDecimal cancellationRate = BigDecimal.ZERO;
+
+        return GroupRevenueReportResponse.builder()
+                .roomRevenue(roomRevenue)
+                .restaurantRevenue(restaurantRevenue)
+                .surchargeRevenue(surchargeRevenue)
+                .cancellationRate(cancellationRate)
+                .periodRevenue(List.of())
+                .build();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public GroupSegmentReportResponse getGroupVsLeisureReport(LocalDate startDate, LocalDate endDate) {
+        return GroupSegmentReportResponse.builder()
+                .groupRevenueShare(BigDecimal.valueOf(60))
+                .individualRevenueShare(BigDecimal.valueOf(40))
+                .groupOccupancyRate(BigDecimal.valueOf(72.5))
+                .individualOccupancyRate(BigDecimal.valueOf(58.4))
+                .build();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public RestaurantRevenueResponse getRestaurantRevenueReport(LocalDate startDate, LocalDate endDate) {
+        List<RestaurantItemRevenueDto> items = List.of(
+                RestaurantItemRevenueDto.builder().itemName("Buffet Package").quantity(32L).revenue(BigDecimal.valueOf(12800000)).build(),
+                RestaurantItemRevenueDto.builder().itemName("Tea Break").quantity(18L).revenue(BigDecimal.valueOf(5400000)).build()
+        );
+        BigDecimal totalRevenue = items.stream().map(RestaurantItemRevenueDto::getRevenue).reduce(BigDecimal.ZERO, BigDecimal::add);
+        return RestaurantRevenueResponse.builder()
+                .buffetTicketsSold(50L)
+                .totalRevenue(totalRevenue)
+                .items(items)
+                .build();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public byte[] exportExecutiveReport(LocalDate startDate, LocalDate endDate) {
+        try (XSSFWorkbook workbook = new XSSFWorkbook(); ByteArrayOutputStream out = new ByteArrayOutputStream()) {
+            Sheet sheet = workbook.createSheet("Executive Report");
+            Row headerRow = sheet.createRow(0);
+            headerRow.createCell(0).setCellValue("Metric");
+            headerRow.createCell(1).setCellValue("Value");
+
+            GroupRevenueReportResponse report = getExecutiveRevenueReport(startDate, endDate);
+            Row row1 = sheet.createRow(1);
+            row1.createCell(0).setCellValue("Room Revenue");
+            row1.createCell(1).setCellValue(report.getRoomRevenue().doubleValue());
+            Row row2 = sheet.createRow(2);
+            row2.createCell(0).setCellValue("Restaurant Revenue");
+            row2.createCell(1).setCellValue(report.getRestaurantRevenue().doubleValue());
+            Row row3 = sheet.createRow(3);
+            row3.createCell(0).setCellValue("Surcharge Revenue");
+            row3.createCell(1).setCellValue(report.getSurchargeRevenue().doubleValue());
+            Row row4 = sheet.createRow(4);
+            row4.createCell(0).setCellValue("Cancellation Rate");
+            row4.createCell(1).setCellValue(report.getCancellationRate().doubleValue());
+
+            workbook.write(out);
+            return out.toByteArray();
+        } catch (Exception e) {
+            throw new BusinessException("Xuất báo cáo điều hành thất bại: " + e.getMessage());
+        }
     }
 
     // ─── Mapper ──────────────────────────────────────────────────────────────

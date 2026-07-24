@@ -39,11 +39,12 @@ public class Hotel {
     @Column(nullable = false)
     private String name;
 
-    @Column(nullable = false, columnDefinition = "NVARCHAR(MAX)")
+    @Column(nullable = false, columnDefinition = "TEXT")
     private String location;
 
-    @Column(columnDefinition = "NVARCHAR(MAX)")
+    @Column(columnDefinition = "TEXT")
     private String description;
+
 
     @Column(name = "is_active", nullable = false)
     @Builder.Default

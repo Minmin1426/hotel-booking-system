@@ -38,8 +38,9 @@ public class Review {
     @Column(nullable = false)
     private Integer rating; // 1–5
 
-    @Column(columnDefinition = "NVARCHAR(MAX)")
+    @Column(columnDefinition = "TEXT")
     private String comment;
+
 
     /**
      * UC-31: Trạng thái kiểm duyệt — VISIBLE | HIDDEN

@@ -1,0 +1,64 @@
+package com.hotelbooking.payment;
+
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+import java.net.URI;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
+import java.util.Map;
+
+@RestController
+@RequestMapping("/api/v1/auth/payments")
+@RequiredArgsConstructor
+@Slf4j
+public class VnpayCallbackController {
+
+    private final PaymentService paymentService;
+
+    @Value("${frontend.url:http://localhost:5173}")
+    private String frontendUrl;
+
+    @GetMapping("/vnpay-callback")
+    public ResponseEntity<Void> handleVnpayCallback(@RequestParam Map<String, String> params) {
+        try {
+            paymentService.processVnpayCallback(params);
+            
+            HttpHeaders headers = new HttpHeaders();
+            headers.setLocation(URI.create(frontendUrl + "/payment/success"));
+            return new ResponseEntity<>(headers, HttpStatus.FOUND);
+        } catch (Exception e) {
+            log.error("Error processing VNPAY Callback", e);
+            HttpHeaders headers = new HttpHeaders();
+            headers.setLocation(URI.create(frontendUrl + "/payment/cancel?error=" + URLEncoder.encode(e.getMessage(), StandardCharsets.UTF_8)));
+            return new ResponseEntity<>(headers, HttpStatus.FOUND);
+        }
+    }
+
+    @PostMapping("/vnpay-ipn")
+    public ResponseEntity<Map<String, String>> handleVnpayIpn(@RequestParam Map<String, String> params) {
+        log.info("Received VNPAY IPN: {}", params);
+        Map<String, String> response = new java.util.HashMap<>();
+        try {
+            paymentService.processVnpayCallback(params);
+            response.put("RspCode", "00");
+            response.put("Message", "Confirm Success");
+            return ResponseEntity.ok(response);
+        } catch (SecurityException e) {
+            log.error("VNPAY IPN signature verification failed", e);
+            response.put("RspCode", "97");
+            response.put("Message", "Invalid Signature");
+            return ResponseEntity.badRequest().body(response);
+        } catch (Exception e) {
+            log.error("VNPAY IPN internal error", e);
+            response.put("RspCode", "99");
+            response.put("Message", "Input Required / Error");
+            return ResponseEntity.internalServerError().body(response);
+        }
+    }
+}

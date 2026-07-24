@@ -1,18 +1,8 @@
 package com.hotelbooking.report;
-import com.hotelbooking.common.dto.ApiResponse;
-import com.hotelbooking.common.dto.PagedResponse;
-import com.hotelbooking.hotel.Review;
-import com.hotelbooking.hotel.dto.ModerationRequest;
-import com.hotelbooking.hotel.dto.ReviewResponse;
-import com.hotelbooking.report.dto.BookingStatsResponse;
-import com.hotelbooking.report.dto.RevenueReportResponse;
-import com.hotelbooking.report.dto.RoomUsageResponse;
-import com.hotelbooking.room.Room;
-import com.hotelbooking.user.User;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.util.List;
 
-import jakarta.validation.Valid;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -20,11 +10,30 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.validation.annotation.Validated;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 
-import java.time.LocalDate;
-import java.time.format.DateTimeFormatter;
-import java.util.List;
+import com.hotelbooking.common.dto.ApiResponse;
+import com.hotelbooking.common.dto.PagedResponse;
+import com.hotelbooking.hotel.dto.ModerationRequest;
+import com.hotelbooking.hotel.dto.ReviewResponse;
+import com.hotelbooking.report.dto.BookingStatsResponse;
+import com.hotelbooking.report.dto.CancellationReportResponse;
+import com.hotelbooking.report.dto.GroupRevenueReportResponse;
+import com.hotelbooking.report.dto.GroupSegmentReportResponse;
+import com.hotelbooking.report.dto.RestaurantRevenueResponse;
+import com.hotelbooking.report.dto.RevenueReportResponse;
+import com.hotelbooking.report.dto.RoomUsageResponse;
+import com.hotelbooking.user.User;
+
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 @RestController
 @RequestMapping("/api/v1/reports")
@@ -145,5 +154,49 @@ public class ReportController {
                 id, request.getAction(), currentUser.getUserId());
         ReviewResponse response = reportService.moderateReview(id, request, currentUser.getUserId());
         return ResponseEntity.ok(ApiResponse.success("Review moderated successfully", response));
+    }
+
+    @GetMapping("/cancellations")
+    @PreAuthorize("hasAnyRole('ADMIN', 'DIRECTOR')")
+    public ResponseEntity<ApiResponse<CancellationReportResponse>> getCancellationReport(
+            @RequestParam("startDate") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+            @RequestParam("endDate") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
+        return ResponseEntity.ok(ApiResponse.success("Cancellation report retrieved", reportService.getCancellationReport(startDate, endDate)));
+    }
+
+    @GetMapping("/executive")
+    @PreAuthorize("hasRole('DIRECTOR')")
+    public ResponseEntity<ApiResponse<GroupRevenueReportResponse>> getExecutiveRevenueReport(
+            @RequestParam("startDate") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+            @RequestParam("endDate") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
+        return ResponseEntity.ok(ApiResponse.success("Executive revenue report retrieved", reportService.getExecutiveRevenueReport(startDate, endDate)));
+    }
+
+    @GetMapping("/segments")
+    @PreAuthorize("hasAnyRole('ADMIN', 'DIRECTOR')")
+    public ResponseEntity<ApiResponse<GroupSegmentReportResponse>> getGroupVsLeisureReport(
+            @RequestParam("startDate") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+            @RequestParam("endDate") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
+        return ResponseEntity.ok(ApiResponse.success("Group vs leisure report retrieved", reportService.getGroupVsLeisureReport(startDate, endDate)));
+    }
+
+    @GetMapping("/restaurant")
+    @PreAuthorize("hasAnyRole('ADMIN', 'DIRECTOR')")
+    public ResponseEntity<ApiResponse<RestaurantRevenueResponse>> getRestaurantRevenueReport(
+            @RequestParam("startDate") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+            @RequestParam("endDate") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
+        return ResponseEntity.ok(ApiResponse.success("Restaurant revenue report retrieved", reportService.getRestaurantRevenueReport(startDate, endDate)));
+    }
+
+    @GetMapping("/executive/export")
+    @PreAuthorize("hasRole('DIRECTOR')")
+    public ResponseEntity<byte[]> exportExecutiveReport(
+            @RequestParam("startDate") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+            @RequestParam("endDate") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
+        byte[] bytes = reportService.exportExecutiveReport(startDate, endDate);
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=executive-report.xlsx")
+                .contentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
+                .body(bytes);
     }
 }
