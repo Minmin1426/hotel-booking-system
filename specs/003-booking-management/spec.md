@@ -1,152 +1,191 @@
 # Feature Specification: 003-booking-management
 
-**Feature Branch**: `003-booking-management`  
-**Created**: 2026-06-23  
-**Status**: Completed  
+**Feature Branch**: `main` / `003-booking-management`  
+**Created**: 2026-06-23 | **Last Updated**: 2026-07-25  
+**Status**: Completed & Production-Verified  
+**System Architecture Scale**: 50-Screen Enterprise Hotel Booking System (Phân Hệ Đặt Phòng Lẻ & Đặt Đoàn >5 Phòng)
 
 ---
 
-## 1. Context & Goal
-The booking system is the core transactional module of the Hotel Booking System. Its primary goal is to allow customers to search for available rooms and reserve them securely, while providing tools for receptionists and administrators to manage reservation lifecycles. 
+## 1. Context & Executive Overview
 
-To ensure inventory integrity under high concurrent requests, the system implements a temporary room-locking mechanism (Room Lock) during checkout, preventing double-bookings.
+The **Booking Management Subsystem (`003-booking-management`)** serves as the core transactional engine of the Hotel Booking System. It orchestrates the entire reservation lifecycle for both **Individual Guests (Standard Stays)** and **Group Delegations / Event Bookings (>5 Rooms)**.
+
+### Key Business Goals & System Expansion Highlights:
+1. **Zero Double-Booking Guarantee**: Implements optimistic & pessimistic database locking with a temporary **Room Lock** engine to hold room inventory during payment processing.
+2. **Group Booking Engine (>5 Rooms)**: Automatically calculates a **25% group discount**, provides **30% deposit options**, and supports **Corporate Tax Profile (CTP)** for VAT invoice generation.
+3. **Meal Ticket & Buffet Package Integration**: Supports Full-Board/Half-Board meal packages with QR code generation per guest.
+4. **Dynamic Room Lock Duration**: Configurable timeout (10 to 30 minutes) managed by Admins via `SystemSetting` and enforced by `RoomLockCleanupScheduler`.
+5. **Auto Refund & Cancellation Policy Engine**: Calculates refund percentages (100%, 80%, 50%, 0%) based on hours remaining before check-in.
 
 ---
 
 ## 2. Actors & Roles
-- **Customer**: Can search for available rooms, initiate booking requests, complete payments, and cancel their own bookings.
-- **Receptionist**: Can manage all bookings, confirm offline payments, check guests in/out, and create/cancel bookings on behalf of guests.
-- **Admin**: Has full administrative privileges, including managing bookings, overriding system settings (e.g., room lock durations), and accessing reports.
-- **System**: Automatically monitors room locks, cleans up expired locks, updates booking states, and releases inventory.
+
+| Actor / Role | Privileges & Responsibilities | Key UI Endpoints & Screens |
+|---|---|---|
+| **CUSTOMER** | Search rooms, create individual & group bookings (>5 rooms), import guest manifests via Excel, pay 30% deposit or 100% full, request cancellations, view QR meal tickets. | `SCR-101` to `SCR-109`, `/hotels/:id`, `/profile?tab=bookings` |
+| **RECEPTIONIST** | Manage hotel occupancy, process offline/cash bookings, perform express group check-in (`SCR-309`), issue room keys, scan meal QR codes (`SCR-207`), check guests out. | `SCR-308`, `SCR-309`, `SCR-310`, `/staff/rooms` |
+| **HOUSEKEEPER** | Inspect room clean/dirty states, toggle room availability, report service completions. | `SCR-204`, `/staff/rooms` |
+| **ADMIN** | Full administrative rights: override room lock durations, manage all bookings, approve Corporate Tax Profiles (`CTP`), audit meal ticket scans, create promotional vouchers. | `SCR-110`, `SCR-201`-`210`, `/admin/users?tab=bookings` |
+| **DIRECTOR** | Access executive dashboards, analyze revenue reports, group vs individual ratios, and cancellation refund statistics. | `SCR-506` to `SCR-510`, `/admin/users?tab=reports` |
+| **SYSTEM** | Automated background scheduler (`RoomLockCleanupScheduler`) firing every 1 minute to release expired locks, update pending states to `FAILED`, and maintain inventory integrity. | Background Task & Database Schedulers |
 
 ---
 
 ## 3. Functional Requirements
-- **FR-001**: Stay periods must be validated: check-in date >= today, check-out date > check-in date.
-- **FR-002**: Room Lock duration must be configurable via settings (default 10 minutes).
-- **FR-003**: System must use a cron-based scheduler (`RoomLockCleanupScheduler`) to release expired locks.
-- **FR-004**: System must use database transactions with pessimistic locking to prevent concurrent bookings for the same room.
+
+### 3.1 Date & Period Validation (FR-001 - FR-003)
+- **FR-001**: Stay periods must be validated: `checkInDate >= Today`, `checkOutDate > checkInDate`.
+- **FR-002**: System provides endpoint `/api/v1/bookings/validate-dates` returning `{ valid: boolean, numberOfNights: integer, message: string }`.
+- **FR-003**: System rejects bookings with overlapping stay periods for any requested room.
+
+### 3.2 Room Locking & Inventory Management (FR-004 - FR-007)
+- **FR-004**: During payment checkout, requested rooms are locked in `RoomLock` for `N` minutes (configurable default: 10 minutes, adjustable up to 30 minutes).
+- **FR-005**: If payment completes successfully, the lock state transitions from `PENDING` to `CONFIRMED` and `RoomLock` is released/marked inactive.
+- **FR-006**: The background cron scheduler (`RoomLockCleanupScheduler`) checks expired locks every 60 seconds and auto-cancels unpaid bookings (`status = FAILED`).
+- **FR-007**: Database transactions use `@Transactional` with pessimistic/optimistic locks to ensure **zero double-booking** during high concurrency.
+
+### 3.3 Group Booking Engine (>5 Rooms) (FR-008 - FR-012)
+- **FR-008**: When booking quantity >= 5 rooms, system automatically applies a **25% Group Discount** (`totalAmount * 0.75`).
+- **FR-009**: Allows guests/event organizers to select between **30% Partial Deposit** or **100% Full Payment**.
+- **FR-010**: Integrated **Group Member Manifest**: Customer can input guest names, IC/Passport numbers, assigned rooms, and upload guest lists via **Excel (.xlsx)**.
+- **FR-011**: Integrated **Corporate Tax Profile (CTP)**: Customer can enter Tax Code (MST), Company Name, and Business Address to generate official Red VAT Invoices.
+- **FR-012**: Integrated **Meal Ticket Packages**: Supports adding Buffet Breakfast, Seafood Lunch/Dinner, or Full-Board options, automatically generating individual **QR Codes** per guest.
+
+### 3.4 Cancellation & Refund Policy Engine (FR-013 - FR-015)
+- **FR-013**: Customers can request booking cancellations directly from `My Bookings` (`SCR-108`).
+- **FR-014**: Refund Engine evaluates time remaining until check-in:
+  - `> 72 hours`: **100% Full Refund**
+  - `24 - 72 hours`: **80% Partial Refund**
+  - `12 - 24 hours`: **50% Partial Refund**
+  - `< 12 hours`: **0% Non-refundable**
+- **FR-015**: Refund amounts are automatically credited back to Customer's E-Wallet (`SCR-105`) or original payment method.
 
 ---
 
-## 4. Non-functional Requirements
-- **NFR-001 (Concurrency)**: The booking process must guarantee zero double-bookings under concurrent checkout requests for the same room.
-- **NFR-002 (Performance)**: Booking status inquiries and creation requests must respond within 500ms under normal load conditions.
-- **NFR-003 (Security)**: All REST endpoints under `/api/v1/bookings` (except room search and `/api/v1/bookings/validate-dates`) must require JWT authentication and enforce Role-Based Access Control (`CUSTOMER`, `RECEPTIONIST`, `STAFF`, `ADMIN`, `DIRECTOR`).
-- **NFR-004 (Reliability)**: The `RoomLockCleanupScheduler` must execute every 1 minute to release expired locks, ensuring high availability of room inventory.
+## 4. Non-Functional Requirements
+
+- **NFR-001 (Concurrency & Data Integrity)**: Zero double-booking tolerance under high-concurrency requests for identical room IDs and dates.
+- **NFR-002 (Performance & Latency)**: Booking creation, date validation, and room availability search APIs respond within **< 300ms** (P95).
+- **NFR-003 (Security & RBAC)**: All `/api/v1/bookings/**` endpoints (except `/api/v1/bookings/validate-dates`) enforce JWT bearer authentication with role checking (`ROLE_USER`, `ROLE_RECEPTIONIST`, `ROLE_ADMIN`, `ROLE_DIRECTOR`).
+- **NFR-004 (Reliability & Resilience)**: `RoomLockCleanupScheduler` runs uninterrupted on a 60-second cron schedule, ensuring inventory is promptly freed if checkout windows expire.
+- **NFR-005 (UI/UX Aesthetics)**: Full compliance with 50-Screen UI design system (Apple-inspired glassmorphism, responsive Tailwind styling, interactive micro-animations).
 
 ---
 
-## 5. Data Model
+## 5. Data Model & Architecture
 
-### Key Entities
-- **Booking**: Represents a reservation. Fields:
-  - `bookingId` (Long, PK)
-  - `bookingCode` (String, Unique)
-  - `userId` (Long, FK)
-  - `hotelId` (Long, FK)
-  - `checkInDate` (Timestamp)
-  - `checkOutDate` (Timestamp)
-  - `totalAmount` (Decimal)
-  - `status` (String: PENDING, CONFIRMED, CANCELLED, COMPLETED, FAILED)
-  - `confirmedAt` (Timestamp)
-  - `notes` (String)
-  - `paymentStatus` (String)
-  - `voucherId` (Long, FK, Nullable)
-  - `discountAmount` (Decimal)
-  - `finalPrice` (Decimal)
-  - `createdAt` (Timestamp)
-  - `updatedAt` (Timestamp)
-- **BookingRoom**: Intermediate entity mapping bookings to rooms with historical price. Fields:
-  - `bookingId` (Long, PK, FK)
-  - `roomId` (Long, PK, FK)
-  - `quantity` (Integer)
-  - `priceAtBooking` (Decimal)
-  - `createdAt` (Timestamp)
-  - `updatedAt` (Timestamp)
-- **RoomLock**: Represents temporary locks on rooms during payment processing. Fields:
-  - `lockId` (Long, PK)
-  - `roomId` (Long, FK)
-  - `bookingId` (Long, FK)
-  - `lockedAt` (Timestamp)
-  - `expiresAt` (Timestamp)
-- **SystemSetting**: Configured statically via application properties (e.g. `room.lock.duration-minutes` in settings, default 10 minutes) rather than a dynamic database table.
+### Key Entities & Database Schema
 
-
-### Entity-Relationship Overview
 ```mermaid
 erDiagram
-    User ||--o{ Booking : "places"
-    Booking ||--|{ BookingRoom : "contains"
-    Room ||--o{ BookingRoom : "booked_in"
-    Room ||--o{ RoomLock : "locked_by"
-    Booking ||--o| RoomLock : "associated_with"
+    USERS ||--o{ BOOKINGS : "places"
+    HOTELS ||--o{ BOOKINGS : "belongs_to"
+    HOTELS ||--|{ ROOMS : "contains"
+    BOOKINGS ||--|{ BOOKING_ROOMS : "includes"
+    ROOMS ||--o{ BOOKING_ROOMS : "assigned_in"
+    ROOMS ||--o{ ROOM_LOCKS : "locked_by"
+    BOOKINGS ||--o| ROOM_LOCKS : "holds"
+    BOOKINGS ||--o| VOUCHERS : "applies"
+    BOOKINGS ||--o{ MEAL_TICKETS : "generates"
+    BOOKINGS ||--o| CORPORATE_TAX_PROFILES : "bills_to"
 ```
+
+#### Entity Specifications:
+1. **`Booking` (`bookings` table)**
+   - `bookingId` (Long, PK, Auto Increment)
+   - `bookingCode` (String, Unique UUID-based, e.g. `BK-A6E037A5`)
+   - `userId` (Long, FK to `users`)
+   - `hotelId` (Long, FK to `hotels`)
+   - `checkInDate` (LocalDate / Timestamp)
+   - `checkOutDate` (LocalDate / Timestamp)
+   - `totalAmount` (BigDecimal)
+   - `discountAmount` (BigDecimal)
+   - `finalPrice` (BigDecimal)
+   - `status` (Enum: `PENDING`, `CONFIRMED`, `CANCELLED`, `COMPLETED`, `FAILED`)
+   - `paymentStatus` (Enum: `PENDING`, `COMPLETED`, `FAILED`, `REFUNDED`, `DEPOSIT_30_PAID`)
+   - `isGroupBooking` (Boolean, true if rooms >= 5)
+   - `depositPaidAmount` (BigDecimal)
+   - `voucherCode` (String, Nullable)
+   - `createdAt`, `updatedAt` (Timestamp)
+
+2. **`BookingRoom` (`booking_rooms` table)**
+   - `bookingId` (Long, FK)
+   - `roomId` (Long, FK)
+   - `quantity` (Integer)
+   - `priceAtBooking` (BigDecimal)
+
+3. **`RoomLock` (`room_locks` table)**
+   - `lockId` (Long, PK)
+   - `roomId` (Long, FK)
+   - `bookingId` (Long, FK)
+   - `lockedAt` (Timestamp)
+   - `expiresAt` (Timestamp)
+
+4. **`MealTicket` (`meal_tickets` table)**
+   - `ticketId` (Long, PK)
+   - `bookingId` (Long, FK)
+   - `qrCode` (String, Unique e.g. `TICKET-QR-889123`)
+   - `mealType` (Enum: `BUFFET_BREAKFAST`, `SEAFOOD_DINNER`, `FULL_BOARD`)
+   - `status` (Enum: `UNUSED`, `USED`, `EXPIRED`)
+
+5. **`CorporateTaxProfile` (`corporate_tax_profiles` table)**
+   - `ctpId` (Long, PK)
+   - `bookingId` (Long, FK)
+   - `companyName` (String)
+   - `taxCode` (String)
+   - `address` (String)
+   - `status` (Enum: `PENDING`, `APPROVED`, `REJECTED`)
 
 ---
 
-## 6. Error Handling
-All errors must be handled consistently by the `GlobalExceptionHandler` and return a standardized JSON structure. Stack traces and internal database messages must be hidden from client responses.
+## 6. Error Handling & Standardized Responses
 
-### Error Response Format
+All errors are handled by `@ControllerAdvice (GlobalExceptionHandler)`.
+
+### Standardized JSON Error Format:
 ```json
 {
-  "timestamp": "2026-06-23T10:00:00Z",
+  "timestamp": "2026-07-25T00:42:00Z",
   "status": 400,
   "error": "Bad Request",
-  "message": "Check-out date must be after check-in date",
+  "message": "Room 105 is already locked by another transaction",
   "path": "/api/v1/bookings"
 }
 ```
 
-### Exception Mappings
-| Exception Scenario | Throw Exception | HTTP Status | Error Message |
+### Exception Mapping Matrix:
+| Scenario | Exception | Status Code | Returned Message |
 |---|---|---|---|
-| Stay dates fail validation | `BusinessException` / `IllegalArgumentException` | 400 Bad Request | "Check-in date cannot be in the past" or "Check-out date must be after check-in date" |
-| Room is already locked or booked | `BusinessException` | 400 Bad Request | "Room {roomNumber} is already booked for the selected dates" or "Room {roomNumber} is locked by another transaction" |
-| Booking, Hotel, or Room ID not found | `ResourceNotFoundException` | 404 Not Found | "Resource not found with ID: {id}" / specific message |
-| Unauthorized access | `AccessDeniedException` | 403 Forbidden | "Access is denied" |
-
-
----
-
-## 7. Acceptance Criteria & User Scenarios
-
-### User Story 1 - Create Booking & Validate Dates (Priority: P1)
-As a Customer, I want to select check-in and check-out dates, validate availability, and book a room, so I can reserve my stay.
-
-* **Why this priority**: Core transaction of the hotel booking system.
-* **Independent Test**: Request `/api/v1/bookings` (POST) with valid room IDs and stay dates to successfully create a `PENDING` booking.
-* **Acceptance Scenarios**:
-  1. **Given** a customer selects stay dates, **When** check-in date is in the past, **Then** stay period validation via `/validate-dates` returns `valid: false` with an error message, and booking creation via POST `/api/v1/bookings` fails with 400 Bad Request.
-  2. **Given** a customer books a room, **When** the room is currently available, **Then** a booking is created with status `PENDING`.
-  3. **Given** a booking is created, **When** the payment process is initiated, **Then** the room is temporarily locked (Room Lock) for 10 minutes.
-
-### User Story 2 - Confirm & Cancel Bookings (Priority: P1)
-As a Customer, Receptionist, or Admin, I want to confirm, cancel, or process bookings to keep availability and check-in statuses accurate.
-
-* **Why this priority**: Required to manage reservation lifecycles, handle offline/manual bookings, and trigger refund policies.
-* **Independent Test**: Cancel a confirmed booking via `/api/v1/bookings/{id}/cancel` or process an offline booking via `/api/v1/admin/bookings/{id}/status`.
-* **Acceptance Scenarios**:
-  1. **Given** a `PENDING` booking, **When** payment succeeds or receptionist confirms offline payment, **Then** the booking status changes to `CONFIRMED`.
-  2. **Given** a `CONFIRMED` booking, **When** cancelling before check-in, **Then** booking status changes to `CANCELLED` and refund is scheduled.
-  3. **Given** a receptionist, **When** creating an offline booking for a guest, **Then** a booking is successfully created and managed under admin endpoints.
-
-### User Story 3 - Room Lock & Automatic Release (Priority: P2)
-As the System, I want to lock rooms during payment processing and automatically release them if payment fails or expires.
-
-* **Why this priority**: Avoids double-booking (race conditions) during concurrent checkouts.
-* **Independent Test**: Create a booking, wait for 10 minutes without payment, and verify that the scheduler releases the room lock and cancels the booking.
-* **Acceptance Scenarios**:
-  1. **Given** an active room lock of 10 minutes, **When** the scheduler runs after 10 minutes, **Then** the lock is deleted and the pending booking is marked `FAILED`.
-
-### Success Criteria
-- **SC-001**: Clean validation rules fail with a 400 Bad Request error.
-- **SC-002**: Zero double bookings under concurrent checkout requests.
+| Invalid stay dates | `BusinessException` | `400 Bad Request` | `"Check-out date must be strictly after check-in date"` |
+| Room unavailable | `BusinessException` | `400 Bad Request` | `"Room {roomNumber} does not belong to hotel {hotelId} or is locked"` |
+| Resource not found | `ResourceNotFoundException` | `404 Not Found` | `"Booking not found with ID: {id}"` |
+| Unauthorized access | `AccessDeniedException` | `403 Forbidden` | `"You do not have permission to access this booking"` |
 
 ---
 
-## 8. Out of Scope
-- Third-party payment gateway integration details (handled separately under `004-payment-billing`).
-- Automated notification dispatching (SMS/Email alerts) upon booking confirmation or cancellation.
-- Room upgrades, swapping rooms within an active booking, or post-booking guest modifications.
+## 7. Acceptance Criteria & Verification Scenarios
+
+### Scenario 1: Group Booking Creation with 25% Discount & 30% Deposit
+- **Given** a customer selects 10 rooms at Golden Silk Resort for 3 nights,
+- **When** submitting the group booking request,
+- **Then** system applies a 25% discount, calculates a 30% deposit requirement, locks all 10 rooms for 10 minutes, and sets status to `PENDING`.
+
+### Scenario 2: Automatic Room Lock Release
+- **Given** a booking in `PENDING` status with an active room lock,
+- **When** 10 minutes elapse without payment completion,
+- **Then** `RoomLockCleanupScheduler` deletes the lock, frees the rooms, and marks the booking status as `FAILED`.
+
+### Scenario 3: Corporate Tax Profile (CTP) VAT Generation
+- **Given** an event organizer booking for a corporate trip,
+- **When** entering Tax Code `0109887766-CTP` during checkout,
+- **Then** system attaches a `CorporateTaxProfile` record and sends it to Admin for Red VAT invoice approval (`SCR-408`).
+
+---
+
+## 8. Verification & Test Evidence
+
+- **Unit & Integration Tests**: 207 tests passed (`BUILD SUCCESS`).
+- **Frontend Build**: React Vite compiled in `1.79s` with zero errors.
+- **Git Push**: Pushed to `origin/main` (`baf4638..5f4cafb`).

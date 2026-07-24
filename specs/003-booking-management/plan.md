@@ -1,43 +1,71 @@
 # Implementation Plan: 003-booking-management
 
-**Branch**: `003-booking-management` | **Date**: 2026-06-23 | **Spec**: [spec.md](file:///c:/Users/minhn/OneDrive/Ta%CC%80i%20li%C3%AA%CC%A3u/GitHub/hotel-booking-system/specs/003-booking-management/spec.md)
+**Branch**: `main` / `003-booking-management` | **Date**: 2026-06-23 | **Last Updated**: 2026-07-25  
+**Spec**: [spec.md](file:///c:/Users/Minmin/Documents/GitHub/hotel-booking-system/specs/003-booking-management/spec.md)
 
-## Summary
-Implement booking creation, date validation, and room locking logic. Setup a scheduler to release expired locks and clean up database records.
+---
 
-## Technical Context
-- **Language/Version**: Java 17
-- **Framework**: Spring Boot 3.3.0, Spring Scheduling, Spring Data JPA
-- **Storage**: SQL Server
-- **Testing**: JUnit 5, Mockito, Spring Security Test
+## 1. Executive Summary
+Implement and expand the core **Booking Management Subsystem** covering:
+- Individual & Group Booking (>5 rooms with 25% discount).
+- Room Lock engine with dynamic timeout configuration (10 to 30 mins).
+- Automated background lock release via `@Scheduled` `RoomLockCleanupScheduler`.
+- 30% Deposit & 100% Full Payment options.
+- Corporate Tax Profile (CTP) VAT invoice support.
+- Meal Ticket QR code generation & restaurant scanning.
+- Automated Cancellation & E-Wallet Refund Engine.
 
-## Constitution Check
-- **Feature Package**: `com.hotelbooking.booking`, `com.hotelbooking.room` (RoomLock), `com.hotelbooking.setting`
-- **Dependency Isolation**: `BookingServiceImpl` depends on `RoomLockService` and `SystemSettingService`.
-- **DTOs**: Return `BookingResponse`, accept `BookingRequest`.
-- **Security**: JWT-based security on `/api/v1/bookings/**` (excluding `/api/v1/rooms/search` and `/api/v1/bookings/validate-dates`).
-- **Error Handling**: Custom exceptions (`BusinessException`, `ResourceNotFoundException`) mapped in [GlobalExceptionHandler.java](file:///c:/Users/minhn/OneDrive/Ta%CC%80i%20li%C3%AA%CC%A3u/GitHub/hotel-booking-system/src/main/java/com/hotelbooking/common/exception/GlobalExceptionHandler.java).
+---
 
-## Project Structure
+## 2. Technical Context
+- **Language / Runtime**: Java 17 (JDK 18 execution wrapper)
+- **Framework**: Spring Boot 4.0.0-M1, Spring Data JPA, Spring Security
+- **Database**: PostgreSQL (Neon Cloud DB) & SQL Server
+- **Frontend Stack**: React 18, Vite 8, TailwindCSS
+- **Testing**: JUnit 5, Mockito, Spring Security Test (207 tests passed)
 
-### Source Code
-- `src/main/java/com/hotelbooking/booking/`
-  - [BookingController.java](file:///c:/Users/minhn/OneDrive/Ta%CC%80i%20li%C3%AA%CC%A3u/GitHub/hotel-booking-system/src/main/java/com/hotelbooking/booking/BookingController.java)
-  - [BookingService.java](file:///c:/Users/minhn/OneDrive/Ta%CC%80i%20li%C3%AA%CC%A3u/GitHub/hotel-booking-system/src/main/java/com/hotelbooking/booking/BookingService.java)
-  - [BookingServiceImpl.java](file:///c:/Users/minhn/OneDrive/Ta%CC%80i%20li%C3%AA%CC%A3u/GitHub/hotel-booking-system/src/main/java/com/hotelbooking/booking/BookingServiceImpl.java)
-  - [BookingRepository.java](file:///c:/Users/minhn/OneDrive/Ta%CC%80i%20li%C3%AA%CC%A3u/GitHub/hotel-booking-system/src/main/java/com/hotelbooking/booking/BookingRepository.java)
-- `src/main/java/com/hotelbooking/room/`
-  - [RoomLock.java](file:///c:/Users/minhn/OneDrive/Ta%CC%80i%20li%C3%AA%CC%A3u/GitHub/hotel-booking-system/src/main/java/com/hotelbooking/room/RoomLock.java)
-  - [RoomLockRepository.java](file:///c:/Users/minhn/OneDrive/Ta%CC%80i%20li%C3%AA%CC%A3u/GitHub/hotel-booking-system/src/main/java/com/hotelbooking/room/RoomLockRepository.java)
-  - [RoomLockService.java](file:///c:/Users/minhn/OneDrive/Ta%CC%80i%20li%C3%AA%CC%A3u/GitHub/hotel-booking-system/src/main/java/com/hotelbooking/room/RoomLockService.java)
-  - [RoomLockServiceImpl.java](file:///c:/Users/minhn/OneDrive/Ta%CC%80i%20li%C3%AA%CC%A3u/GitHub/hotel-booking-system/src/main/java/com/hotelbooking/room/RoomLockServiceImpl.java)
-  - [RoomLockCleanupScheduler.java](file:///c:/Users/minhn/OneDrive/Ta%CC%80i%20li%C3%AA%CC%A3u/GitHub/hotel-booking-system/src/main/java/com/hotelbooking/room/RoomLockCleanupScheduler.java)
-- `src/main/java/com/hotelbooking/setting/`
-  - [SystemSettingService.java](file:///c:/Users/minhn/OneDrive/Ta%CC%80i%20li%C3%AA%CC%A3u/GitHub/hotel-booking-system/src/main/java/com/hotelbooking/setting/SystemSettingService.java)
-  - [SystemSettingServiceImpl.java](file:///c:/Users/minhn/OneDrive/Ta%CC%80i%20li%C3%AA%CC%A3u/GitHub/hotel-booking-system/src/main/java/com/hotelbooking/setting/SystemSettingServiceImpl.java)
+---
 
-### Testing
-- `src/test/java/com/hotelbooking/`
-  - [BookingServiceImplTest.java](file:///c:/Users/minhn/OneDrive/Ta%CC%80i%20li%C3%AA%CC%A3u/GitHub/hotel-booking-system/src/test/java/com/hotelbooking/booking/BookingServiceImplTest.java)
-  - [RoomLockServiceImplTest.java](file:///c:/Users/minhn/OneDrive/Ta%CC%80i%20li%C3%AA%CC%A3u/GitHub/hotel-booking-system/src/test/java/com/hotelbooking/room/RoomLockServiceImplTest.java)
-  - [RoomLockCleanupSchedulerTest.java](file:///c:/Users/minhn/OneDrive/Ta%CC%80i%20li%C3%AA%CC%A3u/GitHub/hotel-booking-system/src/test/java/com/hotelbooking/room/RoomLockCleanupSchedulerTest.java)
+## 3. Architecture & Component Mapping
+
+```
+src/main/java/com/hotelbooking/
+├── booking/
+│   ├── BookingController.java        # REST Endpoints for booking CRUD, date validation, group deposits
+│   ├── BookingService.java           # Service contract
+│   ├── BookingServiceImpl.java       # Core business logic: group discounts, room verification, status handling
+│   ├── BookingRepository.java        # JPA Repository with custom queries & pessimistic locking
+│   ├── BookingRoom.java              # Booking-Room junction entity
+│   └── BookingRoomRepository.java    # Junction repository
+├── room/
+│   ├── RoomLock.java                 # Temporary room locking entity
+│   ├── RoomLockRepository.java       # Lock query repository
+│   ├── RoomLockService.java          # Service interface
+│   ├── RoomLockServiceImpl.java      # Room locking & availability checks
+│   └── RoomLockCleanupScheduler.java # 60-second cron task releasing expired locks
+└── setting/
+    ├── SettingsController.java       # Admin controller to adjust lock timeout
+    ├── SystemSettingService.java     # System configuration service
+    └── SystemSettingServiceImpl.java # Dynamic lock duration lookup
+```
+
+---
+
+## 4. Frontend Integration (50-Screen System Alignment)
+
+- **`HotelsPage.jsx`**: Hero Search tabs for Individual vs Group Booking (>5 Rooms).
+- **`HotelDetailPage.jsx`**: Interactive Group Calculator, 25% Discount calculation, 30% Deposit options, Group Member Manifest, and Excel (.xlsx) Import Widget.
+- **`ProfilePage.jsx`**: My Bookings, Cancellation Request Modal, E-Wallet Top-up & Refund credit, Meal Tickets QR Vault, CTP Tax Form.
+- **`StaffRoomPage.jsx`**: Receptionist express group check-in, room matrix, and QR code scanner.
+- **`AdminDashboardPage.jsx`**: Booking management table, dynamic lock duration setting (10-30m), CTP approvals, and meal ticket scan audits.
+
+---
+
+## 5. Verification & Quality Assurance Plan
+
+1. **Automated Unit Tests**:
+   - `mvn test` (Target: 207 tests passed).
+2. **Frontend Production Build**:
+   - `npm run build` in `frontend/` (`built in 1.79s`).
+3. **Integration Verification**:
+   - Verify room lock expiration, group discount calculations, and CTP invoice flow.
