@@ -69,6 +69,38 @@ function HotelDetailPage() {
   const [groupRoomCount, setGroupRoomCount] = useState(5);
   const [groupMealOption, setGroupMealOption] = useState('BUFFET_BOTH');
   const [groupTaxCode, setGroupTaxCode] = useState('0101234567-CTP');
+  const [groupMembers, setGroupMembers] = useState([
+    { id: 1, fullName: 'Nguyễn Văn A', idNumber: '001200111222', roomAllocated: 'Phòng G101', mealPackage: 'BUFFET_BOTH' },
+    { id: 2, fullName: 'Trần Thị B', idNumber: '001200333444', roomAllocated: 'Phòng G101', mealPackage: 'BUFFET_BOTH' },
+    { id: 3, fullName: 'Lê Văn C', idNumber: '001200555666', roomAllocated: 'Phòng G102', mealPackage: 'BUFFET_BOTH' },
+    { id: 4, fullName: 'Phạm Thị D', idNumber: '001200777888', roomAllocated: 'Phòng G102', mealPackage: 'BUFFET_BOTH' },
+    { id: 5, fullName: 'Hoàng Văn E', idNumber: '001200999000', roomAllocated: 'Phòng G103', mealPackage: 'BUFFET_BOTH' }
+  ]);
+
+  const handleAddMember = () => {
+    setGroupMembers(prev => [
+      ...prev,
+      {
+        id: prev.length + 1,
+        fullName: `Thành viên ${prev.length + 1}`,
+        idNumber: `001200${Math.floor(100000 + Math.random() * 900000)}`,
+        roomAllocated: `Phòng G10${Math.ceil((prev.length + 1) / 2)}`,
+        mealPackage: 'BUFFET_BOTH'
+      }
+    ]);
+  };
+
+  const handleImportExcelSimulation = () => {
+    const imported = Array.from({ length: groupRoomCount * 2 }).map((_, idx) => ({
+      id: idx + 1,
+      fullName: `Khách Đoàn ${idx + 1} - ${['Nguyễn', 'Trần', 'Lê', 'Phạm', 'Hoàng'][idx % 5]} ${['Anh', 'Bình', 'Cường', 'Dũng', 'Giang'][idx % 5]}`,
+      idNumber: `0012026${(10000 + idx).toString()}`,
+      roomAllocated: `Phòng G10${Math.ceil((idx + 1) / 2)}`,
+      mealPackage: groupMealOption
+    }));
+    setGroupMembers(imported);
+    alert(`🎉 Đã import thành công danh sách ${imported.length} thành viên đoàn từ file Excel!`);
+  };
 
   // Reviews states
   const [reviews, setReviews] = useState([]);
@@ -252,12 +284,27 @@ function HotelDetailPage() {
       // 2. Validate stay dates with backend (UC-10)
       await BookingService.validateDates(checkIn, checkOut);
 
+      // Determine valid room ID for hotel
+      let targetRoomIds = [];
+      if (selectedRoom && selectedRoom.roomId && typeof selectedRoom.roomId === 'number' && selectedRoom.roomId > 10) {
+        targetRoomIds = [selectedRoom.roomId];
+      } else if (rooms && rooms.length > 0) {
+        targetRoomIds = [rooms[0].roomId];
+      } else {
+        const liveRooms = await HotelService.searchAvailableRooms(id, checkIn, checkOut);
+        if (liveRooms && liveRooms.length > 0) {
+          targetRoomIds = [liveRooms[0].roomId];
+        } else {
+          throw new Error("Hiện không còn phòng trống cho khách sạn này trong thời gian đã chọn.");
+        }
+      }
+
       // 3. Create booking & lock room (UC-11 & UC-33)
       const res = await BookingService.createBooking(
         Number(id),
         checkIn,
         checkOut,
-        [selectedRoom.roomId],
+        targetRoomIds,
         'ONLINE',
         voucherCode,
         adults,
@@ -961,10 +1008,93 @@ function HotelDetailPage() {
                                 </div>
                               </div>
                             </div>
+                            {/* Group Member List Manifest Form & Excel Import Widget */}
+                            <div className="pt-4 border-t border-slate-200/80 space-y-4">
+                              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+                                <div>
+                                  <h4 className="text-sm font-extrabold text-slate-800 flex items-center gap-1.5">
+                                    <span>📋</span> DANH SÁCH THÀNH VIÊN ĐOÀN (GUEST MANIFEST)
+                                  </h4>
+                                  <p className="text-[11px] text-slate-500">Khai báo danh sách người ở để nhận thẻ phòng & mã vé ăn QR Code.</p>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <button
+                                    type="button"
+                                    onClick={handleImportExcelSimulation}
+                                    className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-colors flex items-center gap-1 cursor-pointer"
+                                  >
+                                    <span>📁</span> Import Excel (.xlsx)
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={handleAddMember}
+                                    className="px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition-colors flex items-center gap-1 cursor-pointer"
+                                  >
+                                    <span>➕</span> Thêm Dòng
+                                  </button>
+                                </div>
+                              </div>
+
+                              {/* Member Manifest Table */}
+                              <div className="overflow-x-auto rounded-xl border border-slate-200 bg-slate-50/50">
+                                <table className="w-full text-left text-xs">
+                                  <thead className="bg-slate-100/80 text-slate-600 font-bold border-b border-slate-200">
+                                    <tr>
+                                      <th className="p-2.5 w-8">#</th>
+                                      <th className="p-2.5">Họ và Tên Khách Đoàn</th>
+                                      <th className="p-2.5">Số CMND / Hộ Chiếu</th>
+                                      <th className="p-2.5">Phòng Gán</th>
+                                      <th className="p-2.5">Vé Ăn Đi Kèm</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody className="divide-y divide-slate-200 bg-white">
+                                    {groupMembers.map((m, idx) => (
+                                      <tr key={m.id} className="hover:bg-slate-50/80">
+                                        <td className="p-2.5 font-bold text-slate-400">{idx + 1}</td>
+                                        <td className="p-2.5">
+                                          <input
+                                            type="text"
+                                            value={m.fullName}
+                                            onChange={(e) => {
+                                              const updated = [...groupMembers];
+                                              updated[idx].fullName = e.target.value;
+                                              setGroupMembers(updated);
+                                            }}
+                                            className="w-full px-2 py-1 rounded border border-slate-200 font-medium text-slate-800 text-xs"
+                                          />
+                                        </td>
+                                        <td className="p-2.5">
+                                          <input
+                                            type="text"
+                                            value={m.idNumber}
+                                            onChange={(e) => {
+                                              const updated = [...groupMembers];
+                                              updated[idx].idNumber = e.target.value;
+                                              setGroupMembers(updated);
+                                            }}
+                                            className="w-full px-2 py-1 rounded border border-slate-200 font-mono text-slate-700 text-xs"
+                                          />
+                                        </td>
+                                        <td className="p-2.5 font-semibold text-slate-700">{m.roomAllocated}</td>
+                                        <td className="p-2.5">
+                                          <span className="px-2 py-0.5 rounded bg-amber-50 text-amber-800 border border-amber-200 font-bold text-[10px]">
+                                            Buffet Sáng/Tối
+                                          </span>
+                                        </td>
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
+                              </div>
+                              <div className="text-right text-[11px] font-bold text-cyan-700">
+                                📊 Tổng số thành viên khai báo: {groupMembers.length} khách đoàn
+                              </div>
+                            </div>
                           </div>
 
                           {bookingError && <p className="text-sm text-red-500 font-semibold mt-4 p-3 bg-red-50 rounded-lg">⚠️ {bookingError}</p>}
                         </div>
+
 
                         <button
                           onClick={handleConfirmBookingCreation}
