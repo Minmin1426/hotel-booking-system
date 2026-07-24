@@ -104,18 +104,18 @@ function HotelsPage() {
     return () => clearInterval(timer);
   }, []);
 
+  const [searchType, setSearchType] = useState('individual'); // 'individual' | 'group' | 'meal'
+  const [groupRooms, setGroupRooms] = useState(5);
+  const [groupGuests, setGroupGuests] = useState(10);
+  const [includeMeals, setIncludeMeals] = useState(true);
+  const [mealType, setMealType] = useState('ALL');
+
   // Handle Search Submission
   const handleSearchSubmit = (e) => {
     e.preventDefault();
     const normName = searchName.replace(/\s+/g, '');
     const normLoc = searchLocation.replace(/\s+/g, '');
-    if (normName === '' && normLoc === '') {
-      // Cả hai ô tìm kiếm đều rỗng thì không thực hiện tìm kiếm
-      return;
-    }
-    // Update input box values visually
-    setSearchName(normName);
-    setSearchLocation(normLoc);
+    
     // Fill sidebar filters with search values
     setFilters(prev => ({
       ...prev,
@@ -131,7 +131,6 @@ function HotelsPage() {
       const normName = (filters.name || '').replace(/\s+/g, '');
       const normLoc = (filters.location || '').replace(/\s+/g, '');
       
-      // Update sidebar inputs and Hero search inputs
       setFilters(prev => ({
         ...prev,
         name: normName,
@@ -140,7 +139,6 @@ function HotelsPage() {
       setSearchName(normName);
       setSearchLocation(normLoc);
       
-      // Execute backend database search
       performSearch(normName, normLoc);
     }
   };
@@ -178,7 +176,7 @@ function HotelsPage() {
       <Header />
 
       {/* Hero Search Section */}
-      <section className="relative py-28 px-6 overflow-hidden flex flex-col items-center justify-center border-b border-slate-200/60 min-h-[520px]">
+      <section className="relative py-20 px-6 overflow-hidden flex flex-col items-center justify-center border-b border-slate-200/60 min-h-[560px]">
         {/* Animated Background Images */}
         <div className="absolute inset-0 z-0 select-none pointer-events-none">
           {HERO_BACKGROUNDS.map((bgUrl, idx) => (
@@ -193,64 +191,169 @@ function HotelsPage() {
               }}
             />
           ))}
-          {/* Light-theme clear overlay: very low opacity to show full vibrance and sharpness of the photos */}
-          <div className="absolute inset-0 bg-gradient-to-b from-black/5 via-transparent to-black/15" />
-          <div className="absolute inset-0 bg-white/10" />
+          <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-black/10 to-black/30" />
+          <div className="absolute inset-0 bg-white/10 backdrop-blur-[1px]" />
         </div>
 
-        {/* Hero Content wrapped in a beautiful glassmorphic container for 100% legibility */}
-        <div className="relative z-10 max-w-4xl text-center space-y-6 bg-white/75 backdrop-blur-md p-8 md:p-12 rounded-3xl border border-white/70 shadow-2xl shadow-slate-900/10">
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-cyan-500/10 text-cyan-700 text-xs font-bold tracking-wide uppercase">
-            <span>✨</span> Exquisite Travel Experiences
-          </span>
-          <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight leading-tight text-slate-900">
-            Discover Your Perfect <span className="inline-block whitespace-nowrap bg-gradient-to-r from-cyan-600 to-indigo-600 bg-clip-text text-transparent">Luxury Stay</span>
+        {/* Hero Content container */}
+        <div className="relative z-10 max-w-5xl w-full text-center space-y-6 bg-white/85 backdrop-blur-xl p-6 md:p-10 rounded-3xl border border-white/80 shadow-2xl shadow-slate-900/15">
+          <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-gradient-to-r from-cyan-500/15 to-indigo-500/15 text-cyan-700 border border-cyan-500/20 text-xs font-bold tracking-wide uppercase">
+            <span>✨</span> ĐẶT PHÒNG KHÁCH SẠN LẺ & THEO ĐOÀN CAO CẤP
+          </div>
+          <h1 className="text-3xl md:text-5xl font-extrabold tracking-tight leading-tight text-slate-900">
+            Khám Phá Khách Sạn & <span className="inline-block whitespace-nowrap bg-gradient-to-r from-cyan-600 to-indigo-600 bg-clip-text text-transparent">Gói Đặt Đoàn Ưu Đãi</span>
           </h1>
-          <p className="text-slate-650 max-w-xl mx-auto text-sm md:text-base leading-relaxed font-semibold">
-            Search, filter, and reserve high-tier suites in real-time. Unmatched luxury awaits your presence.
+          <p className="text-slate-600 max-w-2xl mx-auto text-xs md:text-sm leading-relaxed font-semibold">
+            Tìm kiếm khách sạn lẻ, giải pháp Đặt phòng theo Đoàn (&gt;5 phòng) tích hợp dịch vụ Suất ăn / Buffet sáng & nhà hàng toàn quốc.
           </p>
 
-          {/* Search bar */}
-          <form onSubmit={handleSearchSubmit} className="mt-8 flex flex-col md:flex-row items-center gap-2 max-w-3xl mx-auto p-2 rounded-2xl md:rounded-full bg-white border border-slate-200 shadow-xl shadow-slate-900/5 hover:border-cyan-500/30 transition-all duration-350">
-            {/* Input 1: Hotel Name */}
-            <div className="flex-1 w-full flex items-center px-4 py-2 gap-3">
-              <span className="text-cyan-600 text-lg">🔍</span>
-              <input 
-                type="text" 
-                placeholder="Hotel name (e.g. Marriott...)" 
-                value={searchName}
-                onChange={(e) => setSearchName(e.target.value)}
-                className="w-full bg-transparent text-slate-800 placeholder-slate-400 text-sm font-semibold focus:outline-none"
-              />
-            </div>
-            
-            {/* Vertical Divider */}
-            <div className="hidden md:block h-6 w-[1px] bg-slate-200" />
-            
-            {/* Input 2: Location */}
-            <div className="flex-1 w-full flex items-center px-4 py-2 gap-3">
-              <span className="text-cyan-600 text-lg">📍</span>
-              <input 
-                type="text" 
-                placeholder="Location (e.g. Hanoi...)" 
-                value={searchLocation}
-                onChange={(e) => setSearchLocation(e.target.value)}
-                className="w-full bg-transparent text-slate-800 placeholder-slate-400 text-sm font-semibold focus:outline-none"
-              />
-            </div>
-            
-            {/* Search Button */}
-            <button 
-              type="submit" 
-              className="w-full md:w-auto px-6 py-2.5 rounded-xl md:rounded-full bg-gradient-to-r from-cyan-500 to-indigo-650 text-white font-extrabold text-sm tracking-wide shadow-md hover:brightness-105 hover:shadow-lg hover:shadow-cyan-400/25 active:scale-[0.98] transition-all duration-200"
+          {/* Search Mode Tabs Switcher */}
+          <div className="flex justify-center items-center p-1.5 bg-slate-200/70 rounded-2xl max-w-2xl mx-auto gap-1 border border-slate-300/40">
+            <button
+              type="button"
+              onClick={() => setSearchType('individual')}
+              className={`flex-1 py-2.5 px-4 rounded-xl text-xs font-extrabold transition-all duration-200 flex items-center justify-center gap-1.5 ${
+                searchType === 'individual'
+                  ? 'bg-white text-slate-900 shadow-md shadow-slate-900/5 border border-slate-200/80 scale-[1.02]'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-white/40'
+              }`}
             >
-              Search
+              <span>🏨</span> Đặt Lẻ (Standard)
             </button>
+            <button
+              type="button"
+              onClick={() => setSearchType('group')}
+              className={`flex-1 py-2.5 px-4 rounded-xl text-xs font-extrabold transition-all duration-200 flex items-center justify-center gap-1.5 ${
+                searchType === 'group'
+                  ? 'bg-gradient-to-r from-cyan-600 to-indigo-600 text-white shadow-lg shadow-cyan-500/30 scale-[1.02]'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-white/40'
+              }`}
+            >
+              <span>👥</span> Đặt Theo Đoàn (&gt;5 Phòng)
+              <span className="ml-1 bg-amber-400 text-slate-900 text-[10px] px-1.5 py-0.5 rounded-full font-black uppercase tracking-wider animate-pulse">Giảm 25%</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setSearchType('meal')}
+              className={`flex-1 py-2.5 px-4 rounded-xl text-xs font-extrabold transition-all duration-200 flex items-center justify-center gap-1.5 ${
+                searchType === 'meal'
+                  ? 'bg-amber-500 text-white shadow-md shadow-amber-500/30 scale-[1.02]'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-white/40'
+              }`}
+            >
+              <span>🍽️</span> Vé Ăn & Buffet
+            </button>
+          </div>
+
+          {/* Dynamic Search Bar based on searchType */}
+          <form onSubmit={handleSearchSubmit} className="mt-4 p-3 rounded-2xl bg-white border border-slate-200 shadow-xl shadow-slate-900/10 space-y-3">
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-center">
+              {/* Hotel Name / Location Search */}
+              <div className="md:col-span-4 flex items-center px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl">
+                <span className="text-cyan-600 text-base mr-2">🔍</span>
+                <input 
+                  type="text" 
+                  placeholder="Tên khách sạn (VD: Marriott...)" 
+                  value={searchName}
+                  onChange={(e) => setSearchName(e.target.value)}
+                  className="w-full bg-transparent text-slate-800 placeholder-slate-400 text-xs font-semibold focus:outline-none"
+                />
+              </div>
+
+              <div className="md:col-span-3 flex items-center px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl">
+                <span className="text-cyan-600 text-base mr-2">📍</span>
+                <input 
+                  type="text" 
+                  placeholder="Địa điểm (Hà Nội, Đà Nẵng...)" 
+                  value={searchLocation}
+                  onChange={(e) => setSearchLocation(e.target.value)}
+                  className="w-full bg-transparent text-slate-800 placeholder-slate-400 text-xs font-semibold focus:outline-none"
+                />
+              </div>
+
+              {/* Group-specific fields when searchType === 'group' */}
+              {searchType === 'group' ? (
+                <>
+                  <div className="md:col-span-2 flex items-center px-3 py-2 bg-cyan-50/70 border border-cyan-200 rounded-xl">
+                    <span className="text-cyan-700 text-xs font-bold mr-1.5 whitespace-nowrap">🛏️ Số phòng:</span>
+                    <input 
+                      type="number" 
+                      min="5"
+                      max="100"
+                      value={groupRooms}
+                      onChange={(e) => setGroupRooms(parseInt(e.target.value) || 5)}
+                      className="w-full bg-transparent text-slate-900 font-extrabold text-xs focus:outline-none text-center"
+                    />
+                  </div>
+                  <div className="md:col-span-3 flex items-center justify-center">
+                    <button 
+                      type="submit" 
+                      className="w-full h-full py-3 px-4 rounded-xl bg-gradient-to-r from-cyan-600 via-indigo-600 to-cyan-600 text-white font-black text-xs tracking-wide shadow-md hover:brightness-110 active:scale-[0.98] transition-all flex items-center justify-center gap-1.5"
+                    >
+                      <span>👥</span> TÌM KHÁCH SẠN ĐẶT ĐOÀN
+                    </button>
+                  </div>
+                </>
+              ) : searchType === 'meal' ? (
+                <>
+                  <div className="md:col-span-2 flex items-center px-3 py-2 bg-amber-50/70 border border-amber-200 rounded-xl">
+                    <span className="text-amber-800 text-xs font-bold mr-1 whitespace-nowrap">🍽️ Suất:</span>
+                    <select 
+                      value={mealType} 
+                      onChange={(e) => setMealType(e.target.value)}
+                      className="w-full bg-transparent text-slate-800 font-bold text-xs focus:outline-none cursor-pointer"
+                    >
+                      <option value="ALL">Tất cả gói</option>
+                      <option value="BREAKFAST">Buffet Sáng</option>
+                      <option value="DINNER">Buffet Tối</option>
+                      <option value="SET_MENU">Set Menu Tiệc</option>
+                    </select>
+                  </div>
+                  <div className="md:col-span-3 flex items-center justify-center">
+                    <button 
+                      type="submit" 
+                      className="w-full h-full py-3 px-4 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-black text-xs tracking-wide shadow-md active:scale-[0.98] transition-all flex items-center justify-center gap-1.5"
+                    >
+                      <span>🍽️</span> TÌM VÉ ĂN & BUFFET
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <div className="md:col-span-5 flex items-center justify-center">
+                  <button 
+                    type="submit" 
+                    className="w-full py-3 px-6 rounded-xl bg-gradient-to-r from-cyan-500 to-indigo-650 text-white font-extrabold text-xs tracking-wide shadow-md hover:brightness-105 active:scale-[0.98] transition-all flex items-center justify-center gap-1.5"
+                  >
+                    <span>🔍</span> TÌM KHÁCH SẠN
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Extra options bar for Group Booking */}
+            {searchType === 'group' && (
+              <div className="flex flex-wrap items-center justify-between pt-2 border-t border-slate-100 px-2 text-xs">
+                <div className="flex items-center gap-4 text-slate-600 font-semibold">
+                  <label className="flex items-center gap-1.5 cursor-pointer">
+                    <input 
+                      type="checkbox" 
+                      checked={includeMeals} 
+                      onChange={(e) => setIncludeMeals(e.target.checked)}
+                      className="w-4 h-4 rounded text-cyan-600 focus:ring-0 cursor-pointer"
+                    />
+                    <span>Tích hợp gói Buffet Sáng / Tối cho cả đoàn</span>
+                  </label>
+                  <span className="text-slate-300">|</span>
+                  <span className="text-cyan-700 font-bold">✨ Tự động xếp phòng gần nhau & Hỗ trợ xuất Hóa đơn Red VAT Doanh nghiệp</span>
+                </div>
+                <span className="text-indigo-600 font-bold bg-indigo-50 px-2.5 py-1 rounded-md">Phụ trách đoàn: 5 - 100 Khách</span>
+              </div>
+            )}
           </form>
         </div>
 
         {/* Carousel indicator dots */}
-        <div className="absolute bottom-6 flex gap-2.5 z-10 bg-white/50 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/60">
+        <div className="absolute bottom-4 flex gap-2.5 z-10 bg-white/50 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/60">
           {HERO_BACKGROUNDS.map((_, idx) => (
             <button
               key={idx}
@@ -265,6 +368,7 @@ function HotelsPage() {
           ))}
         </div>
       </section>
+
 
       {/* Main Content (Filters + Grid) */}
       <main className="max-w-7xl mx-auto px-6 py-12 grid grid-cols-1 lg:grid-cols-4 gap-8">
@@ -381,8 +485,18 @@ function HotelsPage() {
                       alt={hotel.name}
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                     />
-                    <div className="absolute inset-0 bg-gradient-to-t from-slate-900/40 via-transparent to-transparent opacity-60" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-slate-900/50 via-transparent to-transparent opacity-70" />
                     
+                    {/* Group & Meal Badge Tag */}
+                    <div className="absolute top-4 left-4 flex flex-col gap-1.5 items-start">
+                      <span className="px-2.5 py-1 rounded-full bg-cyan-600/90 text-white text-[10px] font-extrabold tracking-wide uppercase backdrop-blur-md shadow-sm">
+                        👥 ĐẶT ĐOÀN 5+ PHÒNG GIẢM 25%
+                      </span>
+                      <span className="px-2.5 py-1 rounded-full bg-amber-500/90 text-white text-[10px] font-extrabold tracking-wide uppercase backdrop-blur-md shadow-sm">
+                        🍽️ CÓ VÉ ĂN BUFFET
+                      </span>
+                    </div>
+
                     {/* Rating badge */}
                     {hotel.rating && (
                       <div className="absolute top-4 right-4 flex items-center gap-1.5 px-3 py-1.5 rounded-full backdrop-blur-md bg-white/95 border border-slate-200/40 text-xs font-extrabold text-cyan-600 shadow-sm">
@@ -403,27 +517,41 @@ function HotelsPage() {
                       <p className="text-xs text-slate-600 leading-relaxed line-clamp-2">
                         {hotel.description}
                       </p>
+
+                      {/* Group & Corporate Perks */}
+                      <div className="pt-2 flex flex-wrap gap-1.5">
+                        <span className="text-[10px] font-bold bg-slate-100 text-slate-700 px-2 py-0.5 rounded-md border border-slate-200">
+                          🏢 Hóa đơn CTP VAT
+                        </span>
+                        <span className="text-[10px] font-bold bg-cyan-50 text-cyan-700 px-2 py-0.5 rounded-md border border-cyan-100">
+                          🛏️ Gán phòng liền kề
+                        </span>
+                        <span className="text-[10px] font-bold bg-amber-50 text-amber-800 px-2 py-0.5 rounded-md border border-amber-100">
+                          🎫 QR Suất ăn tự động
+                        </span>
+                      </div>
                     </div>
 
                     <div className="flex items-center justify-between border-t border-slate-100 pt-4">
                       <div>
-                        <span className="text-[10px] text-slate-400 uppercase tracking-widest block font-bold">Starting from</span>
+                        <span className="text-[10px] text-slate-400 uppercase tracking-widest block font-bold">Giá từ</span>
                         <span className="text-lg font-extrabold text-cyan-600">
                           {hotel.minPrice ? `$${hotel.minPrice.toFixed(0)}` : 'N/A'}
                         </span>
-                        <span className="text-xs text-slate-400 font-semibold">/night</span>
+                        <span className="text-xs text-slate-400 font-semibold">/đêm</span>
                       </div>
                       <Link 
                         to={`/hotels/${hotel.hotelId}`}
                         className="px-5 py-2.5 rounded-xl bg-slate-50 text-xs font-bold text-slate-650 border border-slate-200 group-hover:bg-cyan-500 group-hover:text-white group-hover:border-transparent hover:shadow-md transition-all duration-350"
                       >
-                        View Details
+                        Đặt Ngay / Chi Tiết
                       </Link>
                     </div>
                   </div>
                 </div>
               ))}
             </div>
+
           )}
         </section>
       </main>
