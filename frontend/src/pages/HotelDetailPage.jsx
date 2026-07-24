@@ -64,6 +64,12 @@ function HotelDetailPage() {
   const [children, setChildren] = useState(0);
   const [cashConfirmChecked, setCashConfirmChecked] = useState(false);
 
+  // Group booking & Meal ticket tab states
+  const [detailTab, setDetailTab] = useState('single'); // 'single' | 'group' | 'meal'
+  const [groupRoomCount, setGroupRoomCount] = useState(5);
+  const [groupMealOption, setGroupMealOption] = useState('BUFFET_BOTH');
+  const [groupTaxCode, setGroupTaxCode] = useState('0101234567-CTP');
+
   // Reviews states
   const [reviews, setReviews] = useState([]);
   const [reviewsLoading, setReviewsLoading] = useState(false);
@@ -437,47 +443,298 @@ function HotelDetailPage() {
         </div>
 
         {/* Room Availability Checker Section */}
+        {/* Interactive Booking & Vacancy Section with Group Booking & Meal Ticket Tabs */}
         <section className="p-8 rounded-3xl bg-white border border-slate-200/80 shadow-md shadow-slate-100 space-y-8">
 
-          <div className="space-y-2 border-b border-slate-100 pb-4">
-            <h3 className="text-xl font-extrabold tracking-tight text-slate-900">🛏️ Check Vacant Rooms</h3>
-            <p className="text-xs text-slate-500">Pick check-in and check-out dates to query live available suites.</p>
+          {/* Tab Switcher */}
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center border-b border-slate-100 pb-4 gap-4">
+            <div>
+              <h3 className="text-2xl font-extrabold tracking-tight text-slate-900">
+                🛏️ Đặt Phòng & Dịch Vụ Suất Ăn
+              </h3>
+              <p className="text-xs text-slate-500 mt-1">
+                Lựa chọn phương thức Đặt phòng lẻ, Đặt theo Đoàn (&gt;5 phòng) nhận chiết khấu 25% hoặc Mua vé ăn Buffet độc lập.
+              </p>
+            </div>
+
+            {/* Tab buttons */}
+            <div className="flex p-1 bg-slate-100 rounded-2xl border border-slate-200/60 self-stretch md:self-auto gap-1">
+              <button
+                type="button"
+                onClick={() => setDetailTab('single')}
+                className={`flex-1 md:flex-none px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+                  detailTab === 'single'
+                    ? 'bg-white text-slate-900 shadow-sm border border-slate-200'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                🏨 Đặt Lẻ
+              </button>
+              <button
+                type="button"
+                onClick={() => setDetailTab('group')}
+                className={`flex-1 md:flex-none px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+                  detailTab === 'group'
+                    ? 'bg-gradient-to-r from-cyan-600 to-indigo-600 text-white shadow-md'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                👥 Đặt Đoàn 5+ Phòng
+                <span className="ml-1 bg-amber-400 text-slate-900 text-[9px] px-1.5 py-0.5 rounded-full font-black uppercase">Giảm 25%</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setDetailTab('meal')}
+                className={`flex-1 md:flex-none px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+                  detailTab === 'meal'
+                    ? 'bg-amber-500 text-white shadow-md'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                🍽️ Vé Ăn Buffet
+              </button>
+            </div>
           </div>
 
-          {/* Date Picker Form */}
-          <form onSubmit={handleCheckAvailability} className="grid grid-cols-1 md:grid-cols-3 gap-6 items-end">
-            <div className="space-y-2">
-              <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Check-in Date</label>
-              <input
-                type="date"
-                value={checkIn}
-                min={todayStr}
-                onChange={(e) => setCheckIn(e.target.value)}
-                className="w-full px-4 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-700 text-sm focus:outline-none focus:border-cyan-500 focus:bg-white transition-all"
-                required
-              />
-            </div>
+          {/* TAB 1: SINGLE ROOM SEARCH & BOOKING */}
+          {detailTab === 'single' && (
+            <div className="space-y-6">
+              <form onSubmit={handleCheckAvailability} className="grid grid-cols-1 md:grid-cols-3 gap-6 items-end">
+                <div className="space-y-2">
+                  <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Ngày Nhận Phòng (Check-in)</label>
+                  <input
+                    type="date"
+                    value={checkIn}
+                    min={todayStr}
+                    onChange={(e) => setCheckIn(e.target.value)}
+                    className="w-full px-4 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-700 text-sm focus:outline-none focus:border-cyan-500 focus:bg-white transition-all"
+                    required
+                  />
+                </div>
 
-            <div className="space-y-2">
-              <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Check-out Date</label>
-              <input
-                type="date"
-                value={checkOut}
-                min={checkIn || todayStr}
-                onChange={(e) => setCheckOut(e.target.value)}
-                className="w-full px-4 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-700 text-sm focus:outline-none focus:border-cyan-500 focus:bg-white transition-all"
-                required
-              />
-            </div>
+                <div className="space-y-2">
+                  <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Ngày Trả Phòng (Check-out)</label>
+                  <input
+                    type="date"
+                    value={checkOut}
+                    min={checkIn || todayStr}
+                    onChange={(e) => setCheckOut(e.target.value)}
+                    className="w-full px-4 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-700 text-sm focus:outline-none focus:border-cyan-500 focus:bg-white transition-all"
+                    required
+                  />
+                </div>
 
-            <button
-              type="submit"
-              disabled={roomsLoading}
-              className="w-full py-3 rounded-xl bg-gradient-to-r from-cyan-500 to-indigo-600 text-white font-bold text-sm tracking-wide shadow-md hover:brightness-105 disabled:opacity-50 transition-all cursor-pointer"
-            >
-              {roomsLoading ? "Checking Availability..." : "Check Live Rooms"}
-            </button>
-          </form>
+                <button
+                  type="submit"
+                  disabled={roomsLoading}
+                  className="w-full py-3 rounded-xl bg-gradient-to-r from-cyan-500 to-indigo-600 text-white font-bold text-sm tracking-wide shadow-md hover:brightness-105 disabled:opacity-50 transition-all cursor-pointer"
+                >
+                  {roomsLoading ? "Đang Tra Cứu..." : "Tra Cứu Phòng Trống"}
+                </button>
+              </form>
+
+              {/* Vacant Rooms Results Grid */}
+              <div className="space-y-4 pt-4">
+                {rooms.length > 0 && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {rooms.map((room) => (
+                      <div
+                        key={room.roomId}
+                        className="p-5 rounded-2xl bg-white border border-slate-200 hover:border-cyan-500/30 flex flex-col justify-between space-y-4 shadow-sm hover:shadow-md transition-all duration-300"
+                      >
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between">
+                            <span className="px-2 py-0.5 rounded text-[10px] font-extrabold bg-cyan-50 text-cyan-600 border border-cyan-100 uppercase tracking-widest">{room.roomType}</span>
+                            <span className="text-xs text-slate-500 font-semibold">Phòng số {room.roomNumber}</span>
+                          </div>
+                          <h4 className="text-base font-bold text-slate-900 leading-tight">Phòng {room.roomType} Hạng Sang</h4>
+                          <p className="text-xs text-slate-500">Trang bị điều hòa, hệ thống cách âm cao cấp, dịch vụ phòng 24/7.</p>
+                        </div>
+
+                        <div className="flex items-center justify-between pt-3 border-t border-slate-100">
+                          <div>
+                            <span className="text-[10px] text-slate-400 block font-bold">Giá / đêm</span>
+                            <span className="text-base font-extrabold text-cyan-600">${room.pricePerNight.toFixed(0)}</span>
+                          </div>
+                          <button
+                            onClick={() => handleBookRoom(room)}
+                            className="px-4 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs font-bold text-slate-700 hover:bg-cyan-500 hover:text-white hover:border-transparent transition-all duration-350 cursor-pointer"
+                          >
+                            Đặt Phòng Lẻ
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {!roomsLoading && rooms.length === 0 && !roomsError && (
+                  <div className="py-12 text-center rounded-2xl border border-dashed border-slate-250 text-slate-500 text-xs bg-slate-50/50">
+                    Chưa chọn ngày tra cứu. Vui lòng chọn ngày Check-in/Check-out ở trên và nhấn Tra Cứu Phòng Trống.
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* TAB 2: GROUP BOOKING & BLOCK ALLOCATION (>5 ROOMS) */}
+          {detailTab === 'group' && (
+            <div className="p-6 rounded-2xl bg-gradient-to-br from-cyan-50/50 to-indigo-50/30 border border-cyan-200/60 space-y-6">
+              <div className="flex items-center justify-between border-b border-cyan-100 pb-4">
+                <div>
+                  <h4 className="text-lg font-extrabold text-slate-900 flex items-center gap-2">
+                    <span>👥</span> Bảng Tính Dự Toán & Đặt Khối Phòng Đoàn
+                  </h4>
+                  <p className="text-xs text-slate-600">Đăng ký giữ chỗ cho đoàn từ 5 đến 50 phòng. Áp dụng tự động giảm giá 25% và xếp phòng gần nhau.</p>
+                </div>
+                <span className="px-3 py-1 bg-amber-400 text-slate-900 font-extrabold text-xs rounded-full uppercase tracking-wider">
+                  Chiết khấu đoàn: -25%
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="space-y-2">
+                  <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">Số Lượng Phòng (Tối thiểu 5 phòng)</label>
+                  <input
+                    type="number"
+                    min="5"
+                    max="50"
+                    value={groupRoomCount}
+                    onChange={(e) => setGroupRoomCount(Math.max(5, parseInt(e.target.value) || 5))}
+                    className="w-full px-4 py-2.5 rounded-xl bg-white border border-slate-300 font-bold text-slate-900 text-sm focus:outline-none focus:border-cyan-500"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">Gói Vé Ăn Đi Kèm Cho Đoàn</label>
+                  <select
+                    value={groupMealOption}
+                    onChange={(e) => setGroupMealOption(e.target.value)}
+                    className="w-full px-4 py-2.5 rounded-xl bg-white border border-slate-300 font-semibold text-slate-800 text-sm focus:outline-none focus:border-cyan-500 cursor-pointer"
+                  >
+                    <option value="BUFFET_BOTH">Full-Board: Buffet Sáng & Tối ($25/người/ngày)</option>
+                    <option value="BUFFET_BREAKFAST">Half-Board: Buffet Sáng ($10/người/ngày)</option>
+                    <option value="NONE">Chỉ Đặt Phòng (Không ăn)</option>
+                  </select>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">Mã Số Thuế CTP (Xóa nếu là đoàn gia đình)</label>
+                  <input
+                    type="text"
+                    placeholder="Mã số thuế doanh nghiệp (CTP)..."
+                    value={groupTaxCode}
+                    onChange={(e) => setGroupTaxCode(e.target.value)}
+                    className="w-full px-4 py-2.5 rounded-xl bg-white border border-slate-300 text-slate-800 text-sm focus:outline-none focus:border-cyan-500 font-mono"
+                  />
+                </div>
+              </div>
+
+              {/* Group Price Estimation Summary Box */}
+              <div className="p-5 rounded-2xl bg-white border border-cyan-200/80 shadow-sm grid grid-cols-1 md:grid-cols-4 gap-4 items-center">
+                <div>
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">Tổng Số Phòng Đoàn</span>
+                  <span className="text-xl font-extrabold text-slate-900">{groupRoomCount} Phòng</span>
+                  <span className="text-[11px] text-emerald-600 font-bold block">✓ Đảm bảo ở gần nhau</span>
+                </div>
+                <div>
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">Ngân Sách Tạm Tính</span>
+                  <span className="text-xl font-extrabold text-cyan-600">${(groupRoomCount * 120 * 0.75).toFixed(0)}</span>
+                  <span className="text-[11px] text-slate-500 font-semibold block line-through">${(groupRoomCount * 120).toFixed(0)} nguyên giá</span>
+                </div>
+                <div>
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">Số Tiền Đặt Cọc (30% Deposit)</span>
+                  <span className="text-xl font-extrabold text-indigo-700">${(groupRoomCount * 120 * 0.75 * 0.3).toFixed(0)}</span>
+                  <span className="text-[11px] text-indigo-600 font-bold block">Thanh toán giữ chỗ đoàn</span>
+                </div>
+                <div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const mockRoom = { roomId: 1, roomNumber: 'G101-G105', roomType: 'DELUXE_GROUP', pricePerNight: 120 * 0.75 };
+                      handleBookRoom(mockRoom);
+                    }}
+                    className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-cyan-600 to-indigo-600 text-white font-extrabold text-xs uppercase tracking-wider shadow-md hover:brightness-110 active:scale-[0.98] transition-all cursor-pointer"
+                  >
+                    🚀 Gửi Đơn Đặt Đoàn
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* TAB 3: INDEPENDENT MEAL TICKET PURCHASE */}
+          {detailTab === 'meal' && (
+            <div className="p-6 rounded-2xl bg-amber-50/50 border border-amber-200/80 space-y-6">
+              <div className="flex items-center justify-between border-b border-amber-200/60 pb-4">
+                <div>
+                  <h4 className="text-lg font-extrabold text-slate-900 flex items-center gap-2">
+                    <span>🍽️</span> Mua Vé Ăn Buffet & Đặt Bàn Nhà Hàng Độc Lập
+                  </h4>
+                  <p className="text-xs text-slate-600">Thưởng thức nhà hàng khách sạn mà không cần đặt phòng lưu trú. Nhận mã QR Code suất ăn quét trực tiếp tại bàn.</p>
+                </div>
+                <span className="px-3 py-1 bg-amber-500 text-white font-extrabold text-xs rounded-full uppercase tracking-wider">
+                  Mã QR Code Ăn Tức Thì
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="p-5 rounded-2xl bg-white border border-amber-200 flex flex-col justify-between space-y-4 shadow-sm">
+                  <div>
+                    <span className="px-2 py-0.5 rounded text-[10px] font-black bg-amber-100 text-amber-800 uppercase tracking-wider">Buffet Sáng High-Class</span>
+                    <h5 className="text-base font-bold text-slate-900 mt-2">Suất Buffet Sáng Tự Chọn</h5>
+                    <p className="text-xs text-slate-500 mt-1">Phục vụ từ 06:00 - 10:00. Hơn 50 món Á-Âu cao cấp.</p>
+                  </div>
+                  <div className="flex items-center justify-between pt-3 border-t border-slate-100">
+                    <span className="text-lg font-extrabold text-amber-600">$15 / vé</span>
+                    <button
+                      type="button"
+                      onClick={() => alert("Đã thêm 1 Vé Buffet Sáng vào giỏ vé của bạn. Vui lòng nhấn Thanh toán!")}
+                      className="px-4 py-2 rounded-xl bg-amber-500 text-white text-xs font-bold hover:bg-amber-600 transition-colors"
+                    >
+                      Mua Vé Ngay
+                    </button>
+                  </div>
+                </div>
+
+                <div className="p-5 rounded-2xl bg-white border border-amber-200 flex flex-col justify-between space-y-4 shadow-sm">
+                  <div>
+                    <span className="px-2 py-0.5 rounded text-[10px] font-black bg-amber-100 text-amber-800 uppercase tracking-wider">Buffet Tối Hải Sản</span>
+                    <h5 className="text-base font-bold text-slate-900 mt-2">Suất Buffet Tối Premium</h5>
+                    <p className="text-xs text-slate-500 mt-1">Phục vụ từ 18:00 - 21:30. Hải sản nướng tươi sống & Rượu vang nhẹ.</p>
+                  </div>
+                  <div className="flex items-center justify-between pt-3 border-t border-slate-100">
+                    <span className="text-lg font-extrabold text-amber-600">$35 / vé</span>
+                    <button
+                      type="button"
+                      onClick={() => alert("Đã thêm 1 Vé Buffet Tối Hải Sản vào giỏ vé của bạn!")}
+                      className="px-4 py-2 rounded-xl bg-amber-500 text-white text-xs font-bold hover:bg-amber-600 transition-colors"
+                    >
+                      Mua Vé Ngay
+                    </button>
+                  </div>
+                </div>
+
+                <div className="p-5 rounded-2xl bg-white border border-amber-200 flex flex-col justify-between space-y-4 shadow-sm">
+                  <div>
+                    <span className="px-2 py-0.5 rounded text-[10px] font-black bg-amber-100 text-amber-800 uppercase tracking-wider">Set Menu Tiệc Đoàn</span>
+                    <h5 className="text-base font-bold text-slate-900 mt-2">Set Tiệc Bàn 10 Khách</h5>
+                    <p className="text-xs text-slate-500 mt-1">Bàn tiệc dành cho đoàn đông người, thiết kế thực đơn riêng.</p>
+                  </div>
+                  <div className="flex items-center justify-between pt-3 border-t border-slate-100">
+                    <span className="text-lg font-extrabold text-amber-600">$180 / bàn</span>
+                    <button
+                      type="button"
+                      onClick={() => alert("Đã đăng ký Set Menu Tiệc Đoàn. Nhân viên sẽ liên hệ xác nhận bàn!")}
+                      className="px-4 py-2 rounded-xl bg-amber-500 text-white text-xs font-bold hover:bg-amber-600 transition-colors"
+                    >
+                      Đặt Bàn Tiệc
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Error notifications */}
           {roomsError && (
@@ -493,51 +750,9 @@ function HotelDetailPage() {
             </div>
           )}
 
-          {/* Vacant Rooms Results Grid */}
-          <div className="space-y-4">
-            {rooms.length > 0 && (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {rooms.map((room) => (
-                  <div
-                    key={room.roomId}
-                    className="p-5 rounded-2xl bg-white border border-slate-200 hover:border-cyan-500/30 flex flex-col justify-between space-y-4 shadow-sm hover:shadow-md transition-all duration-300"
-                  >
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <span className="px-2 py-0.5 rounded text-[10px] font-extrabold bg-cyan-50 text-cyan-600 border border-cyan-100 uppercase tracking-widest">{room.roomType}</span>
-                        <span className="text-xs text-slate-500 font-semibold">No. {room.roomNumber}</span>
-                      </div>
-                      <h4 className="text-base font-bold text-slate-900 leading-tight">Comfortable {room.roomType} Suite</h4>
-                      <p className="text-xs text-slate-500">Enjoy premium soundproof systems, air-conditioning, and 24/7 service.</p>
-                    </div>
-
-                    <div className="flex items-center justify-between pt-3 border-t border-slate-100">
-                      <div>
-                        <span className="text-[10px] text-slate-400 block font-bold">Per Night</span>
-                        <span className="text-base font-extrabold text-cyan-600">${room.pricePerNight.toFixed(0)}</span>
-                      </div>
-                      <button
-                        onClick={() => handleBookRoom(room)}
-                        className="px-4 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs font-bold text-slate-700 hover:bg-cyan-500 hover:text-white hover:border-transparent transition-all duration-350 cursor-pointer"
-                      >
-                        Book Suite
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {/* Empty vacancy checks */}
-            {!roomsLoading && rooms.length === 0 && !roomsError && (
-              <div className="py-12 text-center rounded-2xl border border-dashed border-slate-250 text-slate-500 text-xs bg-slate-50/50">
-                No rooms queried yet. Select your check-in/out dates above and click check.
-              </div>
-            )}
-          </div>
-
           {/* Stay Reviews Section */}
           <section className="mt-12 pt-8 border-t border-slate-200 text-left">
+
             <div className="flex justify-between items-baseline mb-6">
               <div>
                 <h2 className="text-xl font-bold tracking-tight text-slate-800">Guest Experience</h2>
