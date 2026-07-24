@@ -2,8 +2,9 @@ target/
 *.jar
 .git/
 .gitignore
-frontend/
 node_modules/
+frontend/node_modules/
+frontend/dist/
 .gemini/
 .vscode/
 README.md
