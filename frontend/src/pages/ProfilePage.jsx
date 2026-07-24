@@ -205,12 +205,73 @@ export default function ProfilePage() {
       
       <main className="w-full max-w-[1200px] mx-auto px-6 py-10 flex-1 flex flex-col justify-start">
         
+        {/* Customer Profile Tab Bar */}
+        <div className="w-full max-w-[950px] mx-auto mb-8 bg-white p-2 rounded-2xl border border-slate-200/80 shadow-sm flex flex-wrap items-center justify-center gap-1">
+          <button
+            onClick={() => navigate('/profile?tab=profile')}
+            className={`px-4 py-2 rounded-xl text-xs font-extrabold transition-all ${
+              activeTab === 'profile' ? 'bg-cyan-600 text-white shadow-md' : 'text-slate-600 hover:bg-slate-100'
+            }`}
+          >
+            👤 Profile
+          </button>
+          <button
+            onClick={() => navigate('/profile?tab=bookings')}
+            className={`px-4 py-2 rounded-xl text-xs font-extrabold transition-all ${
+              activeTab === 'bookings' ? 'bg-cyan-600 text-white shadow-md' : 'text-slate-600 hover:bg-slate-100'
+            }`}
+          >
+            🛏️ My Bookings
+          </button>
+          <button
+            onClick={() => navigate('/profile?tab=vouchers')}
+            className={`px-4 py-2 rounded-xl text-xs font-extrabold transition-all ${
+              activeTab === 'vouchers' ? 'bg-cyan-600 text-white shadow-md' : 'text-slate-600 hover:bg-slate-100'
+            }`}
+          >
+            🎫 Vouchers
+          </button>
+          <button
+            onClick={() => navigate('/profile?tab=wallet')}
+            className={`px-4 py-2 rounded-xl text-xs font-extrabold transition-all ${
+              activeTab === 'wallet' ? 'bg-cyan-600 text-white shadow-md' : 'text-slate-600 hover:bg-slate-100'
+            }`}
+          >
+            💳 E-Wallet & Top-up
+          </button>
+          <button
+            onClick={() => navigate('/profile?tab=loyalty')}
+            className={`px-4 py-2 rounded-xl text-xs font-extrabold transition-all ${
+              activeTab === 'loyalty' ? 'bg-cyan-600 text-white shadow-md' : 'text-slate-600 hover:bg-slate-100'
+            }`}
+          >
+            ⭐ Loyalty Tiers
+          </button>
+          <button
+            onClick={() => navigate('/profile?tab=mealtickets')}
+            className={`px-4 py-2 rounded-xl text-xs font-extrabold transition-all ${
+              activeTab === 'mealtickets' ? 'bg-cyan-600 text-white shadow-md' : 'text-slate-600 hover:bg-slate-100'
+            }`}
+          >
+            🍽️ Meal Tickets QR
+          </button>
+          <button
+            onClick={() => navigate('/profile?tab=ctp')}
+            className={`px-4 py-2 rounded-xl text-xs font-extrabold transition-all ${
+              activeTab === 'ctp' ? 'bg-cyan-600 text-white shadow-md' : 'text-slate-600 hover:bg-slate-100'
+            }`}
+          >
+            🏢 Corporate CTP
+          </button>
+        </div>
+
         {/* Conditional rendering based on tab and admin status */}
-        <div className="w-full max-w-[800px] mx-auto">
+        <div className="w-full max-w-[950px] mx-auto">
           
           {/* Profile Details Tab */}
-          {(activeTab === 'profile' || isAdmin) && (
+          {(activeTab === 'profile' || (isAdmin && activeTab === 'profile')) && (
             <div className="max-w-[500px] mx-auto w-full bg-white p-[32px] md:p-[40px] rounded-[24px] border border-[#e3e3e8]/50 shadow-[0_10px_40px_rgba(0,0,0,0.02)]">
+
               <div className="mb-[32px] text-left">
                 <h1 className="text-2xl font-bold tracking-tight text-[#1d1d1f]">Your Profile</h1>
                 <p className="text-xs text-[#86868b] mt-1">Manage your personal guest details</p>
@@ -607,8 +668,186 @@ export default function ProfilePage() {
             </div>
           )}
 
+          {/* E-Wallet & Top-up Tab */}
+          {activeTab === 'wallet' && !isAdmin && (
+            <div className="w-full bg-white p-8 rounded-3xl border border-slate-200 shadow-sm space-y-6 animate-fade-in text-left">
+              <div className="flex justify-between items-center border-b border-slate-100 pb-4">
+                <div>
+                  <h2 className="text-2xl font-extrabold text-slate-900">💳 Ví Điện Tử & Hạn Mức Chi Tiêu</h2>
+                  <p className="text-xs text-slate-500 mt-1">Quản lý số dư ví, nạp tiền tự động & đặt hạn mức chi tiêu theo ngày cho các thành viên.</p>
+                </div>
+                <span className="px-3 py-1 bg-emerald-50 text-emerald-600 border border-emerald-200 text-xs font-extrabold rounded-full">
+                  Ví Hoạt Động (Active)
+                </span>
+              </div>
+
+              {/* Balance Card */}
+              <div className="p-6 rounded-2xl bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white shadow-xl flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+                <div>
+                  <span className="text-xs font-bold text-slate-300 uppercase tracking-widest block">Số Dư Hiện Tại</span>
+                  <span className="text-3xl font-black text-amber-400 mt-1 block">$1,250.00 USD</span>
+                  <span className="text-xs text-slate-400 mt-2 block">Dành cho thanh toán phòng, đặt cọc đoàn & vé ăn tự động.</span>
+                </div>
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => alert("Đã mở cổng nạp tiền ví qua VNPay / Stripe! Vui lòng chọn số tiền cần nạp.")}
+                    className="px-5 py-2.5 rounded-xl bg-amber-400 text-slate-950 text-xs font-extrabold shadow-md hover:bg-amber-300 transition-all cursor-pointer"
+                  >
+                    ➕ Nạp Tiền Vào Ví
+                  </button>
+                  <button
+                    onClick={() => alert("Hạn mức chi tiêu ngày của bạn: $500.00. Tự động bảo mật số dư!")}
+                    className="px-5 py-2.5 rounded-xl bg-white/10 text-white border border-white/20 text-xs font-bold hover:bg-white/20 transition-all cursor-pointer"
+                  >
+                    ⚙️ Hạn Mức Chi Tiêu
+                  </button>
+                </div>
+              </div>
+
+              {/* Transaction History */}
+              <div className="space-y-3 pt-4">
+                <h4 className="text-sm font-bold text-slate-800 uppercase tracking-wider">Lịch Sử Giao Dịch Gần Đây</h4>
+                <div className="divide-y divide-slate-100 rounded-2xl border border-slate-200 bg-slate-50/50 overflow-hidden">
+                  <div className="p-4 flex justify-between items-center text-xs">
+                    <div>
+                      <span className="font-bold text-slate-800 block">Nạp tiền qua Stripe Online</span>
+                      <span className="text-[10px] text-slate-400">2026-07-24 14:30:00 • TXN-WALLET-901</span>
+                    </div>
+                    <span className="text-emerald-600 font-extrabold text-sm">+$500.00</span>
+                  </div>
+                  <div className="p-4 flex justify-between items-center text-xs">
+                    <div>
+                      <span className="font-bold text-slate-800 block">Thanh toán cọc đặt đoàn Golden Silk Resort</span>
+                      <span className="text-[10px] text-slate-400">2026-07-23 09:15:00 • BK-A6E037A5</span>
+                    </div>
+                    <span className="text-slate-800 font-extrabold text-sm">-$270.00</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Loyalty Tiers Tab */}
+          {activeTab === 'loyalty' && !isAdmin && (
+            <div className="w-full bg-white p-8 rounded-3xl border border-slate-200 shadow-sm space-y-6 animate-fade-in text-left">
+              <div className="flex justify-between items-center border-b border-slate-100 pb-4">
+                <div>
+                  <h2 className="text-2xl font-extrabold text-slate-900">⭐ Thẻ Hội Viên & Điểm Tích Lũy</h2>
+                  <p className="text-xs text-slate-500 mt-1">Chương trình ưu đãi hội viên thân thiết (Bronze, Silver, Gold, Platinum).</p>
+                </div>
+                <span className="px-3 py-1 bg-amber-400 text-slate-950 font-black text-xs rounded-full uppercase tracking-wider">
+                  HẠNG PLATINUM VIP
+                </span>
+              </div>
+
+              {/* Loyalty Status */}
+              <div className="p-6 rounded-2xl bg-gradient-to-r from-amber-500 to-amber-600 text-white shadow-lg grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div>
+                  <span className="text-[10px] font-bold uppercase tracking-widest opacity-80 block">Hạng Hội Viên</span>
+                  <span className="text-2xl font-black block mt-1">🥇 PLATINUM VIP</span>
+                </div>
+                <div>
+                  <span className="text-[10px] font-bold uppercase tracking-widest opacity-80 block">Điểm Tích Lũy</span>
+                  <span className="text-2xl font-black block mt-1">2,450 Points</span>
+                </div>
+                <div>
+                  <span className="text-[10px] font-bold uppercase tracking-widest opacity-80 block">Đặc Quyền Đã Kích Hoạt</span>
+                  <span className="text-xs font-bold block mt-1">✓ Giảm thêm 10% phòng & Miễn phí Buffet Sáng</span>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Meal Tickets QR Tab */}
+          {activeTab === 'mealtickets' && !isAdmin && (
+            <div className="w-full bg-white p-8 rounded-3xl border border-slate-200 shadow-sm space-y-6 animate-fade-in text-left">
+              <div className="flex justify-between items-center border-b border-slate-100 pb-4">
+                <div>
+                  <h2 className="text-2xl font-extrabold text-slate-900">🍽️ Kho Vé Ăn & Mã QR Code Suất Ăn</h2>
+                  <p className="text-xs text-slate-500 mt-1">Quản lý các vé ăn Buffet đã mua hoặc đi kèm theo phòng đặt đoàn. Xuất QR Code để quét tại nhà hàng.</p>
+                </div>
+                <span className="px-3 py-1 bg-cyan-50 text-cyan-600 border border-cyan-200 text-xs font-extrabold rounded-full">
+                  3 Vé Đang Khả Dụng
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="p-5 rounded-2xl bg-slate-50 border border-slate-200 space-y-4">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <span className="px-2 py-0.5 rounded bg-amber-100 text-amber-800 text-[10px] font-bold uppercase">Buffet Sáng High-Class</span>
+                      <h4 className="text-base font-bold text-slate-900 mt-1">Vé Buffet Sáng Tự Chọn</h4>
+                      <p className="text-xs text-slate-500">Golden Silk Resort & Spa • Hạn dùng: 2026-07-26</p>
+                    </div>
+                    <span className="px-2 py-1 bg-emerald-100 text-emerald-800 text-[10px] font-black rounded">CHƯA DÙNG</span>
+                  </div>
+                  <div className="p-4 bg-white rounded-xl border border-slate-200 text-center space-y-2">
+                    <div className="w-24 h-24 bg-slate-900 mx-auto rounded-lg flex items-center justify-center text-white text-3xl font-mono">
+                      QR
+                    </div>
+                    <span className="text-[11px] font-mono font-bold text-slate-700 block">TICKET-QR-889123</span>
+                  </div>
+                </div>
+
+                <div className="p-5 rounded-2xl bg-slate-50 border border-slate-200 space-y-4">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <span className="px-2 py-0.5 rounded bg-amber-100 text-amber-800 text-[10px] font-bold uppercase">Buffet Tối Hải Sản</span>
+                      <h4 className="text-base font-bold text-slate-900 mt-1">Vé Buffet Tối Premium</h4>
+                      <p className="text-xs text-slate-500">Golden Silk Resort & Spa • Hạn dùng: 2026-07-26</p>
+                    </div>
+                    <span className="px-2 py-1 bg-emerald-100 text-emerald-800 text-[10px] font-black rounded">CHƯA DÙNG</span>
+                  </div>
+                  <div className="p-4 bg-white rounded-xl border border-slate-200 text-center space-y-2">
+                    <div className="w-24 h-24 bg-slate-900 mx-auto rounded-lg flex items-center justify-center text-white text-3xl font-mono">
+                      QR
+                    </div>
+                    <span className="text-[11px] font-mono font-bold text-slate-700 block">TICKET-QR-889124</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Corporate Tax Profile CTP Tab */}
+          {activeTab === 'ctp' && !isAdmin && (
+            <div className="w-full bg-white p-8 rounded-3xl border border-slate-200 shadow-sm space-y-6 animate-fade-in text-left">
+              <div className="flex justify-between items-center border-b border-slate-100 pb-4">
+                <div>
+                  <h2 className="text-2xl font-extrabold text-slate-900">🏢 Hồ Sơ Thuế Doanh Nghiệp (CTP)</h2>
+                  <p className="text-xs text-slate-500 mt-1">Đăng ký thông tin công ty để xuất Hóa đơn Red VAT Doanh nghiệp cho các chuyến công tác và đặt đoàn.</p>
+                </div>
+                <span className="px-3 py-1 bg-emerald-100 text-emerald-800 font-extrabold text-xs rounded-full uppercase">
+                  ĐÃ XÁC MINH (APPROVED)
+                </span>
+              </div>
+
+              <div className="p-6 rounded-2xl bg-slate-50 border border-slate-200 space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+                  <div>
+                    <span className="text-[10px] text-slate-400 font-bold uppercase block">Tên Công Ty / Doanh Nghiệp</span>
+                    <span className="font-extrabold text-slate-900 text-sm block mt-0.5">CÔNG TY TNHH CÔNG NGHỆ LUXURY STAY VIỆT NAM</span>
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-slate-400 font-bold uppercase block">Mã Số Thuế (MST)</span>
+                    <span className="font-mono font-bold text-indigo-700 text-sm block mt-0.5">0109887766-CTP</span>
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-slate-400 font-bold uppercase block">Địa Chỉ Đăng Ký Kinh Doanh</span>
+                    <span className="font-medium text-slate-800 block mt-0.5">Tầng 18, Tòa nhà Keangnam Landmark 72, Nam Từ Liêm, Hà Nội</span>
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-slate-400 font-bold uppercase block">Email Nhận Hóa Đơn VAT</span>
+                    <span className="font-mono text-slate-800 block mt-0.5">ketoan@luxurystay.vn</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
         </div>
       </main>
+
 
       {reviewModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm animate-fade-in">

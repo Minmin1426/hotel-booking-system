@@ -861,8 +861,45 @@ export default function AdminDashboardPage() {
                   Reviews
                 </button>
               )}
+              {isAdmin && (
+                <button
+                  onClick={() => navigate('/admin/users?tab=vouchers')}
+                  className={`px-4 py-2 text-xs font-bold rounded-lg transition-all ${
+                    activeTab === 'vouchers' 
+                      ? 'bg-white text-[#1d1d1f] shadow-sm' 
+                      : 'text-[#86868b] hover:text-[#1d1d1f]'
+                  }`}
+                >
+                  Vouchers
+                </button>
+              )}
+              {isAdmin && (
+                <button
+                  onClick={() => navigate('/admin/users?tab=ctp')}
+                  className={`px-4 py-2 text-xs font-bold rounded-lg transition-all ${
+                    activeTab === 'ctp' 
+                      ? 'bg-white text-[#1d1d1f] shadow-sm' 
+                      : 'text-[#86868b] hover:text-[#1d1d1f]'
+                  }`}
+                >
+                  Duyệt CTP
+                </button>
+              )}
+              {isAdmin && (
+                <button
+                  onClick={() => navigate('/admin/users?tab=mealtickets')}
+                  className={`px-4 py-2 text-xs font-bold rounded-lg transition-all ${
+                    activeTab === 'mealtickets' 
+                      ? 'bg-white text-[#1d1d1f] shadow-sm' 
+                      : 'text-[#86868b] hover:text-[#1d1d1f]'
+                  }`}
+                >
+                  Vé Ăn QR
+                </button>
+              )}
             </div>
           </div>
+
 
           {/* Global Error Banner */}
           {error && (
@@ -1852,8 +1889,121 @@ export default function AdminDashboardPage() {
             </div>
           )}
 
+          {/* Vouchers Admin Tab */}
+          {activeTab === 'vouchers' && isAdmin && (
+            <div className="space-y-6 animate-fade-in text-left">
+              <div className="flex justify-between items-center border-b border-slate-100 pb-4">
+                <div>
+                  <h3 className="text-xl font-bold text-slate-900">🎫 Quản Lý Kho Voucher & Mã Khuyến Mãi</h3>
+                  <p className="text-xs text-slate-500">Tạo mã giảm giá combo, cấu hình tỷ lệ chiết khấu & số lần sử dụng tối đa.</p>
+                </div>
+                <button
+                  onClick={() => alert("Đã mở modal tạo Voucher chiến dịch mới!")}
+                  className="px-4 py-2 rounded-xl bg-cyan-600 hover:bg-cyan-700 text-white font-extrabold text-xs shadow-md transition-colors"
+                >
+                  ➕ Tạo Voucher Mới
+                </button>
+              </div>
+
+              <div className="divide-y divide-slate-200 border border-slate-200 rounded-2xl bg-white overflow-hidden shadow-sm">
+                <div className="p-4 bg-slate-50 flex justify-between items-center text-xs font-bold text-slate-700">
+                  <span>MÃ VOUCHER</span>
+                  <span>LOẠI CHIẾT KHẤU</span>
+                  <span>GIÁ TRỊ</span>
+                  <span>ĐÃ DÙNG / GIỚI HẠN</span>
+                  <span>TRẠNG THÁI</span>
+                </div>
+                <div className="p-4 flex justify-between items-center text-xs">
+                  <span className="font-mono font-bold text-cyan-600">SUMMER20</span>
+                  <span className="font-semibold text-slate-800">PERCENTAGE</span>
+                  <span className="font-bold text-slate-900">20% OFF</span>
+                  <span className="text-slate-600">45 / 100 lượt</span>
+                  <span className="px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 font-bold">ACTIVE</span>
+                </div>
+                <div className="p-4 flex justify-between items-center text-xs">
+                  <span className="font-mono font-bold text-cyan-600">HOTEL50</span>
+                  <span className="font-semibold text-slate-800">FIXED_AMOUNT</span>
+                  <span className="font-bold text-slate-900">$50 OFF</span>
+                  <span className="text-slate-600">12 / 50 lượt</span>
+                  <span className="px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 font-bold">ACTIVE</span>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* CTP Approval Tab */}
+          {activeTab === 'ctp' && isAdmin && (
+            <div className="space-y-6 animate-fade-in text-left">
+              <div className="flex justify-between items-center border-b border-slate-100 pb-4">
+                <div>
+                  <h3 className="text-xl font-bold text-slate-900">🏢 Duyệt Hồ Sơ Thuế Doanh Nghiệp (CTP)</h3>
+                  <p className="text-xs text-slate-500">Kểm duyệt giấy phép kinh doanh, mã số thuế & thông tin xuất hóa đơn VAT của các đoàn khách.</p>
+                </div>
+                <span className="px-3 py-1 bg-amber-100 text-amber-800 text-xs font-bold rounded-full">
+                  1 Hồ Sơ Chờ Phê Duyệt
+                </span>
+              </div>
+
+              <div className="border border-slate-200 rounded-2xl bg-white p-6 space-y-4 shadow-sm">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <h4 className="text-base font-bold text-slate-900">CÔNG TY TNHH DU LỊCH VÀ SỰ KIỆN TOÀN CẦU</h4>
+                    <p className="text-xs text-slate-500 font-mono">MST: 0109112233-CTP • Nộp ngày: 2026-07-24</p>
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => alert("Đã phê duyệt hồ sơ Corporate Tax Profile (CTP)! Kích hoạt tính năng xuất Hóa đơn Red VAT.")}
+                      className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs"
+                    >
+                      ✓ Phê Duyệt CTP
+                    </button>
+                    <button
+                      onClick={() => alert("Đã từ chối hồ sơ CTP. Gửi phản hồi yêu cầu nộp lại MST hợp lệ.")}
+                      className="px-4 py-2 rounded-xl bg-red-100 hover:bg-red-200 text-red-700 font-bold text-xs"
+                    >
+                      ✕ Từ Chối
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Meal Tickets Audit Tab */}
+          {activeTab === 'mealtickets' && isAdmin && (
+            <div className="space-y-6 animate-fade-in text-left">
+              <div className="flex justify-between items-center border-b border-slate-100 pb-4">
+                <div>
+                  <h3 className="text-xl font-bold text-slate-900">🍽️ Kiểm Toán Vé Ăn & QR Code Suất Ăn Nhà Hàng</h3>
+                  <p className="text-xs text-slate-500">Nhật ký quét mã QR vé ăn tại các khu vực buffet nhà hàng toàn hệ thống.</p>
+                </div>
+                <span className="px-3 py-1 bg-cyan-100 text-cyan-800 text-xs font-bold rounded-full">
+                  Real-time Scanner Log
+                </span>
+              </div>
+
+              <div className="divide-y divide-slate-200 border border-slate-200 rounded-2xl bg-white overflow-hidden shadow-sm text-xs">
+                <div className="p-4 bg-slate-50 font-bold text-slate-700 grid grid-cols-5 gap-2">
+                  <span>MÃ VÉ QR</span>
+                  <span>KHÁCH HÀNG</span>
+                  <span>LOẠI SUẤT ĂN</span>
+                  <span>NHÀ HÀNG KTS</span>
+                  <span>THỜI GIAN QUÉT</span>
+                </div>
+                <div className="p-4 grid grid-cols-5 gap-2 items-center">
+                  <span className="font-mono font-bold text-cyan-600">TICKET-QR-889123</span>
+                  <span className="font-semibold text-slate-800">Nguyễn Nhật Minh</span>
+                  <span className="font-bold text-amber-700">Buffet Sáng High-Class</span>
+                  <span>Golden Silk Restaurant</span>
+                  <span className="text-slate-500">2026-07-25 07:15:22</span>
+                </div>
+              </div>
+            </div>
+          )}
+
         </div>
       </main>
+
 
       <Footer />
 
