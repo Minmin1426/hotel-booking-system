@@ -155,6 +155,22 @@ export default function StaffRoomPage() {
 
           {/* Search and Filters */}
           <div className="flex flex-1 flex-col md:flex-row items-stretch md:items-center justify-end gap-3">
+            {/* Staff QR Code Scanner Button */}
+            <button
+              onClick={() => alert("📷 Đã mở máy quét mã QR! Vui lòng hướng camera vào Mã QR Vé Ăn hoặc Mã Thẻ Phòng của khách.")}
+              className="h-[42px] px-4 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs transition-colors flex items-center justify-center gap-1.5 cursor-pointer shadow-sm"
+            >
+              <span>📷</span> Quét Mã QR Vé Ăn / Thẻ Phòng
+            </button>
+
+            {/* Quick Group Check-in Action */}
+            <button
+              onClick={() => alert("✨ Đã kích hoạt Quy trình Check-in Cấp tốc cho Đoàn Khách! Phát thẻ phòng & kích hoạt 10 mã vé ăn QR Code.")}
+              className="h-[42px] px-4 rounded-xl bg-cyan-600 hover:bg-cyan-700 text-white font-bold text-xs transition-colors flex items-center justify-center gap-1.5 cursor-pointer shadow-sm"
+            >
+              <span>🚀</span> Check-in Cấp Tốc Đoàn Khách
+            </button>
+
             <div className="flex flex-col text-left flex-1 md:max-w-xs">
               <label className="text-[10px] font-bold text-[#86868b] uppercase tracking-wider mb-1.5">Search Rooms</label>
               <input
@@ -180,6 +196,7 @@ export default function StaffRoomPage() {
             </div>
           </div>
         </div>
+
 
         {/* Notifications */}
         {error && (

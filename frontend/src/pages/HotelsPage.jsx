@@ -555,8 +555,21 @@ function HotelsPage() {
           )}
         </section>
       </main>
+
+      {/* AI Assistant Chatbot Floating Widget (SCR-503) */}
+      <div className="fixed bottom-6 right-6 z-50">
+        <button
+          type="button"
+          onClick={() => alert("🤖 AI LuxuryStay Assistant: Tôi có thể giúp bạn gợi ý Khách sạn có dịch vụ Đặt đoàn 10-50 phòng, xuất hóa đơn VAT CTP và hỗ trợ trọn gói Buffet Sáng/Tối!")}
+          className="p-4 rounded-full bg-gradient-to-r from-cyan-600 to-indigo-600 text-white font-extrabold shadow-2xl shadow-cyan-600/40 hover:scale-105 active:scale-95 transition-all flex items-center gap-2 border border-white/40 cursor-pointer"
+        >
+          <span className="text-xl">🤖</span>
+          <span className="text-xs font-bold hidden sm:inline">AI Tư Vấn Đặt Đoàn</span>
+        </button>
+      </div>
     </div>
   );
 }
 
 export default HotelsPage;
+
