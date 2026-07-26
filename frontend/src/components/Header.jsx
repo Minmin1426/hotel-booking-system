@@ -1,8 +1,11 @@
 // src/components/Header.jsx
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
+import LanguageSelector from './LanguageSelector';
 
 export default function Header({ fullName, role }) {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const isAuthenticated = !!sessionStorage.getItem("accessToken");
   const userRole = sessionStorage.getItem("userRole") || role;
@@ -35,7 +38,7 @@ export default function Header({ fullName, role }) {
         
         {/* Brand Logo & Name */}
         <Link to="/" className="flex items-center gap-2 text-xl font-bold tracking-tight bg-gradient-to-r from-cyan-600 to-indigo-600 bg-clip-text text-transparent hover:opacity-90 transition-opacity">
-          <span>✨</span> LuxuryStay
+          <span>✨</span> {t('common.brandName')}
         </Link>
 
         {/* Navigation Links & User Area */}
@@ -49,7 +52,7 @@ export default function Header({ fullName, role }) {
                   : 'hover:text-[#1d1d1f] hover:bg-[#f5f5f7]'
               }`}
             >
-              Find Hotels
+              {t('nav.findHotels')}
             </Link>
 
             {isAuthenticated && (
@@ -64,7 +67,7 @@ export default function Header({ fullName, role }) {
                           : 'hover:text-[#1d1d1f] hover:bg-[#f5f5f7]'
                       }`}
                     >
-                      User Management
+                      {t('nav.userManagement')}
                     </Link>
                     <Link 
                       to="/admin/users?tab=bookings" 
@@ -74,7 +77,7 @@ export default function Header({ fullName, role }) {
                           : 'hover:text-[#1d1d1f] hover:bg-[#f5f5f7]'
                       }`}
                     >
-                      Booking Management
+                      {t('nav.bookingManagement')}
                     </Link>
                   </>
                 )}
@@ -88,7 +91,7 @@ export default function Header({ fullName, role }) {
                         : 'hover:text-[#1d1d1f] hover:bg-[#f5f5f7]'
                     }`}
                   >
-                    Reports & Stats
+                    {t('nav.reportsStats')}
                   </Link>
                 )}
 
@@ -101,7 +104,7 @@ export default function Header({ fullName, role }) {
                         : 'hover:text-[#1d1d1f] hover:bg-[#f5f5f7]'
                     }`}
                   >
-                    Review Moderation
+                    {t('nav.reviewModeration')}
                   </Link>
                 )}
 
@@ -114,7 +117,7 @@ export default function Header({ fullName, role }) {
                         : 'hover:text-[#1d1d1f] hover:bg-[#f5f5f7]'
                     }`}
                   >
-                    Room Status
+                    {t('nav.roomStatus')}
                   </Link>
                 )}
 
@@ -128,7 +131,7 @@ export default function Header({ fullName, role }) {
                           : 'hover:text-[#1d1d1f] hover:bg-[#f5f5f7]'
                       }`}
                     >
-                      My Bookings
+                      {t('nav.myBookings')}
                     </Link>
                     <Link 
                       to="/profile?tab=vouchers" 
@@ -138,7 +141,7 @@ export default function Header({ fullName, role }) {
                           : 'hover:text-[#1d1d1f] hover:bg-[#f5f5f7]'
                       }`}
                     >
-                      My Vouchers
+                      {t('nav.myVouchers')}
                     </Link>
                   </>
                 )}
@@ -146,8 +149,10 @@ export default function Header({ fullName, role }) {
             )}
           </nav>
 
-          {/* User Profile Area */}
-          <div className="flex items-center gap-3">
+          {/* Language Selector & User Profile Area */}
+          <div className="flex items-center gap-4">
+            <LanguageSelector />
+
             {isAuthenticated ? (
               <Link 
                 to="/profile?tab=profile"
@@ -159,7 +164,7 @@ export default function Header({ fullName, role }) {
                 </div>
                 <div className="hidden sm:flex flex-col text-left pr-2">
                   <span className="text-xs font-bold text-[#1d1d1f] group-hover:text-[#0066cc] transition-colors">{getDisplayName()}</span>
-                  <span className="text-[9px] text-[#86868b] uppercase tracking-wider font-semibold">{userRole}</span>
+                  <span className="text-[9px] text-[#86868b] uppercase tracking-wider font-semibold">{userRole === 'USER' ? t('nav.user') : userRole}</span>
                 </div>
               </Link>
             ) : (
@@ -168,13 +173,13 @@ export default function Header({ fullName, role }) {
                   to="/register" 
                   className="text-xs font-bold text-slate-650 hover:text-cyan-600 transition-colors"
                 >
-                  Register
+                  {t('nav.register')}
                 </Link>
                 <Link 
                   to="/login" 
                   className="px-5 py-2 rounded-full text-xs font-bold bg-gradient-to-r from-cyan-500 to-indigo-600 text-white hover:brightness-105 active:scale-95 transition-all duration-300"
                 >
-                  Sign In
+                  {t('nav.signIn')}
                 </Link>
               </div>
             )}

@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { AuthService } from '../services/AuthService';
 
 export default function LoginPage() {
+  const { t } = useTranslation();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -106,55 +108,54 @@ export default function LoginPage() {
           <div className="z-10 flex flex-col gap-2">
             <div className="flex items-center gap-2 mb-8">
               <span className="text-xl">✨</span>
-              <span className="text-xs uppercase tracking-[0.2em] font-extrabold text-[#d4af37]">LUXURY STAY</span>
+              <span className="text-xs uppercase tracking-[0.2em] font-extrabold text-[#d4af37]">{t('login.brandText', 'LUXURY STAY')}</span>
             </div>
             
-            <h2 className="text-4xl font-semibold leading-tight tracking-tight mb-4 font-serif">
-              Book your next <br />perfect stay.
+            <h2 className="text-4xl font-semibold leading-tight tracking-tight mb-4 font-serif" dangerouslySetInnerHTML={{ __html: t('login.marketingTitle') }}>
             </h2>
             <p className="text-sm text-white/70 leading-relaxed font-light mb-8 max-w-[360px]">
-              Log in to manage your hotel reservations, customize your room options, and access exclusive travel member privileges.
+              {t('login.marketingDesc')}
             </p>
 
             <div className="flex flex-col gap-4 max-w-[320px]">
               <div className="flex items-center gap-3 bg-white/5 backdrop-blur-md border border-white/10 px-4 py-3 rounded-2xl hover:bg-white/10 transition-colors">
                 <span className="text-lg">⭐</span>
                 <div>
-                  <h4 className="text-xs font-bold text-white">5-Star Luxury Suites</h4>
-                  <p className="text-[10px] text-white/60">Explore hand-picked top-tier hotels and views</p>
+                  <h4 className="text-xs font-bold text-white">{t('login.feature1Title')}</h4>
+                  <p className="text-[10px] text-white/60">{t('login.feature1Desc')}</p>
                 </div>
               </div>
               
               <div className="flex items-center gap-3 bg-white/5 backdrop-blur-md border border-white/10 px-4 py-3 rounded-2xl hover:bg-white/10 transition-colors">
                 <span className="text-lg">🏊</span>
                 <div>
-                  <h4 className="text-xs font-bold text-white">Premium Amenities</h4>
-                  <p className="text-[10px] text-white/60">Filter by pools, spas, gyms, and beachfronts</p>
+                  <h4 className="text-xs font-bold text-white">{t('login.feature2Title')}</h4>
+                  <p className="text-[10px] text-white/60">{t('login.feature2Desc')}</p>
                 </div>
               </div>
 
               <div className="flex items-center gap-3 bg-white/5 backdrop-blur-md border border-white/10 px-4 py-3 rounded-2xl hover:bg-white/10 transition-colors">
                 <span className="text-lg">🍽️</span>
                 <div>
-                  <h4 className="text-xs font-bold text-white">Gastronomy & Dining</h4>
-                  <p className="text-[10px] text-white/60">Find properties with top-rated dining services</p>
+                  <h4 className="text-xs font-bold text-white">{t('login.feature3Title')}</h4>
+                  <p className="text-[10px] text-white/60">{t('login.feature3Desc')}</p>
                 </div>
               </div>
             </div>
           </div>
 
           <div className="z-10 border-t border-white/10 pt-4 flex justify-between items-center text-[10px] text-white/50 tracking-wider uppercase font-semibold">
-            <span>© 2026 LuxuryStay</span>
-            <span className="text-[#d4af37]">★ Voted #1 Booking App</span>
+            <span>© 2026 {t('common.brandName')}</span>
+            <span className="text-[#d4af37]">{t('login.awardText')}</span>
           </div>
         </div>
 
         {/* Right Side: Form Panel */}
         <div className="w-full lg:w-[48%] bg-white/95 p-8 md:p-12 flex flex-col justify-center relative">
           <div className="w-full max-w-[340px] mx-auto text-center">
-            <h1 className="text-3xl font-bold tracking-tight text-[#1d1d1f] mb-1.5">Đăng nhập</h1>
+            <h1 className="text-3xl font-bold tracking-tight text-[#1d1d1f] mb-1.5">{t('login.title')}</h1>
             <p className="text-xs text-[#86868b] mb-8">
-              Nhập thông tin chi tiết của bạn để truy cập tài khoản.
+              {t('login.subtitle')}
             </p>
 
             <form onSubmit={handleSubmit} className="flex flex-col gap-4 text-left">
@@ -167,7 +168,7 @@ export default function LoginPage() {
               <div className="flex flex-col gap-1.5">
                 <input
                   type="email"
-                  placeholder="Địa chỉ Email"
+                  placeholder={t('login.emailPlaceholder')}
                   className="w-full h-[46px] px-[20px] py-[12px] rounded-2xl border border-[#e3e3e8] bg-white text-[#1d1d1f] text-sm focus:outline-none focus:border-[#0066cc] focus:ring-1 focus:ring-[#0066cc] transition-all placeholder:text-[#a1a1a6]"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
@@ -178,7 +179,7 @@ export default function LoginPage() {
               <div className="relative flex flex-col gap-1.5">
                 <input
                   type={showPassword ? "text" : "password"}
-                  placeholder="Mật khẩu"
+                  placeholder={t('login.passwordPlaceholder')}
                   className="w-full h-[46px] pl-[20px] pr-[60px] py-[12px] rounded-2xl border border-[#e3e3e8] bg-white text-[#1d1d1f] text-sm focus:outline-none focus:border-[#0066cc] focus:ring-1 focus:ring-[#0066cc] transition-all placeholder:text-[#a1a1a6]"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
@@ -189,12 +190,12 @@ export default function LoginPage() {
                   onClick={() => setShowPassword(!showPassword)}
                   className="absolute right-[20px] top-[14px] text-[#86868b] hover:text-[#1d1d1f] transition-colors text-xs font-semibold z-10"
                 >
-                  {showPassword ? "Ẩn" : "Hiện"}
+                  {showPassword ? t('login.hidePassword') : t('login.showPassword')}
                 </button>
               </div>
 
               <p className="text-[10px] text-[#86868b] text-center leading-normal">
-                ⚠️ Tài khoản sẽ bị tự động khóa nếu nhập sai mật khẩu quá 5 lần.
+                {t('login.attemptsWarning')}
               </p>
 
               <div className="flex justify-center mt-3">
@@ -203,13 +204,13 @@ export default function LoginPage() {
                   disabled={isLoading}
                   className="w-full h-[46px] rounded-2xl bg-[#0066cc] hover:bg-[#0055b3] text-[#ffffff] font-semibold text-sm shadow-md active:scale-[0.98] hover:scale-[1.01] transition-all duration-150 disabled:opacity-50 cursor-pointer"
                 >
-                  {isLoading ? 'Đang đăng nhập...' : 'Đăng nhập'}
+                  {isLoading ? t('login.signingInButton') : t('login.signInButton')}
                 </button>
               </div>
 
               <div className="flex items-center my-3">
                 <div className="flex-1 border-t border-[#e3e3e8]"></div>
-                <span className="px-3 text-[10px] text-[#86868b] uppercase tracking-wider font-semibold">Hoặc kết nối qua</span>
+                <span className="px-3 text-[10px] text-[#86868b] uppercase tracking-wider font-semibold">{t('login.orConnect')}</span>
                 <div className="flex-1 border-t border-[#e3e3e8]"></div>
               </div>
 
@@ -222,33 +223,33 @@ export default function LoginPage() {
                   <svg className="w-4 h-4" viewBox="0 0 24 24">
                     <path fill="#EA4335" d="M12.24 10.285V14.4h6.887c-.648 2.41-2.519 4.2-5.127 4.2a5.99 5.99 0 0 1-6-6 5.99 5.99 0 0 1 6-6c1.64 0 3.09.67 4.14 1.77l3.12-3.12A10.15 10.15 0 0 0 12.24 2a9.99 9.99 0 0 0-10 10 9.99 9.99 0 0 0 10 10c5.3 0 9.76-3.83 9.76-9.76 0-.64-.06-1.22-.17-1.95H12.24z"/>
                   </svg>
-                  Tiếp tục với Google
+                  {t('login.googleButton')}
                 </button>
               </div>
             </form>
 
             <div className="mt-8 border-t border-[#e3e3e8] pt-6 flex flex-col gap-2">
               <p className="text-xs text-[#86868b]">
-                Chưa có tài khoản?{' '}
+                {t('login.noAccount')}{' '}
                 <a href="/register" className="text-[#0066cc] hover:underline font-semibold">
-                  Đăng ký ngay tại đây.
+                  {t('login.registerNow')}
                 </a>
               </p>
               <p className="text-xs">
                 <a href="/forgot-password" className="text-[#0066cc] hover:underline font-medium">
-                  Quên mật khẩu?
+                  {t('login.forgotPassword')}
                 </a>
               </p>
               <p className="mt-3">
                 <a href="/" className="text-[#86868b] hover:text-[#1d1d1f] hover:underline flex items-center justify-center gap-1.5 text-xs font-medium">
-                  ← Quay lại trang chủ
+                  ← {t('login.backToHome')}
                 </a>
               </p>
             </div>
 
             <div className="mt-6 border-t border-[#e3e3e8]/70 pt-4">
               <p className="text-[10px] text-[#86868b] leading-relaxed text-left">
-                Bằng cách tiếp tục, bạn đồng ý với <a href="/terms" className="text-[#0066cc] hover:underline font-medium">Điều khoản & Điều kiện</a> và <a href="/privacy" className="text-[#0066cc] hover:underline font-medium">Chính sách bảo mật</a> của chúng tôi.
+                {t('login.agreementText')} <a href="/terms" className="text-[#0066cc] hover:underline font-medium">{t('login.terms')}</a> {t('login.and')} <a href="/privacy" className="text-[#0066cc] hover:underline font-medium">{t('login.privacy')}</a> {t('login.ofUs')}
               </p>
             </div>
           </div>
