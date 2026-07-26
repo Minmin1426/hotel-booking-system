@@ -86,36 +86,168 @@ function HotelDetailPage() {
   const [groupMealOption, setGroupMealOption] = useState('BUFFET_BOTH');
   const [groupTaxCode, setGroupTaxCode] = useState('0101234567-CTP');
   const [groupMembers, setGroupMembers] = useState([
-    { id: 1, fullName: 'Nguyễn Văn A', idNumber: '001200111222', roomAllocated: 'Phòng G101', mealPackage: 'BUFFET_BOTH' },
-    { id: 2, fullName: 'Trần Thị B', idNumber: '001200333444', roomAllocated: 'Phòng G101', mealPackage: 'BUFFET_BOTH' },
-    { id: 3, fullName: 'Lê Văn C', idNumber: '001200555666', roomAllocated: 'Phòng G102', mealPackage: 'BUFFET_BOTH' },
-    { id: 4, fullName: 'Phạm Thị D', idNumber: '001200777888', roomAllocated: 'Phòng G102', mealPackage: 'BUFFET_BOTH' },
-    { id: 5, fullName: 'Hoàng Văn E', idNumber: '001200999000', roomAllocated: 'Phòng G103', mealPackage: 'BUFFET_BOTH' }
+    { id: 1, fullName: 'Nguyễn Văn A', idNumber: '001200111222', type: 'ADULT', roomAllocated: 'Phòng G101', mealPackage: 'BUFFET_BOTH' },
+    { id: 2, fullName: 'Trần Thị B', idNumber: '001200333444', type: 'ADULT', roomAllocated: 'Phòng G101', mealPackage: 'BUFFET_BOTH' },
+    { id: 3, fullName: 'Lê Văn C', idNumber: '001200555666', type: 'ADULT', roomAllocated: 'Phòng G102', mealPackage: 'BUFFET_BOTH' },
+    { id: 4, fullName: 'Phạm Thị D', idNumber: '001200777888', type: 'ADULT', roomAllocated: 'Phòng G102', mealPackage: 'BUFFET_BOTH' },
+    { id: 5, fullName: 'Hoàng Văn E', idNumber: '001200999000', type: 'ADULT', roomAllocated: 'Phòng G103', mealPackage: 'BUFFET_BOTH' },
+    { id: 6, fullName: 'Ngô Thị F', idNumber: '001200999111', type: 'ADULT', roomAllocated: 'Phòng G103', mealPackage: 'BUFFET_BOTH' },
+    { id: 7, fullName: 'Vũ Văn G', idNumber: '001200999222', type: 'ADULT', roomAllocated: 'Phòng G104', mealPackage: 'BUFFET_BOTH' },
+    { id: 8, fullName: 'Đặng Thị H', idNumber: '001200999333', type: 'ADULT', roomAllocated: 'Phòng G104', mealPackage: 'BUFFET_BOTH' },
+    { id: 9, fullName: 'Bùi Văn I', idNumber: '001200999444', type: 'ADULT', roomAllocated: 'Phòng G105', mealPackage: 'BUFFET_BOTH' },
+    { id: 10, fullName: 'Lý Thị K', idNumber: '001200999555', type: 'ADULT', roomAllocated: 'Phòng G105', mealPackage: 'BUFFET_BOTH' }
   ]);
 
-  const handleAddMember = () => {
-    setGroupMembers(prev => [
-      ...prev,
-      {
-        id: prev.length + 1,
-        fullName: `Thành viên ${prev.length + 1}`,
-        idNumber: `001200${Math.floor(100000 + Math.random() * 900000)}`,
-        roomAllocated: `Phòng G10${Math.ceil((prev.length + 1) / 2)}`,
-        mealPackage: 'BUFFET_BOTH'
+  const handleGroupRoomCountChange = (count) => {
+    const newCount = Math.max(5, parseInt(count) || 5);
+    setGroupRoomCount(newCount);
+    
+    // Auto-adjust group members to match room count if needed
+    setGroupMembers(prev => {
+      // Keep members whose allocated room is within the new count
+      let filtered = prev.filter(m => {
+        const match = m.roomAllocated.match(/Phòng G10(\d+)/);
+        if (match) {
+          const roomNum = parseInt(match[1]);
+          return roomNum <= newCount;
+        }
+        return true;
+      });
+      
+      // Check which rooms between 1 and newCount have no members, and add at least 1 adult for them
+      const roomsWithAdult = new Set();
+      filtered.forEach(m => {
+        if (m.type === 'ADULT') {
+          const match = m.roomAllocated.match(/Phòng G10(\d+)/);
+          if (match) {
+            roomsWithAdult.add(parseInt(match[1]));
+          }
+        }
+      });
+      
+      let nextId = filtered.length > 0 ? Math.max(...filtered.map(m => m.id)) + 1 : 1;
+      for (let i = 1; i <= newCount; i++) {
+        if (!roomsWithAdult.has(i)) {
+          filtered.push({
+            id: nextId++,
+            fullName: `Trưởng phòng G10${i}`,
+            idNumber: `0012026${(10000 + nextId).toString()}`,
+            type: 'ADULT',
+            roomAllocated: `Phòng G10${i}`,
+            mealPackage: groupMealOption
+          });
+        }
       }
-    ]);
+      return filtered;
+    });
+  };
+
+  const handleAddMember = () => {
+    setGroupMembers(prev => {
+      const nextId = prev.length > 0 ? Math.max(...prev.map(m => m.id)) + 1 : 1;
+      return [
+        ...prev,
+        {
+          id: nextId,
+          fullName: `Thành viên ${nextId}`,
+          idNumber: '',
+          type: 'ADULT',
+          roomAllocated: 'Phòng G101',
+          mealPackage: groupMealOption
+        }
+      ];
+    });
+  };
+
+  const handleDeleteMember = (id) => {
+    setGroupMembers(prev => prev.filter(m => m.id !== id));
   };
 
   const handleImportExcelSimulation = () => {
-    const imported = Array.from({ length: groupRoomCount * 2 }).map((_, idx) => ({
-      id: idx + 1,
-      fullName: `Khách Đoàn ${idx + 1} - ${['Nguyễn', 'Trần', 'Lê', 'Phạm', 'Hoàng'][idx % 5]} ${['Anh', 'Bình', 'Cường', 'Dũng', 'Giang'][idx % 5]}`,
-      idNumber: `0012026${(10000 + idx).toString()}`,
-      roomAllocated: `Phòng G10${Math.ceil((idx + 1) / 2)}`,
-      mealPackage: groupMealOption
-    }));
+    const imported = [];
+    let idCounter = 1;
+    for (let i = 1; i <= groupRoomCount; i++) {
+      // 2 adults per room
+      imported.push({
+        id: idCounter++,
+        fullName: `Khách Đoàn ${idCounter} (Người lớn)`,
+        idNumber: `0012026${(10000 + idCounter).toString()}`,
+        type: 'ADULT',
+        roomAllocated: `Phòng G10${i}`,
+        mealPackage: groupMealOption
+      });
+      imported.push({
+        id: idCounter++,
+        fullName: `Khách Đoàn ${idCounter} (Người lớn)`,
+        idNumber: `0012026${(10000 + idCounter).toString()}`,
+        type: 'ADULT',
+        roomAllocated: `Phòng G10${i}`,
+        mealPackage: groupMealOption
+      });
+      // 1 child per room
+      imported.push({
+        id: idCounter++,
+        fullName: `Khách Đoàn ${idCounter} (Trẻ em)`,
+        idNumber: '',
+        type: 'CHILD',
+        roomAllocated: `Phòng G10${i}`,
+        mealPackage: groupMealOption
+      });
+    }
     setGroupMembers(imported);
-    alert(`🎉 Đã import thành công danh sách ${imported.length} thành viên đoàn từ file Excel!`);
+    alert(`🎉 Đã import thành công danh sách ${imported.length} thành viên đoàn từ file Excel (mỗi phòng gồm 2 người lớn và 1 trẻ em)!`);
+  };
+
+  const validateGroupManifest = () => {
+    const errors = [];
+    const warnings = [];
+
+    // Map of room -> list of members in that room
+    const roomMap = {};
+    // Initialize roomMap for all selected rooms
+    for (let i = 1; i <= groupRoomCount; i++) {
+      roomMap[`Phòng G10${i}`] = [];
+    }
+
+    groupMembers.forEach(m => {
+      const room = m.roomAllocated || 'Chưa gán';
+      if (!roomMap[room]) {
+        roomMap[room] = [];
+      }
+      roomMap[room].push(m);
+    });
+
+    let totalAdults = 0;
+    let totalChildren = 0;
+
+    Object.keys(roomMap).forEach(room => {
+      const membersInRoom = roomMap[room];
+      const adultsInRoom = membersInRoom.filter(m => m.type === 'ADULT').length;
+      const childrenInRoom = membersInRoom.filter(m => m.type === 'CHILD').length;
+
+      totalAdults += adultsInRoom;
+      totalChildren += childrenInRoom;
+
+      // 1. Each room must have at least 1 adult
+      if (adultsInRoom === 0 && room.startsWith('Phòng G10')) {
+        errors.push(`⚠️ ${room} chưa có người lớn nào (Mỗi phòng phải có ít nhất 1 người lớn).`);
+      }
+      // 2. Max 2 adults per room
+      if (adultsInRoom > 2) {
+        errors.push(`⚠️ ${room} có ${adultsInRoom} người lớn (Tối đa 2 người lớn mỗi phòng).`);
+      }
+      // 3. Max 3 children per room
+      if (childrenInRoom > 3) {
+        errors.push(`⚠️ ${room} có ${childrenInRoom} trẻ em (Tối đa 3 trẻ em mỗi phòng).`);
+      }
+    });
+
+    // 4. Total adults must be >= groupRoomCount
+    if (totalAdults < groupRoomCount) {
+      errors.push(`⚠️ Tổng số người lớn (${totalAdults}) ít hơn số phòng (${groupRoomCount}). Mỗi phòng cần có ít nhất 1 người lớn.`);
+    }
+
+    return { errors, warnings, totalAdults, totalChildren };
   };
 
   // Reviews states
@@ -298,6 +430,14 @@ function HotelDetailPage() {
       return;
     }
 
+    if (detailTab === 'group') {
+      const { errors } = validateGroupManifest();
+      if (errors.length > 0) {
+        setBookingError("Danh sách thành viên đoàn chưa hợp lệ. Vui lòng kiểm tra các cảnh báo lỗi bên dưới.");
+        return;
+      }
+    }
+
     setIsBookingInProgress(true);
     setBookingError('');
     try {
@@ -310,16 +450,29 @@ function HotelDetailPage() {
 
       // Determine valid room ID for hotel
       let targetRoomIds = [];
-      if (selectedRoom && selectedRoom.roomId && typeof selectedRoom.roomId === 'number' && selectedRoom.roomId > 10) {
-        targetRoomIds = [selectedRoom.roomId];
-      } else if (rooms && rooms.length > 0) {
-        targetRoomIds = [rooms[0].roomId];
-      } else {
+      let finalAdults = adults;
+      let finalChildren = children;
+
+      if (detailTab === 'group') {
         const liveRooms = await HotelService.searchAvailableRooms(id, checkIn, checkOut);
-        if (liveRooms && liveRooms.length > 0) {
-          targetRoomIds = [liveRooms[0].roomId];
+        if (!liveRooms || liveRooms.length < groupRoomCount) {
+          throw new Error(`Hiện không đủ phòng trống cho đoàn trong thời gian đã chọn (Yêu cầu ${groupRoomCount} phòng, chỉ còn ${liveRooms ? liveRooms.length : 0} phòng trống).`);
+        }
+        targetRoomIds = liveRooms.slice(0, groupRoomCount).map(r => r.roomId);
+        finalAdults = groupMembers.filter(m => m.type === 'ADULT').length;
+        finalChildren = groupMembers.filter(m => m.type === 'CHILD').length;
+      } else {
+        if (selectedRoom && selectedRoom.roomId && typeof selectedRoom.roomId === 'number' && selectedRoom.roomId > 10) {
+          targetRoomIds = [selectedRoom.roomId];
+        } else if (rooms && rooms.length > 0) {
+          targetRoomIds = [rooms[0].roomId];
         } else {
-          throw new Error("Hiện không còn phòng trống cho khách sạn này trong thời gian đã chọn.");
+          const liveRooms = await HotelService.searchAvailableRooms(id, checkIn, checkOut);
+          if (liveRooms && liveRooms.length > 0) {
+            targetRoomIds = [liveRooms[0].roomId];
+          } else {
+            throw new Error("Hiện không còn phòng trống cho khách sạn này trong thời gian đã chọn.");
+          }
         }
       }
 
@@ -331,8 +484,8 @@ function HotelDetailPage() {
         targetRoomIds,
         'ONLINE',
         voucherCode,
-        adults,
-        children
+        finalAdults,
+        finalChildren
       );
 
       setBookingDetails(res);
@@ -676,7 +829,31 @@ function HotelDetailPage() {
                 </span>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div className="space-y-2">
+                  <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">Ngày Nhận Phòng (Check-in)</label>
+                  <input
+                    type="date"
+                    value={checkIn}
+                    min={todayStr}
+                    onChange={(e) => setCheckIn(e.target.value)}
+                    className="w-full px-4 py-2.5 rounded-xl bg-white border border-slate-300 text-slate-700 text-sm focus:outline-none focus:border-cyan-500 focus:bg-white transition-all"
+                    required
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">Ngày Trả Phòng (Check-out)</label>
+                  <input
+                    type="date"
+                    value={checkOut}
+                    min={checkIn || todayStr}
+                    onChange={(e) => setCheckOut(e.target.value)}
+                    className="w-full px-4 py-2.5 rounded-xl bg-white border border-slate-300 text-slate-700 text-sm focus:outline-none focus:border-cyan-500 focus:bg-white transition-all"
+                    required
+                  />
+                </div>
+
                 <div className="space-y-2">
                   <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">Số Lượng Phòng (Tối thiểu 5 phòng)</label>
                   <input
@@ -684,7 +861,7 @@ function HotelDetailPage() {
                     min="5"
                     max="50"
                     value={groupRoomCount}
-                    onChange={(e) => setGroupRoomCount(Math.max(5, parseInt(e.target.value) || 5))}
+                    onChange={(e) => handleGroupRoomCountChange(e.target.value)}
                     className="w-full px-4 py-2.5 rounded-xl bg-white border border-slate-300 font-bold text-slate-900 text-sm focus:outline-none focus:border-cyan-500"
                   />
                 </div>
@@ -702,7 +879,7 @@ function HotelDetailPage() {
                   </select>
                 </div>
 
-                <div className="space-y-2">
+                <div className="space-y-2 md:col-span-2 lg:col-span-2">
                   <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">Mã Số Thuế CTP (Xóa nếu là đoàn gia đình)</label>
                   <input
                     type="text"
@@ -718,17 +895,17 @@ function HotelDetailPage() {
               <div className="p-5 rounded-2xl bg-white border border-cyan-200/80 shadow-sm grid grid-cols-1 md:grid-cols-4 gap-4 items-center">
                 <div>
                   <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">Tổng Số Phòng Đoàn</span>
-                  <span className="text-xl font-extrabold text-slate-900">{groupRoomCount} Phòng</span>
+                  <span className="text-xl font-extrabold text-slate-900">{groupRoomCount} Phòng ({calculateNights(checkIn, checkOut)} đêm)</span>
                   <span className="text-[11px] text-emerald-600 font-bold block">✓ Đảm bảo ở gần nhau</span>
                 </div>
                 <div>
                   <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">Ngân Sách Tạm Tính</span>
-                  <span className="text-xl font-extrabold text-cyan-600">${(groupRoomCount * 120 * 0.75).toFixed(0)}</span>
-                  <span className="text-[11px] text-slate-500 font-semibold block line-through">${(groupRoomCount * 120).toFixed(0)} nguyên giá</span>
+                  <span className="text-xl font-extrabold text-cyan-600">${(groupRoomCount * 120 * 0.75 * calculateNights(checkIn, checkOut)).toFixed(0)}</span>
+                  <span className="text-[11px] text-slate-505 font-semibold block line-through">${(groupRoomCount * 120 * calculateNights(checkIn, checkOut)).toFixed(0)} nguyên giá</span>
                 </div>
                 <div>
                   <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">Số Tiền Đặt Cọc (30% Deposit)</span>
-                  <span className="text-xl font-extrabold text-indigo-700">${(groupRoomCount * 120 * 0.75 * 0.3).toFixed(0)}</span>
+                  <span className="text-xl font-extrabold text-indigo-700">${(groupRoomCount * 120 * 0.75 * calculateNights(checkIn, checkOut) * 0.3).toFixed(0)}</span>
                   <span className="text-[11px] text-indigo-600 font-bold block">Thanh toán giữ chỗ đoàn</span>
                 </div>
                 <div>
@@ -1046,87 +1223,157 @@ function HotelDetailPage() {
                               </div>
                             </div>
                             {/* Group Member List Manifest Form & Excel Import Widget */}
-                            <div className="pt-4 border-t border-slate-200/80 space-y-4">
-                              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
-                                <div>
-                                  <h4 className="text-sm font-extrabold text-slate-800 flex items-center gap-1.5">
-                                    <span>📋</span> DANH SÁCH THÀNH VIÊN ĐOÀN (GUEST MANIFEST)
-                                  </h4>
-                                  <p className="text-[11px] text-slate-500">Khai báo danh sách người ở để nhận thẻ phòng & mã vé ăn QR Code.</p>
+                            {detailTab === 'group' && (
+                              <div className="pt-4 border-t border-slate-200/80 space-y-4">
+                                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+                                  <div>
+                                    <h4 className="text-sm font-extrabold text-slate-800 flex items-center gap-1.5">
+                                      <span>📋</span> DANH SÁCH THÀNH VIÊN ĐOÀN (GUEST MANIFEST)
+                                    </h4>
+                                    <p className="text-[11px] text-slate-500">Khai báo danh sách người ở để nhận thẻ phòng & mã vé ăn QR Code.</p>
+                                  </div>
+                                  <div className="flex items-center gap-2">
+                                    <button
+                                      type="button"
+                                      onClick={handleImportExcelSimulation}
+                                      className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-colors flex items-center gap-1 cursor-pointer"
+                                    >
+                                      <span>📁</span> Import Excel (.xlsx)
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={handleAddMember}
+                                      className="px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition-colors flex items-center gap-1 cursor-pointer"
+                                    >
+                                      <span>➕</span> Thêm Dòng
+                                    </button>
+                                  </div>
                                 </div>
-                                <div className="flex items-center gap-2">
-                                  <button
-                                    type="button"
-                                    onClick={handleImportExcelSimulation}
-                                    className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-colors flex items-center gap-1 cursor-pointer"
-                                  >
-                                    <span>📁</span> Import Excel (.xlsx)
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={handleAddMember}
-                                    className="px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition-colors flex items-center gap-1 cursor-pointer"
-                                  >
-                                    <span>➕</span> Thêm Dòng
-                                  </button>
-                                </div>
-                              </div>
 
-                              {/* Member Manifest Table */}
-                              <div className="overflow-x-auto rounded-xl border border-slate-200 bg-slate-50/50">
-                                <table className="w-full text-left text-xs">
-                                  <thead className="bg-slate-100/80 text-slate-600 font-bold border-b border-slate-200">
-                                    <tr>
-                                      <th className="p-2.5 w-8">#</th>
-                                      <th className="p-2.5">Họ và Tên Khách Đoàn</th>
-                                      <th className="p-2.5">Số CMND / Hộ Chiếu</th>
-                                      <th className="p-2.5">Phòng Gán</th>
-                                      <th className="p-2.5">Vé Ăn Đi Kèm</th>
-                                    </tr>
-                                  </thead>
-                                  <tbody className="divide-y divide-slate-200 bg-white">
-                                    {groupMembers.map((m, idx) => (
-                                      <tr key={m.id} className="hover:bg-slate-50/80">
-                                        <td className="p-2.5 font-bold text-slate-400">{idx + 1}</td>
-                                        <td className="p-2.5">
-                                          <input
-                                            type="text"
-                                            value={m.fullName}
-                                            onChange={(e) => {
-                                              const updated = [...groupMembers];
-                                              updated[idx].fullName = e.target.value;
-                                              setGroupMembers(updated);
-                                            }}
-                                            className="w-full px-2 py-1 rounded border border-slate-200 font-medium text-slate-800 text-xs"
-                                          />
-                                        </td>
-                                        <td className="p-2.5">
-                                          <input
-                                            type="text"
-                                            value={m.idNumber}
-                                            onChange={(e) => {
-                                              const updated = [...groupMembers];
-                                              updated[idx].idNumber = e.target.value;
-                                              setGroupMembers(updated);
-                                            }}
-                                            className="w-full px-2 py-1 rounded border border-slate-200 font-mono text-slate-700 text-xs"
-                                          />
-                                        </td>
-                                        <td className="p-2.5 font-semibold text-slate-700">{m.roomAllocated}</td>
-                                        <td className="p-2.5">
-                                          <span className="px-2 py-0.5 rounded bg-amber-50 text-amber-800 border border-amber-200 font-bold text-[10px]">
-                                            Buffet Sáng/Tối
-                                          </span>
-                                        </td>
+                                {/* Member Manifest Table */}
+                                <div className="overflow-x-auto rounded-xl border border-slate-200 bg-slate-50/50">
+                                  <table className="w-full text-left text-xs">
+                                    <thead className="bg-slate-100/80 text-slate-600 font-bold border-b border-slate-200">
+                                      <tr>
+                                        <th className="p-2.5 w-8">#</th>
+                                        <th className="p-2.5">Họ và Tên Khách</th>
+                                        <th className="p-2.5">Loại khách</th>
+                                        <th className="p-2.5">CMND / Hộ Chiếu</th>
+                                        <th className="p-2.5">Phòng Gán</th>
+                                        <th className="p-2.5">Vé Ăn</th>
+                                        <th className="p-2.5 w-10 text-center">Xóa</th>
                                       </tr>
-                                    ))}
-                                  </tbody>
-                                </table>
+                                    </thead>
+                                    <tbody className="divide-y divide-slate-200 bg-white">
+                                      {groupMembers.map((m, idx) => (
+                                        <tr key={m.id} className="hover:bg-slate-50/80">
+                                          <td className="p-2.5 font-bold text-slate-400">{idx + 1}</td>
+                                          <td className="p-2.5">
+                                            <input
+                                              type="text"
+                                              value={m.fullName}
+                                              onChange={(e) => {
+                                                const updated = [...groupMembers];
+                                                updated[idx].fullName = e.target.value;
+                                                setGroupMembers(updated);
+                                              }}
+                                              className="w-full px-2 py-1 rounded border border-slate-200 font-medium text-slate-800 text-xs"
+                                            />
+                                          </td>
+                                          <td className="p-2.5">
+                                            <select
+                                              value={m.type || 'ADULT'}
+                                              onChange={(e) => {
+                                                const updated = [...groupMembers];
+                                                updated[idx].type = e.target.value;
+                                                if (e.target.value === 'CHILD') {
+                                                  updated[idx].idNumber = '';
+                                                }
+                                                setGroupMembers(updated);
+                                              }}
+                                              className="px-2 py-1 rounded border border-slate-200 text-xs text-slate-800 focus:outline-none"
+                                            >
+                                              <option value="ADULT">Người lớn</option>
+                                              <option value="CHILD">Trẻ em</option>
+                                            </select>
+                                          </td>
+                                          <td className="p-2.5">
+                                            <input
+                                              type="text"
+                                              value={m.idNumber}
+                                              disabled={m.type === 'CHILD'}
+                                              placeholder={m.type === 'CHILD' ? 'Không bắt buộc' : 'Số CMND / Hộ chiếu'}
+                                              onChange={(e) => {
+                                                const updated = [...groupMembers];
+                                                updated[idx].idNumber = e.target.value;
+                                                setGroupMembers(updated);
+                                              }}
+                                              className={`w-full px-2 py-1 rounded border border-slate-200 font-mono text-slate-700 text-xs ${m.type === 'CHILD' ? 'bg-slate-100 text-slate-400' : 'bg-white'}`}
+                                            />
+                                          </td>
+                                          <td className="p-2.5">
+                                            <select
+                                              value={m.roomAllocated}
+                                              onChange={(e) => {
+                                                const updated = [...groupMembers];
+                                                updated[idx].roomAllocated = e.target.value;
+                                                setGroupMembers(updated);
+                                              }}
+                                              className="px-2 py-1 rounded border border-slate-200 text-xs text-slate-800 focus:outline-none font-semibold"
+                                            >
+                                              {Array.from({ length: groupRoomCount }).map((_, i) => (
+                                                <option key={i} value={`Phòng G10${i + 1}`}>
+                                                  Phòng G10{i + 1}
+                                                </option>
+                                              ))}
+                                            </select>
+                                          </td>
+                                          <td className="p-2.5">
+                                            <span className="px-2 py-0.5 rounded bg-amber-50 text-amber-800 border border-amber-200 font-bold text-[10px]">
+                                              {groupMealOption === 'BUFFET_BOTH' ? 'Buffet Sáng/Tối' : groupMealOption === 'BUFFET_BREAKFAST' ? 'Buffet Sáng' : 'Không ăn'}
+                                            </span>
+                                          </td>
+                                          <td className="p-2.5 text-center">
+                                            <button
+                                              type="button"
+                                              onClick={() => handleDeleteMember(m.id)}
+                                              className="text-red-500 hover:text-red-750 font-bold text-sm px-1.5 py-0.5 rounded hover:bg-red-50 transition-colors"
+                                              title="Xóa thành viên"
+                                            >
+                                              🗑️
+                                            </button>
+                                          </td>
+                                        </tr>
+                                      ))}
+                                    </tbody>
+                                  </table>
+                                </div>
+
+                                {/* Validation and Statistics Summary */}
+                                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 text-xs font-semibold">
+                                  <div className="text-slate-650">
+                                    Người lớn: {groupMembers.filter(m => m.type === 'ADULT').length} | Trẻ em: {groupMembers.filter(m => m.type === 'CHILD').length}
+                                  </div>
+                                  <div className="text-cyan-700">
+                                    📊 Tổng số thành viên khai báo: {groupMembers.length} khách đoàn
+                                  </div>
+                                </div>
+
+                                {/* Validation Error Messages */}
+                                <div className="space-y-1.5">
+                                  {validateGroupManifest().errors.map((err, i) => (
+                                    <div key={i} className="text-xs font-semibold text-red-650 bg-red-50/80 px-3 py-1.5 rounded-lg border border-red-150">
+                                      {err}
+                                    </div>
+                                  ))}
+                                  {validateGroupManifest().errors.length === 0 && (
+                                    <div className="text-xs font-bold text-emerald-600 bg-emerald-50/80 px-3 py-1.5 rounded-lg border border-emerald-100">
+                                      ✓ Danh sách thành viên hợp lệ (Mỗi phòng đảm bảo ít nhất 1 người lớn và không vượt quá sức chứa tối đa 2 người lớn & 3 trẻ em).
+                                    </div>
+                                  )}
+                                </div>
                               </div>
-                              <div className="text-right text-[11px] font-bold text-cyan-700">
-                                📊 Tổng số thành viên khai báo: {groupMembers.length} khách đoàn
-                              </div>
-                            </div>
+                            )}
                           </div>
 
                           {bookingError && <p className="text-sm text-red-500 font-semibold mt-4 p-3 bg-red-50 rounded-lg">⚠️ {bookingError}</p>}
