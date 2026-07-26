@@ -36,3 +36,16 @@
     letter-spacing: -0.374px;
   }
 }
+
+/* Force hide Stripe Link floating launcher button */
+iframe[src*="link.stripe.com"],
+iframe[name^="stripe-link-"],
+.stripe-link-button,
+#__stripe-link-launcher,
+[id^="stripe-link-"],
+[class^="stripe-link-"] {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}

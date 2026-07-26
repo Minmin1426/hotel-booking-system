@@ -19,4 +19,6 @@ public class VoucherResponse {
     private LocalDateTime endDate;
     private Integer maxUsage;
     private Integer currentUsage;
+    private String voucherType;
+    private String comboMealBenefit;
 }
