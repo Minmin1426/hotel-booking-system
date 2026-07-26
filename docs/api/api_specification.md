@@ -237,13 +237,16 @@ Khi hệ thống phát hiện lỗi (lỗi nghiệp vụ, xác thực hoặc l�
   ```json
   {
     "hotelId": 1,
-    "checkInDate": "2026-07-01T14:00:00",
-    "checkOutDate": "2026-07-05T12:00:00",
+    "checkInDate": "2026-07-01",
+    "checkOutDate": "2026-07-05",
     "roomIds": [1, 2],
-    "notes": "Yêu cầu phòng không hút thuốc"
+    "paymentMethod": "ONLINE",
+    "voucherCode": "SUMMER2026",
+    "adults": 2,
+    "children": 0
   }
   ```
-- **Response (210 Created):**
+- **Response (201 Created):**
   ```json
   {
     "success": true,
