@@ -164,7 +164,7 @@ const newReturnBlock = `  return (
       </div>
     </div>
   );
-\`;
+`;
 
 const lastIndex = content.lastIndexOf('  return (');
 if (lastIndex !== -1) {

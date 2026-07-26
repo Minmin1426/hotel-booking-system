@@ -12,7 +12,13 @@ import BankTransferUI from '../components/BankTransferUI';
 import Header from '../components/Header';
 
 // You must replace this with your actual Stripe publishable key that matches your Secret key
-const stripePromise = loadStripe('pk_test_51TngEK89ERUHjbAagoTsrsKR43AUNXXKqW2G9sMY9N27ImvWCCJ3vw4ZAr5Ye7qRDoZbPwIrRrzmNuDo4He7tw8n008pq8g7sS');
+let stripePromiseInstance = null;
+const getStripePromise = () => {
+  if (!stripePromiseInstance) {
+    stripePromiseInstance = loadStripe('pk_test_51TngEK89ERUHjbAagoTsrsKR43AUNXXKqW2G9sMY9N27ImvWCCJ3vw4ZAr5Ye7qRDoZbPwIrRrzmNuDo4He7tw8n008pq8g7sS');
+  }
+  return stripePromiseInstance;
+};
 
 function HotelDetailPage() {
   const { id } = useParams();
@@ -63,6 +69,16 @@ function HotelDetailPage() {
   const [adults, setAdults] = useState(1);
   const [children, setChildren] = useState(0);
   const [cashConfirmChecked, setCashConfirmChecked] = useState(false);
+
+  // Payment methods, deposits & invoices states
+  const [gateway, setGateway] = useState('STRIPE'); // 'STRIPE' or 'VNPAY'
+  const [isDeposit, setIsDeposit] = useState(false);
+  const [depositRatio, setDepositRatio] = useState('0.30');
+  const [requestInvoice, setRequestInvoice] = useState(false);
+  const [companyName, setCompanyName] = useState('');
+  const [companyAddress, setCompanyAddress] = useState('');
+  const [taxId, setTaxId] = useState('');
+  const [companyEmail, setCompanyEmail] = useState('');
 
   // Group booking & Meal ticket tab states
   const [detailTab, setDetailTab] = useState('single'); // 'single' | 'group' | 'meal'
@@ -233,6 +249,14 @@ function HotelDetailPage() {
     setPaymentMethod('ONLINE');
     setBookingSuccess('');
     setClientSecret('');
+    setGateway('STRIPE');
+    setIsDeposit(false);
+    setDepositRatio('0.30');
+    setRequestInvoice(false);
+    setCompanyName('');
+    setCompanyAddress('');
+    setTaxId('');
+    setCompanyEmail('');
 
     // Fetch live user profile details to verify (confirm user info)
     setIsBookingInProgress(true);
@@ -334,7 +358,20 @@ function HotelDetailPage() {
     setIsBookingInProgress(true);
     setBookingError('');
     try {
-      const response = await PaymentService.createPaymentRequest(bookingDetails.bookingId, "ONLINE");
+      const response = await PaymentService.createPaymentRequest(
+        bookingDetails.bookingId,
+        gateway,
+        isDeposit,
+        isDeposit ? Number(depositRatio) : null,
+        requestInvoice ? { companyName, companyAddress, taxId, companyEmail } : null
+      );
+
+      const paymentUrl = response?.data?.paymentUrl || response?.paymentUrl;
+      if (paymentUrl) {
+        window.location.href = paymentUrl;
+        return;
+      }
+
       const secret = response?.data?.clientSecret || response?.clientSecret;
       if (secret) {
         setClientSecret(secret);
@@ -1129,6 +1166,107 @@ function HotelDetailPage() {
                             <p className="text-sm font-medium text-amber-800">Your room is reserved for <strong className="font-mono text-base ml-1">{formatTime(timeLeft)}</strong></p>
                           </div>
 
+                          {/* Payment Gateway Selection */}
+                          <div className="space-y-3">
+                            <label className="text-xs font-bold text-slate-700 uppercase tracking-wide block">Payment Gateway</label>
+                            <div className="grid grid-cols-2 gap-4">
+                              <button
+                                type="button"
+                                onClick={() => setGateway('STRIPE')}
+                                className={`p-4 rounded-xl border-2 text-left transition-all ${gateway === 'STRIPE' ? 'border-[#1A3B85] bg-blue-50/30' : 'border-slate-200 hover:border-slate-300'}`}
+                              >
+                                <span className="font-bold text-sm block">Stripe (International Cards)</span>
+                                <span className="text-xs text-slate-500">Pay with Visa, Mastercard, AMEX</span>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setGateway('VNPAY')}
+                                className={`p-4 rounded-xl border-2 text-left transition-all ${gateway === 'VNPAY' ? 'border-[#1A3B85] bg-blue-50/30' : 'border-slate-200 hover:border-slate-300'}`}
+                              >
+                                <span className="font-bold text-sm block">VNPAY (Simulator)</span>
+                                <span className="text-xs text-slate-500">Pay with ATM, QR Code, VNPAY Wallet</span>
+                              </button>
+                            </div>
+                          </div>
+
+                          {/* Deposit Selection */}
+                          <div className="space-y-3">
+                            <label className="text-xs font-bold text-slate-700 uppercase tracking-wide block">Payment Mode</label>
+                            <div className="grid grid-cols-2 gap-4">
+                              <button
+                                type="button"
+                                onClick={() => setIsDeposit(false)}
+                                className={`p-4 rounded-xl border-2 text-left transition-all ${!isDeposit ? 'border-[#1A3B85] bg-blue-50/30' : 'border-slate-200 hover:border-slate-300'}`}
+                              >
+                                <span className="font-bold text-sm block">Full Payment</span>
+                                <span className="text-xs text-slate-500">Pay 100% total amount now</span>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setIsDeposit(true)}
+                                className={`p-4 rounded-xl border-2 text-left transition-all ${isDeposit ? 'border-[#1A3B85] bg-blue-50/30' : 'border-slate-200 hover:border-slate-300'}`}
+                              >
+                                <span className="font-bold text-sm block">Deposit Reservation</span>
+                                <span className="text-xs text-slate-500">Pay partial amount to hold rooms</span>
+                              </button>
+                            </div>
+
+                            {isDeposit && (
+                              <div className="mt-3 p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-2">
+                                <label className="text-xs font-bold text-slate-600 uppercase tracking-wide block">Choose Deposit Ratio</label>
+                                <div className="flex gap-4">
+                                  <label className="flex items-center gap-2 text-sm font-semibold text-slate-700">
+                                    <input type="radio" name="depositRatio" value="0.30" checked={depositRatio === '0.30'} onChange={(e) => setDepositRatio(e.target.value)} />
+                                    30% Deposit
+                                  </label>
+                                  <label className="flex items-center gap-2 text-sm font-semibold text-slate-700">
+                                    <input type="radio" name="depositRatio" value="0.50" checked={depositRatio === '0.50'} onChange={(e) => setDepositRatio(e.target.value)} />
+                                    50% Deposit
+                                  </label>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+
+                          {/* VAT Invoice Checkbox */}
+                          <div className="space-y-3 border-t border-slate-100 pt-4">
+                            <label className="flex items-center gap-2.5 text-sm font-bold text-slate-700 cursor-pointer">
+                              <input
+                                type="checkbox"
+                                checked={requestInvoice}
+                                onChange={(e) => setRequestInvoice(e.target.checked)}
+                                className="rounded text-cyan-600 focus:ring-cyan-500 w-4 h-4"
+                              />
+                              Need Electronic VAT Invoice (Hóa đơn đỏ)
+                            </label>
+
+                            {requestInvoice && (
+                              <div className="mt-3 p-5 bg-slate-50 rounded-xl border border-slate-200 space-y-4">
+                                <h4 className="font-bold text-xs text-slate-500 uppercase tracking-wider">Company Invoice Information</h4>
+                                <div className="grid grid-cols-2 gap-4">
+                                  <div>
+                                    <label className="text-xs text-slate-600 block mb-1 font-semibold">Company Name</label>
+                                    <input type="text" className="w-full px-3 py-2 rounded-lg bg-white border border-slate-300 text-xs focus:outline-none focus:border-[#1A3B85]" value={companyName} onChange={(e) => setCompanyName(e.target.value)} required placeholder="e.g. Google Vietnam LLC" />
+                                  </div>
+                                  <div>
+                                    <label className="text-xs text-slate-655 block mb-1 font-semibold">Tax Code (MST)</label>
+                                    <input type="text" className="w-full px-3 py-2 rounded-lg bg-white border border-slate-300 text-xs focus:outline-none focus:border-[#1A3B85]" value={taxId} onChange={(e) => setTaxId(e.target.value)} required placeholder="e.g. 0102030405" />
+                                  </div>
+                                </div>
+                                <div className="grid grid-cols-2 gap-4">
+                                  <div>
+                                    <label className="text-xs text-slate-655 block mb-1 font-semibold">Company Address</label>
+                                    <input type="text" className="w-full px-3 py-2 rounded-lg bg-white border border-slate-300 text-xs focus:outline-none focus:border-[#1A3B85]" value={companyAddress} onChange={(e) => setCompanyAddress(e.target.value)} required placeholder="e.g. 123 Le Loi Street, D1, HCMC" />
+                                  </div>
+                                  <div>
+                                    <label className="text-xs text-slate-655 block mb-1 font-semibold">Billing Email</label>
+                                    <input type="email" className="w-full px-3 py-2 rounded-lg bg-white border border-slate-300 text-xs focus:outline-none focus:border-[#1A3B85]" value={companyEmail} onChange={(e) => setCompanyEmail(e.target.value)} required placeholder="e.g. finance@company.com" />
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+
                           {/* Payment Action */}
                           <div className="space-y-6 mt-4">
                             {!clientSecret ? (
@@ -1178,7 +1316,7 @@ function HotelDetailPage() {
                                     </div>
                                   </div>
                                 ) : (
-                                  <Elements stripe={stripePromise} options={{ clientSecret, locale: 'en' }}>
+                                  <Elements stripe={getStripePromise()} options={{ clientSecret, locale: 'en' }}>
                                     <CheckoutForm 
                                       onCancel={() => {
                                         setClientSecret('');

@@ -110,6 +110,8 @@ public class VoucherServiceImpl implements VoucherService {
                 .endDate(voucher.getEndDate())
                 .maxUsage(voucher.getMaxUsage())
                 .currentUsage(voucher.getCurrentUsage())
+                .voucherType(voucher.getVoucherType())
+                .comboMealBenefit(voucher.getComboMealBenefit())
                 .build();
     }
 }
