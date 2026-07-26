@@ -1,43 +1,61 @@
-# Hotel Booking System
+# 🏨 Hotel Booking System (Hệ Thống Đặt Phòng Khách Sạn Mở Rộng)
 
-Chào mừng bạn đến với dự án **Hotel Booking System** (Hệ thống Đặt phòng Khách sạn). Dự án được xây dựng trên nền tảng **Java 17**, **Spring Boot**, và **SQL Server**.
+[![Spring Boot](https://img.shields.io/badge/Spring%20Boot-4.0.0--M1-brightgreen.svg)](https://spring.io/projects/spring-boot)
+[![Java](https://img.shields.io/badge/Java-17-orange.svg)](https://www.oracle.com/java/)
+[![React](https://img.shields.io/badge/React-18-blue.svg)](https://reactjs.org/)
+[![Vite](https://img.shields.io/badge/Vite-8.0-purple.svg)](https://vitejs.dev/)
+[![Docker](https://img.shields.io/badge/Docker-Full--Stack-blue.svg)](https://www.docker.com/)
+[![Tests](https://img.shields.io/badge/Tests-207%20Passed-emerald.svg)]()
 
-Dự án áp dụng quy trình phát triển dựa trên đặc tả (**Specification-Driven Development - SDD**), trong đó tài liệu đặc tả là nguồn sự thật duy nhất (Single Source of Truth) định hướng toàn bộ mã nguồn và kiểm thử.
+Hệ thống Đặt phòng Khách sạn (Standard & Group Booking Engine) quy mô **50 Màn Hình Enterprise**, hỗ trợ Đặt phòng Lẻ, **Đặt phòng Đoàn (>5 phòng giảm 25%)**, **Đặt cọc 30% Deposit**, **Ví Điện Tử (E-Wallet)**, **Kho Vé Ăn & Mã QR Suất Ăn**, và **Hóa Đơn Thuế Doanh Nghiệp Red VAT (CTP)**.
 
-## Tài liệu Dự án
+---
 
-Tất cả các tài liệu đặc tả chi tiết của hệ thống nằm trong thư mục `docs/`:
+## 📌 Tài liệu Dự án & Project Tracking
 
-1. **[Đặc tả Toàn diện Hệ thống (System Specification)](file:///c:/Users/Minmin/Documents/GitHub/hotel-booking-system/docs/specs/system_specification.md)**: Chứa toàn bộ đặc tả cơ sở dữ liệu, phân quyền RBAC, chi tiết API Endpoints, luồng xử lý và quy tắc nghiệp vụ (Business Rules) cho 35 Use Cases thuộc 6 phân hệ chức năng.
-2. **[Thiết kế & Đặc tả Cơ sở dữ liệu (Database Design Document)](file:///c:/Users/Minmin/Documents/GitHub/hotel-booking-system/docs/database/database_design.md)**: Thiết kế chi tiết cấu trúc 16 bảng dữ liệu, chỉ mục (Indexes) tối ưu hóa truy vấn, sơ đồ ERD, và lịch sử Flyway migrations (V1 - V12).
-3. **[Tài liệu Thiết kế Kiến trúc (Architecture Design)](file:///c:/Users/Minmin/Documents/GitHub/hotel-booking-system/docs/architecture/architecture_design.md)**: Đặc tả mô hình N-Tier, cấu trúc package mã nguồn, vòng đời xử lý request/response, thiết kế bảo mật JWT, và hệ thống tác vụ ngầm scheduler.
-4. **[Quy tắc Nghiệp vụ Hệ thống (Business Rules)](file:///c:/Users/Minmin/Documents/GitHub/hotel-booking-system/docs/business-rules/business_rules.md)**: Ràng buộc logic chi tiết ở Service và Database đối với tài khoản, lưu trú, tạm giữ phòng (room locks), vouchers, hủy phòng & hoàn tiền, xóa mềm và kiểm duyệt.
-5. **[Đặc tả REST API (REST API Specification)](file:///c:/Users/Minmin/Documents/GitHub/hotel-booking-system/docs/api/api_specification.md)**: Chi tiết toàn bộ các API Endpoints, cấu trúc JSON Request/Response DTO, cơ chế phân quyền bảo mật API, và các lỗi phản hồi tiêu chuẩn.
-6. **[Danh sách Features Hệ thống (Features List)](file:///c:/Users/Minmin/Documents/GitHub/hotel-booking-system/FEATURES.md)**: Danh sách tổng hợp các tính năng nghiệp vụ của hệ thống đặt phòng khách sạn theo cấu trúc package-by-feature.
-7. **[Đặc tả Use Cases (Use Case Specification)](file:///c:/Users/Minmin/Documents/GitHub/hotel-booking-system/USECASE.md)**: Phân rã nghiệp vụ chi tiết theo vai trò người dùng (Guest, Customer, Admin, Director, System).
-8. **[Quy tắc phát triển cho Agent (AGENTS.md)](file:///c:/Users/Minmin/Documents/GitHub/hotel-booking-system/AGENTS.md)**: Quy tắc về kiến trúc, bảo mật, xử lý lỗi và quản lý thông tin mật dành cho các AI Code Agent.
+Tất cả các tài liệu đặc tả & theo dõi dự án đầy đủ nhất nằm trong kho tài liệu:
 
+1. 🚀 **[Project Tracking Master (PROJECT_TRACKING.md)](file:///c:/Users/Minmin/Documents/GitHub/hotel-booking-system/PROJECT_TRACKING.md)**: Ma trận chi tiết 50 Màn hình (SCR-101 đến SCR-510), Lịch sử 30 Migration Flyway, Kết quả Kiểm thử Backend (207 tests), Trạng thái Build Frontend & Cấu hình Docker Containerization.
+2. 📋 **[Danh sách Features Hệ thống (FEATURES.md)](file:///c:/Users/Minmin/Documents/GitHub/hotel-booking-system/FEATURES.md)**: Tổng hợp 35 Business Use Cases phân theo mô hình Package-by-Feature (`auth`, `user`, `hotel`, `room`, `booking`, `payment`, `voucher`, `report`, `setting`, `customer-portal`).
+3. 📝 **[Đặc tả Phân hệ Đặt phòng (specs/003-booking-management/spec.md)](file:///c:/Users/Minmin/Documents/GitHub/hotel-booking-system/specs/003-booking-management/spec.md)**: Đặc tả chi tiết thuật toán đặt đoàn (-25%), đặt cọc 30%, giải phóng room lock tự động (10-30 phút) và Engine hoàn tiền hủy phòng.
+4. 🗄️ **[Thiết kế Cơ sở Dữ liệu (Database Design Document)](file:///c:/Users/Minmin/Documents/GitHub/hotel-booking-system/docs/database/database_design.md)**: Cấu trúc các bảng dữ liệu, Flyway Migrations (V1 - V30), Hỗ trợ song song PostgreSQL Neon Cloud DB & Local SQL Server.
+5. 🛡️ **[Quy tắc Bảo mật Agent (AGENTS.md)](file:///c:/Users/Minmin/Documents/GitHub/hotel-booking-system/AGENTS.md)**: Quy chuẩn mã nguồn, bảo mật JWT, Pre-commit Security Hook & Phân quyền RBAC.
 
+---
 
+## 🛠️ Công Nghệ Sử Dụng
 
-## Hướng dẫn cài đặt & Chạy ứng dụng
+- **Backend**: Java 17, Spring Boot 4.0.0-M1, Spring Data JPA, Spring Security (JWT), Spring Scheduling.
+- **Database**: PostgreSQL (Neon Cloud Database) / SQL Server, Flyway Migrations (V1-V30).
+- **Frontend**: React 18, Vite 8, TailwindCSS, HTML5 Canvas QR Generator.
+- **DevOps & Container**: Docker, Docker Compose, Multi-stage Dockerfile, Nginx Reverse Proxy.
 
-### Yêu cầu hệ thống
-- JDK 17
-- Maven 3.8+
-- SQL Server (Mặc định cấu hình kết nối local tại port `1433`)
+---
 
-### Chạy các lệnh kiểm thử và kiểm tra
+## 🚀 Hướng Dẫn Khởi Chạy Ứng Dụng
+
+### 1. Khởi chạy nhanh bằng Docker (Recommeded)
 ```bash
-# Chạy toàn bộ các Integration & Unit tests
-mvn test
+# Khởi chạy đồng thời cả Backend (Port 8080) và Frontend Nginx (Port 80 / 5173)
+docker-compose up --build -d
+```
 
-# Kiểm tra các lỗ hổng bảo mật của dependencies (OWASP check)
-mvn dependency:check
+### 2. Khởi chạy thủ công (Development Mode)
+```bash
+# 1. Khởi chạy Backend Spring Boot (với Java 17/18 wrapper)
+cmd /c "set JAVA_HOME=C:\Program Files\Java\jdk-18.0.2.1&& set PATH=C:\Program Files\Java\jdk-18.0.2.1\bin;%PATH%&& mvn spring-boot:run -Dspring-boot.run.profiles=dev"
 
-# Khởi chạy ứng dụng Spring Boot local
-mvn spring-boot:run
+# 2. Khởi chạy Frontend Vite Dev Server
+cd frontend
+npm run dev
+# Mở trình duyệt truy cập: http://localhost:5173
+```
+
+### 3. Chạy Kiểm Thử (Unit & Integration Tests)
+```bash
+# Chạy toàn bộ 207 unit & integration tests
+cmd /c "set JAVA_HOME=C:\Program Files\Java\jdk-18.0.2.1&& set PATH=C:\Program Files\Java\jdk-18.0.2.1\bin;%PATH%&& mvn test"
 ```
 
 ---
-*Mọi thay đổi đối với tài liệu đặc tả hoặc mã nguồn cần tuân thủ nghiêm ngặt quy trình đề xuất thông qua Pull Request và được đánh giá bảo mật (Pre-commit Security Hook).*
+*Dự án tuân thủ nghiêm ngặt quy trình phát triển dựa trên đặc tả Specification-Driven Development (SDD).*
