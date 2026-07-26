@@ -115,3 +115,29 @@ Tài liệu này tập hợp tất cả các quy tắc nghiệp vụ (Business R
    - **Chuyển sang `AVAILABLE` (Đã dọn dẹp sạch sẽ/Sẵn sàng):** Thực hiện sau khi nhân viên buồng phòng hoàn thành vệ sinh phòng và xác nhận phòng sẵn sàng đón lượt khách tiếp theo.
 3. **Ràng Buộc Đặt Phòng Trước Khi Khóa Phòng:**
    - Nghiêm cấm chuyển trạng thái phòng sang `UNAVAILABLE` hoặc `MAINTENANCE` nếu phòng đó đang nằm trong lịch check-in của bất kỳ đơn đặt phòng nào có trạng thái `CONFIRMED` hoặc `PENDING` đang hoạt động trong tương lai, trừ các trường hợp khẩn cấp có sự duyệt duyệt thủ công của quản trị viên cấp cao.
+
+---
+
+## BR-09: Quy tắc Đặt phòng Đoàn & Danh sách Thành viên (Group Booking & Manifest Rules)
+
+1. **Số lượng phòng tối thiểu (Minimum Rooms):**
+   - Đơn đặt phòng theo đoàn yêu cầu số lượng phòng tối thiểu là **5 phòng**, tối đa là **50 phòng** trong một lượt đặt.
+2. **Chiết khấu tự động (Automatic Group Discount):**
+   - Áp dụng chiết khấu tự động **25%** trên đơn giá phòng khi đặt phòng theo đoàn.
+3. **Tính toán số tiền đặt cọc 30% (30% Deposit Calculation):**
+   - Tiền dự toán ngân sách và tiền cọc giữ chỗ 30% được tính bằng cách nhân tổng số phòng của đoàn với giá phòng đã chiết khấu, sau đó nhân với số lượng đêm lưu trú thực tế (`checkOut - checkIn`).
+4. **Quy tắc Người lớn tối thiểu (Minimum Adult Policy):**
+   - Mỗi phòng được đặt phải được gán ít nhất **1 người lớn (Adult)** trong danh sách thành viên đoàn (Guest Manifest).
+   - Tổng số người lớn được khai báo trong danh sách thành viên phải lớn hơn hoặc bằng số lượng phòng đoàn (`totalAdults >= groupRoomCount`).
+5. **Sức chứa tối đa của phòng đoàn (Maximum Room Capacity):**
+   - Giới hạn sức chứa cho mỗi phòng đoàn cố định tối đa là **2 người lớn (Adults)** và **3 trẻ em (Children)**.
+   - Nếu số lượng khách vượt quá giới hạn này, hệ thống yêu cầu gán sang các phòng khác.
+6. **Xác thực Thông tin Manifest (Manifest Validation & Submit Blocking):**
+   - Hệ thống tự động xác thực danh sách thành viên khi mở modal đặt phòng:
+     - Kiểm tra nếu có phòng nào không có người lớn.
+     - Kiểm tra nếu có phòng nào vượt quá sức chứa tối đa.
+     - Kiểm tra nếu tổng số người lớn ít hơn số phòng đoàn.
+   - Trẻ em (Child) không bắt buộc điền thông tin số CMND / Hộ chiếu.
+   - Nút tiến hành thanh toán (`Continue to Payment`) sẽ bị vô hiệu hóa (chặn gửi đơn hàng) cho đến khi toàn bộ danh sách thành viên hợp lệ và không còn cảnh báo lỗi.
+7. **Đồng bộ hóa Số lượng Khách:**
+   - Số lượng người lớn và trẻ em truyền lên API khi tạo đơn đặt phòng sẽ được tự động đếm trực tiếp từ danh sách thành viên được khai báo trong manifest thực tế.

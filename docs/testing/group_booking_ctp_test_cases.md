@@ -62,12 +62,38 @@ Tài liệu này chi tiết hóa các kịch bản kiểm thử (Test Cases) và
 ### [ACC-GROUP-01]: Trưởng đoàn Đặt cọc 30% & Xuất Hóa đơn VAT Doanh nghiệp
 *   **Actor:** Anh Hoàng (Trưởng đoàn Du lịch Doanh nghiệp).
 *   **Quy trình UAT:**
-    1. Truy cập màn hình `SCR-304` (`/hotels/15?tab=group`), chọn 10 phòng Standard cho 3 ngày.
-    2. Giao diện tự động giảm 25% tổng tiền ($3,000 ➔ $2,250).
-    3. Anh Hoàng tick chọn "Thanh toán Đặt cọc 30%" ($675 USD).
+    1. Truy cập màn hình đặt phòng đoàn (`detailTab === 'group'`), chọn ngày Check-in/Check-out và chọn 10 phòng Standard.
+    2. Giao diện tự động giảm 25% tổng tiền căn cứ theo số phòng và số đêm lưu trú.
+    3. Anh Hoàng tick chọn "Thanh toán Đặt cọc 30%".
     4. Nhập Mã số thuế CTP: `0109887766-CTP`, Tên công ty.
     5. Nhấn **Xác nhận Đặt phòng Đoàn**.
 *   **Tiêu chuẩn Chấp nhận:**
-    *   Mã đơn `BK-GROUP-991` tạo thành công ở trạng thái `DEPOSIT_30_PAID`.
-    *   10 phòng lập tức chuyển sang trạng thái tạm giữ (Room Lock) trên sơ đồ phòng Lễ tân (`SCR-204`).
-    *   Hóa đơn CTP hiển thị trên màn hình Admin duyệt Hóa đơn VAT (`SCR-408`).
+    *   Mã đơn tạo thành công ở trạng thái `DEPOSIT_30_PAID`.
+    *   10 phòng lập tức chuyển sang trạng thái tạm giữ (Room Lock) trong 10 phút.
+
+### [ACC-GROUP-02]: Xác thực và Cảnh báo lỗi Danh sách thành viên đoàn (Guest Manifest Validation)
+*   **Actor:** Anh Hoàng (Trưởng đoàn).
+*   **Quy trình UAT:**
+    1. Tại Modal điền thông tin khách đoàn, Anh Hoàng tiến hành sửa đổi danh sách thành viên:
+       - Trường hợp A: Xóa toàn bộ người lớn khỏi Phòng G101.
+       - Trường hợp B: Thêm 4 trẻ em vào Phòng G102.
+       - Trường hợp C: Giảm số người lớn xuống ít hơn số phòng đoàn cần đặt.
+    2. Hệ thống hiển thị các thông báo lỗi tương ứng thời gian thực ngay dưới bảng:
+       - Lỗi A: `⚠️ Phòng G101 chưa có người lớn nào (Mỗi phòng phải có ít nhất 1 người lớn).`
+       - Lỗi B: `⚠️ Phòng G102 có 4 trẻ em (Tối đa 3 trẻ em mỗi phòng).`
+       - Lỗi C: `⚠️ Tổng số người lớn (X) ít hơn số phòng (Y). Mỗi phòng cần có ít nhất 1 người lớn.`
+    3. Anh Hoàng bấm nút **Continue to Payment**.
+*   **Tiêu chuẩn Chấp nhận:**
+    *   Nút thanh toán bị chặn và thông báo lỗi hiển thị rõ ràng yêu cầu sửa đổi manifest.
+    *   Hệ thống không gửi yêu cầu tạo booking lên API cho đến khi toàn bộ các lỗi trên được giải quyết triệt để.
+
+### [ACC-GROUP-03]: Nhập danh sách từ Excel và tự động phân bổ hợp lệ
+*   **Actor:** Anh Hoàng (Trưởng đoàn).
+*   **Quy trình UAT:**
+    1. Tại Modal điền thông tin khách đoàn, Anh Hoàng bấm nút **Import Excel (.xlsx)**.
+    2. Giao diện tự động sinh ngẫu nhiên danh sách khách hợp lệ gồm 2 người lớn và 1 trẻ em cho mỗi phòng.
+    3. Trạng thái xác thực báo xanh: `✓ Danh sách thành viên hợp lệ (Mỗi phòng đảm bảo ít nhất 1 người lớn và không vượt quá sức chứa tối đa 2 người lớn & 3 trẻ em).`
+    4. Bấm **Continue to Payment**.
+*   **Tiêu chuẩn Chấp nhận:**
+    *   Hệ thống cho phép tiếp tục tiến trình thanh toán trực tuyến hoặc đặt cọc mà không bị chặn.
+    *   Thông tin tổng số lượng người lớn và trẻ em truyền lên backend khớp chính xác với số liệu trong danh sách vừa import.

@@ -331,17 +331,28 @@ Dưới đây là mô tả chi tiết của 6 phân hệ chức năng chứa to�
 
 #### UC-11: Đặt phòng khách sạn (Create Booking)
 - **Actor:** Customer
-- **Happy Path:** Khách gửi yêu cầu đặt phòng (danh sách `roomId` và số lượng) $\rightarrow$ Hệ thống kiểm tra tính khả dụng của phòng trống (không trùng lịch check-in/check-out với bất kỳ booking `CONFIRMED` hoặc lock room còn hiệu lực nào) $\rightarrow$ Tạo booking trạng thái `PENDING`, payment_status `PENDING` $\rightarrow$ Khởi tạo việc tạm giữ phòng (UC-33) tạo bản ghi vào `room_locks` với thời gian hết hạn mặc định là 10 phút.
+- **Happy Path:** 
+  1. Khách gửi yêu cầu đặt phòng (danh sách `roomId` hoặc số lượng phòng đoàn, ngày check-in/check-out) $\rightarrow$ Hệ thống kiểm tra tính khả dụng của phòng trống (không trùng lịch check-in/check-out với bất kỳ booking `CONFIRMED` hoặc lock room còn hiệu lực nào).
+  2. Hệ thống hỗ trợ 2 hình thức đặt phòng chính:
+     - **Đặt phòng lẻ:** Cho phép khách hàng chọn và đặt cụ thể từng phòng đơn lẻ.
+     - **Đặt phòng đoàn (>= 5 phòng, tối đa 50 phòng):** Hệ thống tự động áp dụng chiết khấu 25% trên đơn giá, hỗ trợ đặt cọc 30% giữ chỗ (Deposit) và đăng ký thông tin Hóa đơn Doanh nghiệp CTP xuất hóa đơn VAT.
+  3. Đối với đặt phòng đoàn, hệ thống bắt buộc khách hàng khai báo **Danh sách thành viên đoàn (Guest Manifest)** trong Modal điền thông tin khách:
+     - Phân loại thành viên gồm Người lớn (Adult) và Trẻ em (Child). Trẻ em không bắt buộc điền số CMND/Hộ chiếu.
+     - Cho phép gán phòng động (dropdown từ Phòng G101 đến Phòng G10N) và xóa/thêm thành viên.
+     - **Ràng buộc xác thực manifest:** Mỗi phòng gán phải có ít nhất 1 người lớn chịu trách nhiệm; số lượng khách tối đa trong mỗi phòng là 2 người lớn và 3 trẻ em; tổng số lượng người lớn trong toàn bộ danh sách phải $\ge$ số lượng phòng của đoàn. Nếu vi phạm, hệ thống hiển thị cảnh báo lỗi real-time và chặn tiến trình thanh toán (`Continue to Payment`).
+  4. Tạo booking trạng thái `PENDING`, payment_status `PENDING` $\rightarrow$ Khởi tạo việc tạm giữ phòng (UC-33) tạo bản ghi vào `room_locks` với thời gian hết hạn mặc định là 10 phút.
 - **REST API Endpoints:**
   - `POST /api/v1/bookings`
   - **Request Body (BookingRequest):**
     ```json
     {
       "hotelId": 1,
-      "checkInDate": "2026-07-01T14:00:00",
-      "checkOutDate": "2026-07-05T12:00:00",
+      "checkInDate": "2026-07-01",
+      "checkOutDate": "2026-07-05",
       "roomIds": [1, 2],
-      "notes": "Non-smoking room"
+      "adults": 2,
+      "children": 0,
+      "voucherCode": "PROMO10"
     }
     ```
   - **Response Body (BookingResponse):**
