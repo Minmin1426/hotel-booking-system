@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { HotelService } from '../services/HotelService';
 import Header from '../components/Header';
 
@@ -12,6 +13,7 @@ const HERO_BACKGROUNDS = [
 ];
 
 function HotelsPage() {
+  const { t, i18n } = useTranslation();
   const [hotels, setHotels] = useState([]);
   const [searchedHotels, setSearchedHotels] = useState([]);
   const [searchName, setSearchName] = useState('');
@@ -198,13 +200,13 @@ function HotelsPage() {
         {/* Hero Content container */}
         <div className="relative z-10 max-w-5xl w-full text-center space-y-6 bg-white/85 backdrop-blur-xl p-6 md:p-10 rounded-3xl border border-white/80 shadow-2xl shadow-slate-900/15">
           <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-gradient-to-r from-cyan-500/15 to-indigo-500/15 text-cyan-700 border border-cyan-500/20 text-xs font-bold tracking-wide uppercase">
-            <span>✨</span> ĐẶT PHÒNG KHÁCH SẠN LẺ & THEO ĐOÀN CAO CẤP
+            <span>✨</span> {t('hotels.heroTag')}
           </div>
           <h1 className="text-3xl md:text-5xl font-extrabold tracking-tight leading-tight text-slate-900">
-            Khám Phá Khách Sạn & <span className="inline-block whitespace-nowrap bg-gradient-to-r from-cyan-600 to-indigo-600 bg-clip-text text-transparent">Gói Đặt Đoàn Ưu Đãi</span>
+            {t('hotels.heroTitle').split('&')[0]} & <span className="inline-block whitespace-nowrap bg-gradient-to-r from-cyan-600 to-indigo-600 bg-clip-text text-transparent">{t('hotels.heroTitle').split('&')[1]}</span>
           </h1>
           <p className="text-slate-600 max-w-2xl mx-auto text-xs md:text-sm leading-relaxed font-semibold">
-            Tìm kiếm khách sạn lẻ, giải pháp Đặt phòng theo Đoàn (&gt;5 phòng) tích hợp dịch vụ Suất ăn / Buffet sáng & nhà hàng toàn quốc.
+            {t('hotels.heroSubtitle')}
           </p>
 
           {/* Search Mode Tabs Switcher */}
@@ -218,7 +220,7 @@ function HotelsPage() {
                   : 'text-slate-600 hover:text-slate-900 hover:bg-white/40'
               }`}
             >
-              <span>🏨</span> Đặt Lẻ (Standard)
+              <span>🏨</span> {t('hotels.tabIndividual')}
             </button>
             <button
               type="button"
@@ -229,8 +231,8 @@ function HotelsPage() {
                   : 'text-slate-600 hover:text-slate-900 hover:bg-white/40'
               }`}
             >
-              <span>👥</span> Đặt Theo Đoàn (&gt;5 Phòng)
-              <span className="ml-1 bg-amber-400 text-slate-900 text-[10px] px-1.5 py-0.5 rounded-full font-black uppercase tracking-wider animate-pulse">Giảm 25%</span>
+              <span>👥</span> {t('hotels.tabGroup')}
+              <span className="ml-1 bg-amber-400 text-slate-900 text-[10px] px-1.5 py-0.5 rounded-full font-black uppercase tracking-wider animate-pulse">{t('hotels.tabGroupOff')}</span>
             </button>
             <button
               type="button"
@@ -241,7 +243,7 @@ function HotelsPage() {
                   : 'text-slate-600 hover:text-slate-900 hover:bg-white/40'
               }`}
             >
-              <span>🍽️</span> Vé Ăn & Buffet
+              <span>🍽️</span> {t('hotels.tabMeal')}
             </button>
           </div>
 
@@ -253,7 +255,7 @@ function HotelsPage() {
                 <span className="text-cyan-600 text-base mr-2">🔍</span>
                 <input 
                   type="text" 
-                  placeholder="Tên khách sạn (VD: Marriott...)" 
+                  placeholder={t('hotels.placeholderName')} 
                   value={searchName}
                   onChange={(e) => setSearchName(e.target.value)}
                   className="w-full bg-transparent text-slate-800 placeholder-slate-400 text-xs font-semibold focus:outline-none"
@@ -264,7 +266,7 @@ function HotelsPage() {
                 <span className="text-cyan-600 text-base mr-2">📍</span>
                 <input 
                   type="text" 
-                  placeholder="Địa điểm (Hà Nội, Đà Nẵng...)" 
+                  placeholder={t('hotels.placeholderLocation')} 
                   value={searchLocation}
                   onChange={(e) => setSearchLocation(e.target.value)}
                   className="w-full bg-transparent text-slate-800 placeholder-slate-400 text-xs font-semibold focus:outline-none"
@@ -275,7 +277,7 @@ function HotelsPage() {
               {searchType === 'group' ? (
                 <>
                   <div className="md:col-span-2 flex items-center px-3 py-2 bg-cyan-50/70 border border-cyan-200 rounded-xl">
-                    <span className="text-cyan-700 text-xs font-bold mr-1.5 whitespace-nowrap">🛏️ Số phòng:</span>
+                    <span className="text-cyan-700 text-xs font-bold mr-1.5 whitespace-nowrap">🛏️ {t('hotels.roomsLabel')}</span>
                     <input 
                       type="number" 
                       min="5"
@@ -290,23 +292,34 @@ function HotelsPage() {
                       type="submit" 
                       className="w-full h-full py-3 px-4 rounded-xl bg-gradient-to-r from-cyan-600 via-indigo-600 to-cyan-600 text-white font-black text-xs tracking-wide shadow-md hover:brightness-110 active:scale-[0.98] transition-all flex items-center justify-center gap-1.5"
                     >
-                      <span>👥</span> TÌM KHÁCH SẠN ĐẶT ĐOÀN
+                      <span>👥</span> {t('hotels.btnSearchGroup')}
                     </button>
                   </div>
                 </>
               ) : searchType === 'meal' ? (
                 <>
                   <div className="md:col-span-2 flex items-center px-3 py-2 bg-amber-50/70 border border-amber-200 rounded-xl">
-                    <span className="text-amber-800 text-xs font-bold mr-1 whitespace-nowrap">🍽️ Suất:</span>
+                    <span className="text-amber-800 text-xs font-bold mr-1 whitespace-nowrap">🍽️ {t('hotels.mealLabel')}</span>
+                    <input 
+                      type="number" 
+                      min="1"
+                      max="200"
+                      value={groupGuests}
+                      onChange={(e) => setGroupGuests(parseInt(e.target.value) || 10)}
+                      className="w-full bg-transparent text-slate-900 font-extrabold text-xs focus:outline-none text-center"
+                    />
+                  </div>
+                  <div className="md:col-span-3 flex items-center px-3 py-2 bg-amber-50/70 border border-amber-200 rounded-xl">
+                    <span className="text-amber-850 text-[10px] font-bold mr-1.5 whitespace-nowrap">{t('hotels.mealTypeLabel')}</span>
                     <select 
                       value={mealType} 
                       onChange={(e) => setMealType(e.target.value)}
                       className="w-full bg-transparent text-slate-800 font-bold text-xs focus:outline-none cursor-pointer"
                     >
-                      <option value="ALL">Tất cả gói</option>
-                      <option value="BREAKFAST">Buffet Sáng</option>
-                      <option value="DINNER">Buffet Tối</option>
-                      <option value="SET_MENU">Set Menu Tiệc</option>
+                      <option value="ALL">{t('hotels.optionAllMeals')}</option>
+                      <option value="BREAKFAST">{t('hotels.optionBreakfast')}</option>
+                      <option value="DINNER">{t('hotels.optionDinner')}</option>
+                      <option value="SET_MENU">{t('hotels.optionSetMenu')}</option>
                     </select>
                   </div>
                   <div className="md:col-span-3 flex items-center justify-center">
@@ -314,7 +327,7 @@ function HotelsPage() {
                       type="submit" 
                       className="w-full h-full py-3 px-4 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-black text-xs tracking-wide shadow-md active:scale-[0.98] transition-all flex items-center justify-center gap-1.5"
                     >
-                      <span>🍽️</span> TÌM VÉ ĂN & BUFFET
+                      <span>🍽️</span> {t('hotels.btnSearchMeal')}
                     </button>
                   </div>
                 </>
@@ -324,7 +337,7 @@ function HotelsPage() {
                     type="submit" 
                     className="w-full py-3 px-6 rounded-xl bg-gradient-to-r from-cyan-500 to-indigo-650 text-white font-extrabold text-xs tracking-wide shadow-md hover:brightness-105 active:scale-[0.98] transition-all flex items-center justify-center gap-1.5"
                   >
-                    <span>🔍</span> TÌM KHÁCH SẠN
+                    <span>🔍</span> {t('hotels.btnSearchHotel')}
                   </button>
                 </div>
               )}
@@ -341,12 +354,12 @@ function HotelsPage() {
                       onChange={(e) => setIncludeMeals(e.target.checked)}
                       className="w-4 h-4 rounded text-cyan-600 focus:ring-0 cursor-pointer"
                     />
-                    <span>Tích hợp gói Buffet Sáng / Tối cho cả đoàn</span>
+                    <span>{t('hotels.groupMealsCheckbox')}</span>
                   </label>
                   <span className="text-slate-300">|</span>
-                  <span className="text-cyan-700 font-bold">✨ Tự động xếp phòng gần nhau & Hỗ trợ xuất Hóa đơn Red VAT Doanh nghiệp</span>
+                  <span className="text-cyan-700 font-bold">✨ {t('hotels.groupPerksText')}</span>
                 </div>
-                <span className="text-indigo-600 font-bold bg-indigo-50 px-2.5 py-1 rounded-md">Phụ trách đoàn: 5 - 100 Khách</span>
+                <span className="text-indigo-600 font-bold bg-indigo-50 px-2.5 py-1 rounded-md">{t('hotels.groupCapacityText')}</span>
               </div>
             )}
           </form>
@@ -376,16 +389,16 @@ function HotelsPage() {
         {/* Filters Sidebar */}
         <aside className="space-y-6 lg:col-span-1 p-6 rounded-2xl bg-white border border-slate-200 shadow-sm self-start">
           <h2 className="text-lg font-bold tracking-tight border-b border-slate-100 pb-3 flex items-center gap-2 text-slate-950">
-            <span>⚙️</span> Filter & Sort
+            <span>⚙️</span> {t('hotels.filterTitle')}
           </h2>
 
           <div className="space-y-4">
             {/* Filter by name */}
             <div className="space-y-2">
-              <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Hotel Name</label>
+              <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">{t('hotels.filterNameLabel')}</label>
               <input 
                 type="text" 
-                placeholder="Search name..."
+                placeholder={t('hotels.filterNamePlaceholder')}
                 value={filters.name}
                 onChange={(e) => setFilters(prev => ({ ...prev, name: e.target.value }))}
                 onKeyDown={handleSidebarKeyDown}
@@ -395,10 +408,10 @@ function HotelsPage() {
 
             {/* Filter by location directly */}
             <div className="space-y-2">
-              <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Specific Location</label>
+              <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">{t('hotels.filterLocLabel')}</label>
               <input 
                 type="text" 
-                placeholder="Filter by city/address..."
+                placeholder={t('hotels.filterLocPlaceholder')}
                 value={filters.location}
                 onChange={(e) => setFilters(prev => ({ ...prev, location: e.target.value }))}
                 onKeyDown={handleSidebarKeyDown}
@@ -408,16 +421,16 @@ function HotelsPage() {
 
             {/* Sort options */}
             <div className="space-y-2">
-              <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Sort Results</label>
+              <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">{t('hotels.filterSortLabel')}</label>
               <select 
                 onChange={handleSortChange}
                 className="w-full px-4 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-700 text-sm focus:outline-none focus:border-cyan-500 focus:bg-white transition-all cursor-pointer"
               >
-                <option value="rating-desc">Rating: High to Low</option>
-                <option value="rating-asc">Rating: Low to High</option>
-                <option value="price-asc">Price: Low to High</option>
-                <option value="price-desc">Price: High to Low</option>
-                <option value="location-asc">Location: A to Z</option>
+                <option value="rating-desc">{t('hotels.sortRatingDesc')}</option>
+                <option value="rating-asc">{t('hotels.sortRatingAsc')}</option>
+                <option value="price-asc">{t('hotels.sortPriceAsc')}</option>
+                <option value="price-desc">{t('hotels.sortPriceDesc')}</option>
+                <option value="location-asc">{t('hotels.sortLocationAsc')}</option>
               </select>
             </div>
 
@@ -430,7 +443,7 @@ function HotelsPage() {
                 onChange={(e) => setFilters(prev => ({ ...prev, isActive: e.target.checked ? true : undefined }))}
                 className="w-4 h-4 rounded bg-slate-50 border-slate-200 text-cyan-600 focus:ring-0 cursor-pointer"
               />
-              <label htmlFor="activeOnly" className="text-sm text-slate-600 font-semibold cursor-pointer select-none">Active Hotels Only</label>
+              <label htmlFor="activeOnly" className="text-sm text-slate-600 font-semibold cursor-pointer select-none">{t('hotels.filterActiveOnly')}</label>
             </div>
           </div>
         </aside>
@@ -439,7 +452,7 @@ function HotelsPage() {
         <section className="lg:col-span-3 space-y-6">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">
-              {loading ? "Searching..." : `Found ${hotels.length} luxury hotel${hotels.length !== 1 ? 's' : ''}`}
+              {loading ? t('hotels.searching') : (i18n.language && i18n.language.startsWith('vi') ? `Tìm thấy ${hotels.length} khách sạn` : `Found ${hotels.length} luxury hotel${hotels.length !== 1 ? 's' : ''}`)}
             </span>
           </div>
 
@@ -454,21 +467,21 @@ function HotelsPage() {
                 onClick={() => performSearch(searchName, searchLocation)}
                 className="px-4 py-2 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-xs font-bold text-red-650 transition-colors"
               >
-                Try Again
+                {t('hotels.tryAgain')}
               </button>
             </div>
           ) : hotels.length === 0 ? (
             <div className="h-96 flex flex-col items-center justify-center rounded-2xl border border-dashed border-slate-300 p-8 text-center space-y-4 bg-white">
               <span className="text-4xl">🏨</span>
               <div className="space-y-1">
-                <p className="text-slate-800 font-bold">No Hotels Found</p>
-                <p className="text-slate-500 text-xs max-w-sm">No active hotels matched your searching location or filters. Try adjusting your keywords.</p>
+                <p className="text-slate-800 font-bold">{t('hotels.noHotelsFound')}</p>
+                <p className="text-slate-500 text-xs max-w-sm">{t('hotels.noHotelsDesc')}</p>
               </div>
               <button 
                 onClick={handleClearFilters}
-                className="px-4 py-2 rounded-xl bg-slate-50 border border-slate-200 hover:bg-slate-100 text-xs font-bold text-slate-600 transition-colors"
+                className="px-4 py-2 rounded-xl bg-slate-50 border border-slate-200 hover:bg-slate-100 text-xs font-bold text-slate-650 transition-colors"
               >
-                Clear Filters
+                {t('hotels.clearFilters')}
               </button>
             </div>
           ) : (
@@ -490,10 +503,10 @@ function HotelsPage() {
                     {/* Group & Meal Badge Tag */}
                     <div className="absolute top-4 left-4 flex flex-col gap-1.5 items-start">
                       <span className="px-2.5 py-1 rounded-full bg-cyan-600/90 text-white text-[10px] font-extrabold tracking-wide uppercase backdrop-blur-md shadow-sm">
-                        👥 ĐẶT ĐOÀN 5+ PHÒNG GIẢM 25%
+                        {t('hotels.badgeGroupDiscount')}
                       </span>
                       <span className="px-2.5 py-1 rounded-full bg-amber-500/90 text-white text-[10px] font-extrabold tracking-wide uppercase backdrop-blur-md shadow-sm">
-                        🍽️ CÓ VÉ ĂN BUFFET
+                        {t('hotels.badgeBuffet')}
                       </span>
                     </div>
 
@@ -521,30 +534,30 @@ function HotelsPage() {
                       {/* Group & Corporate Perks */}
                       <div className="pt-2 flex flex-wrap gap-1.5">
                         <span className="text-[10px] font-bold bg-slate-100 text-slate-700 px-2 py-0.5 rounded-md border border-slate-200">
-                          🏢 Hóa đơn CTP VAT
+                          {t('hotels.perkVat')}
                         </span>
                         <span className="text-[10px] font-bold bg-cyan-50 text-cyan-700 px-2 py-0.5 rounded-md border border-cyan-100">
-                          🛏️ Gán phòng liền kề
+                          {t('hotels.perkAdjacent')}
                         </span>
                         <span className="text-[10px] font-bold bg-amber-50 text-amber-800 px-2 py-0.5 rounded-md border border-amber-100">
-                          🎫 QR Suất ăn tự động
+                          {t('hotels.perkQr')}
                         </span>
                       </div>
                     </div>
 
                     <div className="flex items-center justify-between border-t border-slate-100 pt-4">
                       <div>
-                        <span className="text-[10px] text-slate-400 uppercase tracking-widest block font-bold">Giá từ</span>
+                        <span className="text-[10px] text-slate-400 uppercase tracking-widest block font-bold">{t('hotels.priceFrom')}</span>
                         <span className="text-lg font-extrabold text-cyan-600">
                           {hotel.minPrice ? `$${hotel.minPrice.toFixed(0)}` : 'N/A'}
                         </span>
-                        <span className="text-xs text-slate-400 font-semibold">/đêm</span>
+                        <span className="text-xs text-slate-400 font-semibold">{t('hotels.pricePerNight')}</span>
                       </div>
                       <Link 
                         to={`/hotels/${hotel.hotelId}`}
                         className="px-5 py-2.5 rounded-xl bg-slate-50 text-xs font-bold text-slate-650 border border-slate-200 group-hover:bg-cyan-500 group-hover:text-white group-hover:border-transparent hover:shadow-md transition-all duration-350"
                       >
-                        Đặt Ngay / Chi Tiết
+                        {t('hotels.btnBookNow')}
                       </Link>
                     </div>
                   </div>
@@ -560,11 +573,11 @@ function HotelsPage() {
       <div className="fixed bottom-6 right-6 z-50">
         <button
           type="button"
-          onClick={() => alert("🤖 AI LuxuryStay Assistant: Tôi có thể giúp bạn gợi ý Khách sạn có dịch vụ Đặt đoàn 10-50 phòng, xuất hóa đơn VAT CTP và hỗ trợ trọn gói Buffet Sáng/Tối!")}
+          onClick={() => alert(t('hotels.aiChatbotAlert'))}
           className="p-4 rounded-full bg-gradient-to-r from-cyan-600 to-indigo-600 text-white font-extrabold shadow-2xl shadow-cyan-600/40 hover:scale-105 active:scale-95 transition-all flex items-center gap-2 border border-white/40 cursor-pointer"
         >
           <span className="text-xl">🤖</span>
-          <span className="text-xs font-bold hidden sm:inline">AI Tư Vấn Đặt Đoàn</span>
+          <span className="text-xs font-bold hidden sm:inline">{t('hotels.aiChatbotBtn')}</span>
         </button>
       </div>
     </div>

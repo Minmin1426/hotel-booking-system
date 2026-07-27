@@ -1,8 +1,10 @@
 // src/pages/RegisterPage.jsx
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { AuthService } from '../services/AuthService';
 
 export default function RegisterPage() {
+  const { t } = useTranslation();
   const [formData, setFormData] = useState({
     fullName: '',
     email: '',
@@ -51,17 +53,17 @@ export default function RegisterPage() {
     // Complexity validation: min 8 chars, uppercase, lowercase, digit, special character
     const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*(),.?":{}|<>]).{8,}$/;
     if (!passwordRegex.test(formData.password)) {
-      setError("Mật khẩu phải chứa ít nhất 8 ký tự, bao gồm chữ hoa, chữ thường, chữ số và ký tự đặc biệt.");
+      setError(t('register.errorPasswordComplexity'));
       return;
     }
     
     if (formData.password !== formData.confirmPassword) {
-      setError("Mật khẩu xác nhận không trùng khớp.");
+      setError(t('register.errorConfirmPasswordMismatch'));
       return;
     }
 
     if (!agreeTerms) {
-      setError("Bạn phải đồng ý với Điều khoản dịch vụ để đăng ký tài khoản.");
+      setError(t('register.errorTermsRequired'));
       return;
     }
 
@@ -134,21 +136,17 @@ export default function RegisterPage() {
 
           <div className="z-10 border-t border-white/10 pt-4 flex justify-between items-center text-[10px] text-white/50 tracking-wider uppercase font-semibold">
             <span>© 2026 LuxuryStay</span>
-            <span className="text-[#d4af37]">★ Voted #1 Booking App</span>
-          </div>
-        </div>
-
-        {/* Right Side: Form Panel */}
+            <span classN        {/* Right Side: Form Panel */}
         <div className="w-full lg:w-[48%] bg-white/95 p-8 md:p-10 flex flex-col justify-center relative overflow-y-auto">
           <div className="w-full max-w-[340px] mx-auto text-center py-4">
-            <h1 className="text-3xl font-bold tracking-tight text-[#1d1d1f] mb-1.5">Đăng ký</h1>
+            <h1 className="text-3xl font-bold tracking-tight text-[#1d1d1f] mb-1.5">{t('register.title')}</h1>
             <p className="text-xs text-[#86868b] mb-6">
-              Tạo tài khoản của bạn để bắt đầu đặt phòng.
+              {t('register.subtitle')}
             </p>
 
             <form onSubmit={handleSubmit} className="flex flex-col gap-3.5 text-left">
               {error && (
-                <div className="text-red-500 text-center bg-red-50/80 border border-red-100 py-2 rounded-2xl text-xs font-medium">
+                <div className="text-red-500 text-center bg-red-50/80 border border-red-100 py-2.5 rounded-2xl text-xs font-medium">
                   {error}
                 </div>
               )}
@@ -156,7 +154,7 @@ export default function RegisterPage() {
               <input
                 type="text"
                 name="fullName"
-                placeholder="Họ và tên"
+                placeholder={t('register.fullNamePlaceholder')}
                 className="w-full h-[42px] px-[18px] py-[10px] rounded-2xl border border-[#e3e3e8] bg-white text-[#1d1d1f] text-sm focus:outline-none focus:border-[#0066cc] focus:ring-1 focus:ring-[#0066cc] transition-all placeholder:text-[#a1a1a6]"
                 value={formData.fullName}
                 onChange={handleChange}
@@ -166,7 +164,7 @@ export default function RegisterPage() {
               <input
                 type="email"
                 name="email"
-                placeholder="Địa chỉ Email"
+                placeholder={t('register.emailPlaceholder')}
                 className="w-full h-[42px] px-[18px] py-[10px] rounded-2xl border border-[#e3e3e8] bg-white text-[#1d1d1f] text-sm focus:outline-none focus:border-[#0066cc] focus:ring-1 focus:ring-[#0066cc] transition-all placeholder:text-[#a1a1a6]"
                 value={formData.email}
                 onChange={handleChange}
@@ -176,7 +174,7 @@ export default function RegisterPage() {
               <input
                 type="text"
                 name="phoneNumber"
-                placeholder="Số điện thoại"
+                placeholder={t('register.phoneNumberPlaceholder')}
                 className="w-full h-[42px] px-[18px] py-[10px] rounded-2xl border border-[#e3e3e8] bg-white text-[#1d1d1f] text-sm focus:outline-none focus:border-[#0066cc] focus:ring-1 focus:ring-[#0066cc] transition-all placeholder:text-[#a1a1a6]"
                 value={formData.phoneNumber}
                 onChange={handleChange}
@@ -185,7 +183,7 @@ export default function RegisterPage() {
               <input
                 type="text"
                 name="identificationNumber"
-                placeholder="Số CMND / Passport (CCCD)"
+                placeholder={t('register.idPlaceholder')}
                 className="w-full h-[42px] px-[18px] py-[10px] rounded-2xl border border-[#e3e3e8] bg-white text-[#1d1d1f] text-sm focus:outline-none focus:border-[#0066cc] focus:ring-1 focus:ring-[#0066cc] transition-all placeholder:text-[#a1a1a6]"
                 value={formData.identificationNumber}
                 onChange={handleChange}
@@ -195,7 +193,7 @@ export default function RegisterPage() {
                 <input
                   type={showPassword ? "text" : "password"}
                   name="password"
-                  placeholder="Mật khẩu (tối thiểu 8 ký tự)"
+                  placeholder={t('register.passwordPlaceholder')}
                   className="w-full h-[42px] pl-[18px] pr-[55px] py-[10px] rounded-2xl border border-[#e3e3e8] bg-white text-[#1d1d1f] text-sm focus:outline-none focus:border-[#0066cc] focus:ring-1 focus:ring-[#0066cc] transition-all placeholder:text-[#a1a1a6]"
                   value={formData.password}
                   onChange={handleChange}
@@ -207,7 +205,7 @@ export default function RegisterPage() {
                   onClick={() => setShowPassword(!showPassword)}
                   className="absolute right-[18px] top-[12px] text-[#86868b] hover:text-[#1d1d1f] transition-colors text-xs font-semibold z-10"
                 >
-                  {showPassword ? "Ẩn" : "Hiện"}
+                  {showPassword ? t('register.hidePassword') : t('register.showPassword')}
                 </button>
               </div>
 
@@ -215,7 +213,7 @@ export default function RegisterPage() {
                 <input
                   type={showConfirmPassword ? "text" : "password"}
                   name="confirmPassword"
-                  placeholder="Xác nhận mật khẩu"
+                  placeholder={t('register.confirmPasswordPlaceholder')}
                   className="w-full h-[42px] pl-[18px] pr-[55px] py-[10px] rounded-2xl border border-[#e3e3e8] bg-white text-[#1d1d1f] text-sm focus:outline-none focus:border-[#0066cc] focus:ring-1 focus:ring-[#0066cc] transition-all placeholder:text-[#a1a1a6]"
                   value={formData.confirmPassword}
                   onChange={handleChange}
@@ -226,7 +224,7 @@ export default function RegisterPage() {
                   onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                   className="absolute right-[18px] top-[12px] text-[#86868b] hover:text-[#1d1d1f] transition-colors text-xs font-semibold z-10"
                 >
-                  {showConfirmPassword ? "Ẩn" : "Hiện"}
+                  {showConfirmPassword ? t('register.hidePassword') : t('register.showPassword')}
                 </button>
               </div>
 
@@ -240,7 +238,7 @@ export default function RegisterPage() {
                   required
                 />
                 <label htmlFor="agreeTerms" className="text-[10px] text-[#86868b] leading-tight select-none text-left">
-                  Tôi đồng ý với <a href="/terms" className="text-[#0066cc] hover:underline font-semibold">Điều khoản dịch vụ</a> và <a href="/privacy" className="text-[#0066cc] hover:underline font-semibold">Chính sách bảo mật</a>.
+                  {t('register.agreeTermsText')} <a href="/terms" className="text-[#0066cc] hover:underline font-semibold">{t('register.termsOfService')}</a> {t('register.and')} <a href="/privacy" className="text-[#0066cc] hover:underline font-semibold">{t('register.privacyPolicy')}</a>{t('register.ofUs')}
                 </label>
               </div>
 
@@ -249,13 +247,13 @@ export default function RegisterPage() {
                   type="submit"
                   className="w-full h-[44px] rounded-2xl bg-[#0066cc] hover:bg-[#0055b3] text-[#ffffff] font-semibold text-sm shadow-md active:scale-[0.98] hover:scale-[1.01] transition-all duration-150 cursor-pointer"
                 >
-                  Đăng ký
+                  {t('register.registerButton')}
                 </button>
               </div>
 
               <div className="flex items-center my-1.5">
                 <div className="flex-1 border-t border-[#e3e3e8]"></div>
-                <span className="px-3 text-[10px] text-[#86868b] uppercase tracking-wider font-semibold">Hoặc kết nối qua</span>
+                <span className="px-3 text-[10px] text-[#86868b] uppercase tracking-wider font-semibold">{t('register.orConnect')}</span>
                 <div className="flex-1 border-t border-[#e3e3e8]"></div>
               </div>
 
@@ -268,23 +266,23 @@ export default function RegisterPage() {
                   <svg className="w-3.5 h-3.5" viewBox="0 0 24 24">
                     <path fill="#EA4335" d="M12.24 10.285V14.4h6.887c-.648 2.41-2.519 4.2-5.127 4.2a5.99 5.99 0 0 1-6-6 5.99 5.99 0 0 1 6-6c1.64 0 3.09.67 4.14 1.77l3.12-3.12A10.15 10.15 0 0 0 12.24 2a9.99 9.99 0 0 0-10 10 9.99 9.99 0 0 0 10 10c5.3 0 9.76-3.83 9.76-9.76 0-.64-.06-1.22-.17-1.95H12.24z"/>
                   </svg>
-                  Tiếp tục với Google
+                  {t('register.googleButton')}
                 </button>
               </div>
             </form>
 
             <div className="mt-6 border-t border-[#e3e3e8] pt-5">
               <p className="text-xs text-[#86868b]">
-                Đã có tài khoản?{' '}
+                {t('register.alreadyHaveAccount')}{' '}
                 <a href="/login" className="text-[#0066cc] hover:underline font-semibold">
-                  Đăng nhập tại đây.
+                  {t('register.signInHere')}
                 </a>
               </p>
             </div>
 
             <div className="mt-4 border-t border-[#e3e3e8]/70 pt-3">
               <p className="text-[10px] text-[#86868b] leading-relaxed text-left">
-                Bằng cách tiếp tục, bạn đồng ý với <a href="/terms" className="text-[#0066cc] hover:underline font-medium">Điều khoản & Điều kiện</a> và <a href="/privacy" className="text-[#0066cc] hover:underline font-medium">Chính sách bảo mật</a> của chúng tôi.
+                {t('register.agreementText')} <a href="/terms" className="text-[#0066cc] hover:underline font-medium">{t('register.termsOfService')}</a> {t('register.and')} <a href="/privacy" className="text-[#0066cc] hover:underline font-medium">{t('register.privacyPolicy')}</a> {t('register.ofUs')}
               </p>
             </div>
           </div>
