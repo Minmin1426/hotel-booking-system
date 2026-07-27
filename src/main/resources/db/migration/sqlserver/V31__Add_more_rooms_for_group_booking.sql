@@ -1,0 +1,74 @@
+-- V31__Add_more_rooms_for_group_booking.sql
+-- Description: Add more rooms to the first 4 hotels to support group booking demo
+
+-- Hotel 1 (InterContinental Landmark72)
+INSERT INTO rooms (hotel_id, room_type, price, room_number, status, created_at, updated_at) VALUES
+(1, 'Standard Single Room', 120.00, '3503', 'AVAILABLE', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(1, 'Standard Single Room', 120.00, '3504', 'AVAILABLE', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(1, 'Standard Single Room', 120.00, '3505', 'AVAILABLE', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(1, 'Standard Single Room', 120.00, '3506', 'AVAILABLE', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(1, 'Standard Single Room', 120.00, '3507', 'AVAILABLE', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(1, 'Standard Single Room', 120.00, '3508', 'AVAILABLE', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(1, 'Standard Single Room', 120.00, '3509', 'AVAILABLE', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(1, 'Standard Single Room', 120.00, '3510', 'AVAILABLE', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(1, 'Standard Single Room', 120.00, '3511', 'AVAILABLE', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(1, 'Standard Single Room', 120.00, '3512', 'AVAILABLE', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(1, 'Standard Single Room', 120.00, '3513', 'AVAILABLE', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(1, 'Standard Single Room', 120.00, '3514', 'AVAILABLE', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(1, 'Standard Single Room', 120.00, '3515', 'AVAILABLE', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(1, 'Standard Single Room', 120.00, '3516', 'AVAILABLE', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(1, 'Standard Single Room', 120.00, '3517', 'AVAILABLE', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
+
+-- Hotel 2 (Sheraton Hanoi Westlake)
+INSERT INTO rooms (hotel_id, room_type, price, room_number, status, created_at, updated_at) VALUES
+(2, 'Superior Lakeview Room', 150.00, '103', 'AVAILABLE', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(2, 'Superior Lakeview Room', 150.00, '104', 'AVAILABLE', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(2, 'Superior Lakeview Room', 150.00, '105', 'AVAILABLE', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(2, 'Superior Lakeview Room', 150.00, '106', 'AVAILABLE', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(2, 'Superior Lakeview Room', 150.00, '107', 'AVAILABLE', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(2, 'Superior Lakeview Room', 150.00, '108', 'AVAILABLE', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(2, 'Superior Lakeview Room', 150.00, '109', 'AVAILABLE', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(2, 'Superior Lakeview Room', 150.00, '110', 'AVAILABLE', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(2, 'Superior Lakeview Room', 150.00, '111', 'AVAILABLE', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(2, 'Superior Lakeview Room', 150.00, '112', 'AVAILABLE', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(2, 'Superior Lakeview Room', 150.00, '113', 'AVAILABLE', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(2, 'Superior Lakeview Room', 150.00, '114', 'AVAILABLE', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(2, 'Superior Lakeview Room', 150.00, '115', 'AVAILABLE', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(2, 'Superior Lakeview Room', 150.00, '116', 'AVAILABLE', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(2, 'Superior Lakeview Room', 150.00, '117', 'AVAILABLE', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
+
+-- Hotel 3 (Hilton Saigon Riverview)
+INSERT INTO rooms (hotel_id, room_type, price, room_number, status, created_at, updated_at) VALUES
+(3, 'Deluxe Riverview Single', 140.00, '1203', 'AVAILABLE', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(3, 'Deluxe Riverview Single', 140.00, '1204', 'AVAILABLE', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(3, 'Deluxe Riverview Single', 140.00, '1205', 'AVAILABLE', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(3, 'Deluxe Riverview Single', 140.00, '1206', 'AVAILABLE', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(3, 'Deluxe Riverview Single', 140.00, '1207', 'AVAILABLE', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(3, 'Deluxe Riverview Single', 140.00, '1208', 'AVAILABLE', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(3, 'Deluxe Riverview Single', 140.00, '1209', 'AVAILABLE', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(3, 'Deluxe Riverview Single', 140.00, '1210', 'AVAILABLE', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(3, 'Deluxe Riverview Single', 140.00, '1211', 'AVAILABLE', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(3, 'Deluxe Riverview Single', 140.00, '1212', 'AVAILABLE', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(3, 'Deluxe Riverview Single', 140.00, '1213', 'AVAILABLE', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(3, 'Deluxe Riverview Single', 140.00, '1214', 'AVAILABLE', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(3, 'Deluxe Riverview Single', 140.00, '1215', 'AVAILABLE', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(3, 'Deluxe Riverview Single', 140.00, '1216', 'AVAILABLE', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(3, 'Deluxe Riverview Single', 140.00, '1217', 'AVAILABLE', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
+
+-- Hotel 4 (Pullman Danang Beach Resort)
+INSERT INTO rooms (hotel_id, room_type, price, room_number, status, created_at, updated_at) VALUES
+(4, 'Superior Oceanview Single', 160.00, '203', 'AVAILABLE', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(4, 'Superior Oceanview Single', 160.00, '204', 'AVAILABLE', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(4, 'Superior Oceanview Single', 160.00, '205', 'AVAILABLE', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(4, 'Superior Oceanview Single', 160.00, '206', 'AVAILABLE', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(4, 'Superior Oceanview Single', 160.00, '207', 'AVAILABLE', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(4, 'Superior Oceanview Single', 160.00, '208', 'AVAILABLE', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(4, 'Superior Oceanview Single', 160.00, '209', 'AVAILABLE', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(4, 'Superior Oceanview Single', 160.00, '210', 'AVAILABLE', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(4, 'Superior Oceanview Single', 160.00, '211', 'AVAILABLE', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(4, 'Superior Oceanview Single', 160.00, '212', 'AVAILABLE', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(4, 'Superior Oceanview Single', 160.00, '213', 'AVAILABLE', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(4, 'Superior Oceanview Single', 160.00, '214', 'AVAILABLE', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(4, 'Superior Oceanview Single', 160.00, '215', 'AVAILABLE', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(4, 'Superior Oceanview Single', 160.00, '216', 'AVAILABLE', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+(4, 'Superior Oceanview Single', 160.00, '217', 'AVAILABLE', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
