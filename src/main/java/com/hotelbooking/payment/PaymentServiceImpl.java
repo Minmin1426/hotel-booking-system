@@ -1,4 +1,4 @@
-package com.hotelbooking.payment;
+﻿package com.hotelbooking.payment;
 import com.hotelbooking.booking.Booking;
 import com.hotelbooking.booking.BookingRepository;
 import com.hotelbooking.common.exception.BusinessException;
@@ -776,3 +776,4 @@ public class PaymentServiceImpl implements PaymentService {
         return payoutRepository.findByHotelId(hotelId);
     }
 }
+
