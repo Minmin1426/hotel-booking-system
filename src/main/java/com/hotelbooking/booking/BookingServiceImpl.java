@@ -64,6 +64,8 @@ public class BookingServiceImpl implements BookingService {
     private final SystemSettingService systemSettingService;
     private final VoucherRepository voucherRepository;
     private final ReviewRepository reviewRepository;
+    private final com.hotelbooking.mealticket.MealTicketService mealTicketService;
+
 
     @Override
     @Transactional(readOnly = true)
@@ -247,6 +249,9 @@ public class BookingServiceImpl implements BookingService {
         booking.setStatus("CONFIRMED");
         booking.setConfirmedAt(LocalDateTime.now());
         Booking savedBooking = bookingRepository.save(booking);
+        if (mealTicketService != null) {
+            mealTicketService.autoIssueMealTicketsForBooking(savedBooking);
+        }
 
         // Release the temporary locks
         roomLockService.releaseLocksForBooking(bookingId);
@@ -342,6 +347,9 @@ public class BookingServiceImpl implements BookingService {
         booking.setPaymentStatus("SUCCESS");
         booking.setConfirmedAt(now);
         bookingRepository.save(booking);
+        if (mealTicketService != null) {
+            mealTicketService.autoIssueMealTicketsForBooking(booking);
+        }
 
         log.info("UC-12: Booking {} confirmed at {}", booking.getBookingCode(), now);
 
@@ -435,6 +443,9 @@ public class BookingServiceImpl implements BookingService {
         payment.setStatus(targetPaymentStatus);
         paymentRepository.save(payment);
         bookingRepository.save(booking);
+        if ("CONFIRMED".equals(targetStatus) && mealTicketService != null) {
+            mealTicketService.autoIssueMealTicketsForBooking(booking);
+        }
 
         try {
             roomLockService.releaseLocksForBooking(bookingId);

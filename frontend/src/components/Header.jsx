@@ -143,6 +143,16 @@ export default function Header({ fullName, role }) {
                     >
                       {t('nav.myVouchers')}
                     </Link>
+                    <Link 
+                      to="/profile?tab=tickets" 
+                      className={`px-4 py-2 rounded-full transition-all ${
+                        currentPath.includes('tab=tickets') 
+                          ? 'bg-[#0066cc]/5 text-[#0066cc]' 
+                          : 'hover:text-[#1d1d1f] hover:bg-[#f5f5f7]'
+                      }`}
+                    >
+                      {t('nav.myTickets')}
+                    </Link>
                   </>
                 )}
               </>

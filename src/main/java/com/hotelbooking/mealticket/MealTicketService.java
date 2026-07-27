@@ -12,4 +12,6 @@ public interface MealTicketService {
     Page<MealTicketResponse> getMyTickets(Long userId, String status, String ticketType, Pageable pageable);
     String getQrImage(Long userId, Long ticketId);
     void expireOldTickets();
+    void autoIssueMealTicketsForBooking(com.hotelbooking.booking.Booking booking);
 }
+

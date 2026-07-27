@@ -47,6 +47,8 @@ public class PaymentServiceImpl implements PaymentService {
     private final VoucherRepository voucherRepository;
     private final VnpayService vnpayService;
     private final PayoutRepository payoutRepository;
+    private final com.hotelbooking.mealticket.MealTicketService mealTicketService;
+
 
     @Value("${stripe.api.key}")
     private String stripeApiKey;
@@ -103,6 +105,9 @@ public class PaymentServiceImpl implements PaymentService {
             booking.setPaymentStatus("PENDING");
             booking.setStatus("CONFIRMED");
             bookingRepository.save(booking);
+            if (mealTicketService != null) {
+                mealTicketService.autoIssueMealTicketsForBooking(booking);
+            }
 
             PaymentAuditLog auditLog = PaymentAuditLog.builder()
                     .transactionId(transactionId)
@@ -322,6 +327,9 @@ public class PaymentServiceImpl implements PaymentService {
         }
         
         bookingRepository.save(booking);
+        if (mealTicketService != null) {
+            mealTicketService.autoIssueMealTicketsForBooking(booking);
+        }
 
         emailService.sendBookingConfirmationEmail(booking.getUser().getEmail(), booking.getBookingCode());
 

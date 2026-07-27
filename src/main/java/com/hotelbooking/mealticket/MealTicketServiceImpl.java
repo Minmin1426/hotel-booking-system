@@ -272,4 +272,39 @@ public class MealTicketServiceImpl implements MealTicketService {
                 .notes(ticket.getNotes())
                 .build();
     }
+
+    @Override
+    @Transactional
+    public void autoIssueMealTicketsForBooking(Booking booking) {
+        log.info("Auto-issuing meal tickets for booking ID: {}", booking.getBookingId());
+
+        MealTicketType ticketType = typeRepository.findByCodeAndIsActiveTrue("BREAKFAST_BUFFET")
+                .orElse(null);
+        if (ticketType == null) {
+            log.warn("BREAKFAST_BUFFET ticket type not found, skipping auto-issuance");
+            return;
+        }
+
+        long nights = java.time.temporal.ChronoUnit.DAYS.between(
+                booking.getCheckInDate().toLocalDate(),
+                booking.getCheckOutDate().toLocalDate()
+        );
+        if (nights <= 0) {
+            nights = 1;
+        }
+
+        int guestCount = (booking.getAdults() != null ? booking.getAdults() : 2) +
+                         (booking.getChildren() != null ? booking.getChildren() : 0);
+
+        int totalTicketsToIssue = guestCount * (int) nights;
+
+        log.info("Booking {} (nights={}, guests={}): Issuing {} meal tickets",
+                booking.getBookingCode(), nights, guestCount, totalTicketsToIssue);
+
+        for (int i = 0; i < totalTicketsToIssue; i++) {
+            createTicket(booking.getUser(), booking, ticketType, (int) nights, null,
+                    "Auto-issued for booking " + booking.getBookingCode(), "ISSUED");
+        }
+    }
 }
+
