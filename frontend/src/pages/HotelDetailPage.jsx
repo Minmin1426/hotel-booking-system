@@ -770,39 +770,43 @@ function HotelDetailPage() {
                 </button>
               </form>
 
-              {/* Vacant Rooms List */}
-              <div className="space-y-4 pt-2">
-                {liveRooms && liveRooms.length > 0 ? (
-                  liveRooms.map((room) => (
-                    <div 
-                      key={room.roomId}
-                      className="p-5 rounded-2xl border border-slate-200/80 bg-slate-50/50 hover:bg-white hover:shadow-lg hover:border-cyan-500/25 transition-all duration-300 flex flex-col md:flex-row justify-between items-start md:items-center gap-4"
-                    >
-                      <div className="space-y-1.5 text-left">
-                        <span className="text-xs text-slate-500 font-semibold">{t('hotelDetail.roomNo')} {room.roomNumber}</span>
-                        <h4 className="text-base font-bold text-slate-900 leading-tight">{t('hotelDetail.room')} {room.roomType} {t('hotelDetail.luxurySuite')}</h4>
-                        <p className="text-xs text-slate-500">{t('hotelDetail.roomDescription')}</p>
-                      </div>
-                      <div className="flex items-center gap-6 self-stretch md:self-auto justify-between border-t border-slate-100/50 md:border-none pt-3 md:pt-0">
-                        <div className="text-left">
-                          <span className="text-lg font-extrabold text-cyan-600">${room.price.toFixed(0)}</span>
-                          <span className="text-xs text-slate-400 font-semibold">{t('hotels.pricePerNight')}</span>
+              {/* Vacant Rooms Results Grid */}
+              <div className="space-y-4 pt-4">
+                {rooms && rooms.length > 0 ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {rooms.map((room) => (
+                      <div
+                        key={room.roomId}
+                        className="p-5 rounded-2xl bg-white border border-slate-200 hover:border-cyan-500/30 flex flex-col justify-between space-y-4 shadow-sm hover:shadow-md transition-all duration-300"
+                      >
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between">
+                            <span className="px-2 py-0.5 rounded text-[10px] font-extrabold bg-cyan-50 text-cyan-600 border border-cyan-100 uppercase tracking-widest">{room.roomType}</span>
+                            <span className="text-xs text-slate-505 font-semibold">{t('hotelDetail.roomNo')} {room.roomNumber}</span>
+                          </div>
+                          <h4 className="text-base font-bold text-slate-900 leading-tight">{t('hotelDetail.room')} {room.roomType} {t('hotelDetail.luxurySuite')}</h4>
+                          <p className="text-xs text-slate-500">{t('hotelDetail.roomDescription')}</p>
                         </div>
-                        <button 
-                          onClick={() => handleBookRoom(room)}
-                          className="px-6 py-2.5 rounded-xl bg-slate-900 text-white font-extrabold text-xs tracking-wide hover:bg-cyan-600 shadow-md active:scale-95 transition-all"
-                        >
-                          {t('hotelDetail.btnBookIndividual')}
-                        </button>
+
+                        <div className="flex items-center justify-between pt-3 border-t border-slate-100">
+                          <div>
+                            <span className="text-[10px] text-slate-400 block font-bold">{t('hotels.priceFrom')}</span>
+                            <span className="text-base font-extrabold text-cyan-600">${room.pricePerNight.toFixed(0)}</span>
+                          </div>
+                          <button
+                            onClick={() => handleBookRoom(room)}
+                            className="px-4 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs font-bold text-slate-700 hover:bg-cyan-500 hover:text-white hover:border-transparent transition-all duration-350 cursor-pointer"
+                          >
+                            {t('hotelDetail.btnBookIndividual')}
+                          </button>
+                        </div>
                       </div>
-                    </div>
-                  ))
-                ) : checkedAvailability ? (
-                  <p className="text-center text-slate-500 text-sm py-8 font-medium">{i18n.language.startsWith('vi') ? 'Hiện không còn phòng trống trong thời gian đã chọn.' : 'No active rooms vacant for the selected dates.'}</p>
+                    ))}
+                  </div>
                 ) : (
-                  <p className="text-center text-slate-500 text-xs py-8 font-medium">
-                    {t('hotelDetail.noDatesWarning')}
-                  </p>
+                  <div className="py-12 text-center rounded-2xl border border-dashed border-slate-250 text-slate-505 text-xs bg-slate-50/50">
+                    {roomsError ? `⚠️ ${roomsError}` : t('hotelDetail.noDatesWarning')}
+                  </div>
                 )}
               </div>
             </div>
