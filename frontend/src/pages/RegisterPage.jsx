@@ -136,7 +136,11 @@ export default function RegisterPage() {
 
           <div className="z-10 border-t border-white/10 pt-4 flex justify-between items-center text-[10px] text-white/50 tracking-wider uppercase font-semibold">
             <span>© 2026 LuxuryStay</span>
-            <span classN        {/* Right Side: Form Panel */}
+            <span className="text-[#d4af37]">{t('login.awardText')}</span>
+          </div>
+        </div>
+
+        {/* Right Side: Form Panel */}
         <div className="w-full lg:w-[48%] bg-white/95 p-8 md:p-10 flex flex-col justify-center relative overflow-y-auto">
           <div className="w-full max-w-[340px] mx-auto text-center py-4">
             <h1 className="text-3xl font-bold tracking-tight text-[#1d1d1f] mb-1.5">{t('register.title')}</h1>
