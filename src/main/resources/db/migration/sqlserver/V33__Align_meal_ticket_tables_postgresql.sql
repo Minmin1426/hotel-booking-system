@@ -1,0 +1,2 @@
+-- V33__Align_meal_ticket_tables_postgresql.sql (SQL Server Placeholder)
+-- SQL Server already has the correct tables. No action needed.
