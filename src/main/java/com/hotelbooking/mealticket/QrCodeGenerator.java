@@ -33,7 +33,7 @@ public class QrCodeGenerator {
     private static final String PAYLOAD_SEPARATOR = ":";
     private static final int QR_SIZE = 300;
 
-    @Value("${meal-ticket.qr-secret}")
+    @Value("${meal-ticket.qr-secret:default-secret-key-for-qr-codes-minimum-32-chars-long}")
     private String qrSecret;
 
     /**
