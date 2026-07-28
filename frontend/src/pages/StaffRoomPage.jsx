@@ -59,23 +59,24 @@ export default function StaffRoomPage() {
     loadHotels();
   }, []);
 
+  // Fetch rooms function
+  const loadRoomsData = async () => {
+    if (!selectedHotelId) return;
+    setRoomsLoading(true);
+    setError(null);
+    try {
+      const roomList = await HotelService.getRoomsByHotel(selectedHotelId);
+      setRooms(roomList || []);
+    } catch (err) {
+      setError(err.message || "Failed to load hotel rooms.");
+    } finally {
+      setRoomsLoading(false);
+    }
+  };
+
   // Fetch rooms when selected hotel changes
   useEffect(() => {
-    if (!selectedHotelId) return;
-
-    const loadRooms = async () => {
-      setRoomsLoading(true);
-      setError(null);
-      try {
-        const roomList = await HotelService.getRoomsByHotel(selectedHotelId);
-        setRooms(roomList || []);
-      } catch (err) {
-        setError(err.message || "Failed to load hotel rooms.");
-      } finally {
-        setRoomsLoading(false);
-      }
-    };
-    loadRooms();
+    loadRoomsData();
   }, [selectedHotelId]);
 
   // Handle status toggle (AVAILABLE <-> UNAVAILABLE)
@@ -165,7 +166,7 @@ export default function StaffRoomPage() {
       }
 
       // Refresh local room statuses
-      loadRoomsData();
+      await loadRoomsData();
 
       // Calculate meal tickets count
       const checkIn = new Date(selectedBookingDetails.checkInDate);
