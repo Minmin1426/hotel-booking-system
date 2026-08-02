@@ -122,7 +122,7 @@ public class VoucherStoreServiceImpl implements VoucherStoreService {
     // ── AC-034: Apply voucher usage on booking confirmation ────────────────────
 
     @Override
-    @Transactional
+    @Transactional(propagation = org.springframework.transaction.annotation.Propagation.REQUIRES_NEW)
     public void applyVoucherUsage(Long userId, Long voucherId, Long bookingId) {
         UserVoucher userVoucher = userVoucherRepository.findByUserUserIdAndVoucherVoucherId(userId, voucherId)
                 .orElseThrow(() -> new VoucherNotClaimedException("VOUCHER_NOT_CLAIMED: Voucher is not in your wallet"));

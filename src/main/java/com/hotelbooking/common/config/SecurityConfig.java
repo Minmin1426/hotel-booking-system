@@ -51,6 +51,8 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.GET, "/api/v1/hotels/**").permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/v1/bookings/validate-dates").permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/v1/payments/webhook").permitAll()
+                .requestMatchers("/api/v1/payments/vnpay-callback").permitAll()
+                .requestMatchers("/api/v1/payments/vnpay-ipn").permitAll()
                 // Require auth for everything else
                 .anyRequest().authenticated()
             )

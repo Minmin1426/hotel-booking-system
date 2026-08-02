@@ -307,4 +307,42 @@ class BookingServiceImplTest {
         assertEquals("COMPLETED", response.paymentStatus());
         verify(roomLockService).releaseLocksForBooking(10L);
     }
+
+    @Test
+    void createBooking_capacityExceeded_throwsException() {
+        LocalDate checkIn = LocalDate.now().plusDays(1);
+        LocalDate checkOut = checkIn.plusDays(2);
+        BookingRequest request = BookingRequest.builder()
+                .hotelId(1L)
+                .checkInDate(checkIn)
+                .checkOutDate(checkOut)
+                .roomIds(List.of(1L))
+                .paymentMethod("ONLINE")
+                .adults(3) // Exceeds 2 adults limit per room
+                .children(2)
+                .build();
+
+        BusinessException exception = assertThrows(BusinessException.class, 
+            () -> bookingService.createBooking(request, "test@example.com"));
+        assertTrue(exception.getMessage().contains("Total adults exceed the maximum capacity"));
+    }
+
+    @Test
+    void createBooking_childrenCapacityExceeded_throwsException() {
+        LocalDate checkIn = LocalDate.now().plusDays(1);
+        LocalDate checkOut = checkIn.plusDays(2);
+        BookingRequest request = BookingRequest.builder()
+                .hotelId(1L)
+                .checkInDate(checkIn)
+                .checkOutDate(checkOut)
+                .roomIds(List.of(1L))
+                .paymentMethod("ONLINE")
+                .adults(2)
+                .children(4) // Exceeds 3 children limit per room
+                .build();
+
+        BusinessException exception = assertThrows(BusinessException.class, 
+            () -> bookingService.createBooking(request, "test@example.com"));
+        assertTrue(exception.getMessage().contains("Total children exceed the maximum capacity"));
+    }
 }

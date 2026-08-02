@@ -23,7 +23,7 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
                                                   @Param("checkIn") LocalDateTime checkIn,
                                                   @Param("checkOut") LocalDateTime checkOut);
 
-    @Query("SELECT b FROM Booking b WHERE b.user.userId = :userId ORDER BY b.createdAt DESC")
+    @Query("SELECT b FROM Booking b WHERE b.user.userId = :userId AND b.status NOT IN ('PENDING', 'FAILED') ORDER BY b.createdAt DESC")
     Page<Booking> findByUserIdOrderByCreatedAtDesc(@Param("userId") Long userId, Pageable pageable);
 
     Optional<Booking> findByBookingCode(String bookingCode);

@@ -17,16 +17,16 @@ import java.util.*;
 @Slf4j
 public class VnpayService {
 
-    @Value("${vnpay.tmn.code:2QXG2YX1}")
+    @Value("${vnpay.tmn.code:ZGFXXS0G}")
     private String vnpTmnCode;
 
-    @Value("${vnpay.hash.secret:MSYTUXASZREJQRWXTJLFQZJXYXNBEPTG}")
+    @Value("${vnpay.hash.secret:CNGLSKWJXYSWVNQTWRGLFTSMYRVGGHAH}")
     private String vnpHashSecret;
 
     @Value("${vnpay.pay.url:https://sandbox.vnpayment.vn/paymentv2/vpcpay.html}")
     private String vnpPayUrl;
 
-    @Value("${vnpay.return.url:http://localhost:8080/api/v1/auth/payments/vnpay-callback}")
+    @Value("${vnpay.return.url:http://localhost:8080/api/v1/payments/vnpay-callback}")
     private String vnpReturnUrl;
 
     public String createPaymentUrl(String transactionId, BigDecimal amountUsd, String orderInfo) {
@@ -100,22 +100,16 @@ public class VnpayService {
         List<String> fieldNames = new ArrayList<>(cleanFields.keySet());
         Collections.sort(fieldNames);
 
-        StringBuilder hashData = new StringBuilder();
-        Iterator<String> itr = fieldNames.iterator();
-        while (itr.hasNext()) {
-            String fieldName = itr.next();
+        List<String> queryParts = new ArrayList<>();
+        for (String fieldName : fieldNames) {
             String fieldValue = cleanFields.get(fieldName);
-            if ((fieldValue != null) && (fieldValue.length() > 0)) {
-                hashData.append(fieldName);
-                hashData.append('=');
-                hashData.append(URLEncoder.encode(fieldValue, StandardCharsets.US_ASCII));
-                if (itr.hasNext()) {
-                    hashData.append('&');
-                }
+            if (fieldValue != null && !fieldValue.isEmpty()) {
+                queryParts.add(fieldName + "=" + URLEncoder.encode(fieldValue, StandardCharsets.US_ASCII));
             }
         }
+        String hashData = String.join("&", queryParts);
 
-        String calculatedHash = hmacSha512(vnpHashSecret, hashData.toString());
+        String calculatedHash = hmacSha512(vnpHashSecret, hashData);
         return calculatedHash.equalsIgnoreCase(vnpSecureHash);
     }
 

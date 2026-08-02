@@ -14,7 +14,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api/v1/auth/payments")
+@RequestMapping("/api/v1/payments")
 @RequiredArgsConstructor
 @Slf4j
 public class VnpayCallbackController {
@@ -30,17 +30,19 @@ public class VnpayCallbackController {
             paymentService.processVnpayCallback(params);
             
             HttpHeaders headers = new HttpHeaders();
-            headers.setLocation(URI.create(frontendUrl + "/payment/success"));
+            String txnRef = params.get("vnp_TxnRef");
+            headers.setLocation(URI.create(frontendUrl + "/payment/success?payment_intent=" + (txnRef != null ? txnRef : "")));
             return new ResponseEntity<>(headers, HttpStatus.FOUND);
         } catch (Exception e) {
             log.error("Error processing VNPAY Callback", e);
             HttpHeaders headers = new HttpHeaders();
-            headers.setLocation(URI.create(frontendUrl + "/payment/cancel?error=" + URLEncoder.encode(e.getMessage(), StandardCharsets.UTF_8)));
+            String errorMsg = e.getMessage() != null ? e.getMessage() : "VNPAY callback processing failed";
+            headers.setLocation(URI.create(frontendUrl + "/payment/cancel?error=" + URLEncoder.encode(errorMsg, StandardCharsets.UTF_8)));
             return new ResponseEntity<>(headers, HttpStatus.FOUND);
         }
     }
 
-    @PostMapping("/vnpay-ipn")
+    @RequestMapping(value = "/vnpay-ipn", method = {RequestMethod.GET, RequestMethod.POST})
     public ResponseEntity<Map<String, String>> handleVnpayIpn(@RequestParam Map<String, String> params) {
         log.info("Received VNPAY IPN: {}", params);
         Map<String, String> response = new java.util.HashMap<>();

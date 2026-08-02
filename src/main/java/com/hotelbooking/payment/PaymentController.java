@@ -30,12 +30,12 @@ public class PaymentController {
 
     @PostMapping("/verify")
     @PreAuthorize("hasAnyRole('CUSTOMER', 'STAFF', 'ADMIN', 'DIRECTOR', 'RECEPTIONIST')")
-    public ResponseEntity<String> verifyPayment(@RequestParam String paymentIntentId) {
+    public ResponseEntity<?> verifyPayment(@RequestParam String paymentIntentId) {
         try {
-            String status = paymentService.verifyPayment(paymentIntentId);
-            return ResponseEntity.ok(status);
+            Map<String, Object> response = paymentService.verifyPaymentDetails(paymentIntentId);
+            return ResponseEntity.ok(response);
         } catch (Exception e) {
-            return ResponseEntity.badRequest().body("Failed to verify payment");
+            return ResponseEntity.badRequest().body(Map.of("message", "Failed to verify payment: " + e.getMessage()));
         }
     }
 

@@ -5,6 +5,7 @@ import com.hotelbooking.payment.dto.PaymentResponseDTO;
 public interface PaymentService {
     PaymentResponseDTO createPaymentRequest(PaymentRequestDTO requestDTO);
     String verifyPayment(String paymentIntentId);
+    java.util.Map<String, Object> verifyPaymentDetails(String paymentIntentId);
     void processRefund(Long bookingId);
     void retryFailedRefunds();
     void processStripeWebhook(String payload, String sigHeader);

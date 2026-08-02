@@ -26,8 +26,12 @@ import com.hotelbooking.user.User;
 import com.hotelbooking.user.UserRepository;
 import com.hotelbooking.voucher.VoucherRepository;
 import com.hotelbooking.voucher.Voucher;
+import com.hotelbooking.voucher.UserVoucherRepository;
+import com.hotelbooking.voucher.UserVoucher;
 import com.hotelbooking.booking.dto.AdminCreateBookingRequest;
 import com.hotelbooking.booking.dto.AdminUpdateBookingRequest;
+import com.hotelbooking.booking.dto.BookingTicketDTO;
+import com.hotelbooking.common.utils.EmailService;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -65,7 +69,8 @@ public class BookingServiceImpl implements BookingService {
     private final VoucherRepository voucherRepository;
     private final ReviewRepository reviewRepository;
     private final com.hotelbooking.mealticket.MealTicketService mealTicketService;
-
+    private final UserVoucherRepository userVoucherRepository;
+    private final EmailService emailService;
 
     @Override
     @Transactional(readOnly = true)
@@ -130,6 +135,14 @@ public class BookingServiceImpl implements BookingService {
             throw new BusinessException("Total guests must be at least 1");
         }
 
+        int totalRooms = request.getRoomIds().size();
+        if (adults > 2 * totalRooms) {
+            throw new BusinessException("Total adults exceed the maximum capacity allowed for the selected room(s). Max 2 adults per room.");
+        }
+        if (children > 3 * totalRooms) {
+            throw new BusinessException("Total children exceed the maximum capacity allowed for the selected room(s). Max 3 children per room.");
+        }
+
         User user = userRepository.findByEmail(currentUserEmail)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found: " + currentUserEmail));
 
@@ -154,17 +167,8 @@ public class BookingServiceImpl implements BookingService {
         long nights = validation.getNights();
         BigDecimal baseTotalAmount = totalRoomPricePerNight.multiply(BigDecimal.valueOf(nights));
 
-        // Surcharge logic
-        BigDecimal surchargePerNight = BigDecimal.ZERO;
-        if (adults > 2) {
-            surchargePerNight = surchargePerNight.add(BigDecimal.valueOf((long) (adults - 2) * 20));
-        }
-        if (children > 0) {
-            surchargePerNight = surchargePerNight.add(BigDecimal.valueOf((long) children * 10));
-        }
-        BigDecimal totalSurcharge = surchargePerNight.multiply(BigDecimal.valueOf(nights));
-        
-        BigDecimal subTotal = baseTotalAmount.add(totalSurcharge);
+        // Surcharge logic (completely removed as capacity limits are strictly validated on entry)
+        BigDecimal subTotal = baseTotalAmount;
         BigDecimal serviceFee = subTotal.multiply(BigDecimal.valueOf(0.05)); // 5% Service Fee
         BigDecimal taxes = subTotal.multiply(BigDecimal.valueOf(0.10)); // 10% Taxes
         BigDecimal totalAmount = subTotal.add(serviceFee).add(taxes);
@@ -176,8 +180,8 @@ public class BookingServiceImpl implements BookingService {
                 .bookingCode(bookingCode)
                 .user(user)
                 .hotel(hotel)
-                .checkInDate(request.getCheckInDate().atStartOfDay())
-                .checkOutDate(request.getCheckOutDate().atStartOfDay())
+                .checkInDate(request.getCheckInDate().atTime(12, 0))
+                .checkOutDate(request.getCheckOutDate().atTime(12, 0))
                 .totalAmount(totalAmount)
                 .serviceFee(serviceFee)
                 .taxes(taxes)
@@ -438,6 +442,29 @@ public class BookingServiceImpl implements BookingService {
         } else if ("CANCELLED".equals(targetStatus)) {
             booking.setStatus("CANCELLED");
             targetPaymentStatus = "FAILED";
+
+            // Revert Voucher usage if booking had a voucher and it was used
+            if (booking.getVoucher() != null) {
+                Voucher voucher = booking.getVoucher();
+                java.util.Optional<UserVoucher> uvOpt = userVoucherRepository.findByUserUserIdAndVoucherVoucherId(
+                    booking.getUser().getUserId(), 
+                    voucher.getVoucherId()
+                );
+                if (uvOpt.isPresent()) {
+                    UserVoucher uv = uvOpt.get();
+                    if (Boolean.TRUE.equals(uv.getIsUsed())) {
+                        uv.setIsUsed(false);
+                        uv.setUsedAt(null);
+                        uv.setBooking(null);
+                        userVoucherRepository.save(uv);
+                        
+                        if (voucher.getCurrentUsage() != null && voucher.getCurrentUsage() > 0) {
+                            voucher.setCurrentUsage(voucher.getCurrentUsage() - 1);
+                            voucherRepository.save(voucher);
+                        }
+                    }
+                }
+            }
         }
 
         payment.setStatus(targetPaymentStatus);
@@ -494,6 +521,29 @@ public class BookingServiceImpl implements BookingService {
         
         booking.setStatus("CANCELLED");
         bookingRepository.save(booking);
+
+        // Revert Voucher usage if booking had a voucher and it was used
+        if (booking.getVoucher() != null) {
+            Voucher voucher = booking.getVoucher();
+            java.util.Optional<UserVoucher> uvOpt = userVoucherRepository.findByUserUserIdAndVoucherVoucherId(
+                booking.getUser().getUserId(), 
+                voucher.getVoucherId()
+            );
+            if (uvOpt.isPresent()) {
+                UserVoucher uv = uvOpt.get();
+                if (Boolean.TRUE.equals(uv.getIsUsed())) {
+                    uv.setIsUsed(false);
+                    uv.setUsedAt(null);
+                    uv.setBooking(null);
+                    userVoucherRepository.save(uv);
+                    
+                    if (voucher.getCurrentUsage() != null && voucher.getCurrentUsage() > 0) {
+                        voucher.setCurrentUsage(voucher.getCurrentUsage() - 1);
+                        voucherRepository.save(voucher);
+                    }
+                }
+            }
+        }
         
         try {
             roomLockService.releaseLocksForBooking(bookingId);
@@ -503,17 +553,37 @@ public class BookingServiceImpl implements BookingService {
         
         List<Payment> payments = paymentRepository.findByBookingBookingId(bookingId);
         String refundStatus = "NO_PAYMENT";
+        Payment activePayment = null;
         if (!payments.isEmpty()) {
-            refundStatus = "REFUND_PENDING";
+            boolean hasPaid = false;
             for (Payment p : payments) {
                 if ("SUCCESS".equalsIgnoreCase(p.getStatus()) || "COMPLETED".equalsIgnoreCase(p.getStatus())) {
                     p.setStatus("REFUND_PENDING");
                     paymentRepository.save(p);
+                    hasPaid = true;
+                    activePayment = p;
                 } else if ("PENDING".equalsIgnoreCase(p.getStatus())) {
                     p.setStatus("FAILED");
                     paymentRepository.save(p);
                 }
             }
+            if (hasPaid) {
+                refundStatus = "REFUND_PENDING";
+                booking.setPaymentStatus("REFUND_PENDING");
+            } else {
+                refundStatus = "NO_PAYMENT";
+                booking.setPaymentStatus("FAILED");
+            }
+        } else {
+            booking.setPaymentStatus("FAILED");
+        }
+        bookingRepository.save(booking);
+
+        // Send booking cancellation email
+        try {
+            emailService.sendBookingCancellationEmail(booking, activePayment);
+        } catch (Exception e) {
+            log.error("Failed to send booking cancellation email: {}", e.getMessage());
         }
         
         return new CancelBookingResponse(
@@ -522,6 +592,18 @@ public class BookingServiceImpl implements BookingService {
                 refundStatus,
                 "Booking cancelled successfully"
         );
+    }
+
+    private BigDecimal getPaidAmount(Booking booking) {
+        if (booking == null) return BigDecimal.ZERO;
+        List<com.hotelbooking.payment.Payment> payments = paymentRepository.findByBookingBookingId(booking.getBookingId());
+        BigDecimal paidAmount = BigDecimal.ZERO;
+        for (com.hotelbooking.payment.Payment p : payments) {
+            if ("SUCCESS".equalsIgnoreCase(p.getStatus()) || "COMPLETED".equalsIgnoreCase(p.getStatus()) || "REFUND_PENDING".equalsIgnoreCase(p.getStatus()) || "REFUNDED".equalsIgnoreCase(p.getStatus())) {
+                paidAmount = paidAmount.add(p.getAmount());
+            }
+        }
+        return paidAmount;
     }
 
     private BookingResponse mapToResponse(Booking booking, LocalDateTime lockExpiresAt) {
@@ -550,6 +632,8 @@ public class BookingServiceImpl implements BookingService {
                 .adults(booking.getAdults())
                 .children(booking.getChildren())
                 .isReviewed(reviewed)
+                .paymentStatus(booking.getPaymentStatus())
+                .paidAmount(getPaidAmount(booking))
                 .build();
     }
 
@@ -570,6 +654,8 @@ public class BookingServiceImpl implements BookingService {
                 .confirmedAt(booking.getConfirmedAt())
                 .createdAt(booking.getCreatedAt())
                 .isReviewed(reviewed)
+                .paymentStatus(booking.getPaymentStatus())
+                .paidAmount(getPaidAmount(booking))
                 .build();
     }
 
@@ -650,10 +736,41 @@ public class BookingServiceImpl implements BookingService {
             throw new BusinessException("Booking total does not meet the minimum value requirement for this voucher.");
         }
 
+        if (booking.getUser() != null) {
+            java.util.Optional<UserVoucher> userVoucherOpt = userVoucherRepository.findByUserUserIdAndVoucherVoucherId(booking.getUser().getUserId(), voucher.getVoucherId());
+            UserVoucher userVoucher;
+            if (userVoucherOpt.isEmpty()) {
+                // Auto-claim the voucher for the user
+                if (!Boolean.TRUE.equals(voucher.getIsActive())) {
+                    throw new BusinessException("Voucher is deactivated.");
+                }
+                if (!voucher.isForAccountType(booking.getUser().getAccountType())) {
+                    throw new BusinessException("This voucher is only for " + voucher.getForAccountType() + " accounts.");
+                }
+                
+                userVoucher = UserVoucher.builder()
+                        .user(booking.getUser())
+                        .voucher(voucher)
+                        .isUsed(false)
+                        .build();
+                userVoucherRepository.save(userVoucher);
+            } else {
+                userVoucher = userVoucherOpt.get();
+            }
+            
+            if (Boolean.TRUE.equals(userVoucher.getIsUsed())) {
+                throw new BusinessException("This voucher has already been used.");
+            }
+        }
+
+        BigDecimal serviceFee = booking.getServiceFee() != null ? booking.getServiceFee() : BigDecimal.ZERO;
+        BigDecimal taxes = booking.getTaxes() != null ? booking.getTaxes() : BigDecimal.ZERO;
+        BigDecimal baseRoomRate = booking.getTotalAmount().subtract(serviceFee).subtract(taxes);
+
         BigDecimal discountAmount;
         if ("PERCENTAGE".equalsIgnoreCase(voucher.getDiscountType())) {
             BigDecimal percentage = voucher.getDiscountValue().divide(BigDecimal.valueOf(100));
-            discountAmount = booking.getTotalAmount().multiply(percentage);
+            discountAmount = baseRoomRate.multiply(percentage);
             if (voucher.getMaxDiscount() != null && discountAmount.compareTo(voucher.getMaxDiscount()) > 0) {
                 discountAmount = voucher.getMaxDiscount();
             }
@@ -661,9 +778,9 @@ public class BookingServiceImpl implements BookingService {
             discountAmount = voucher.getDiscountValue();
         }
 
-        // Limit discount to total booking amount
-        if (discountAmount.compareTo(booking.getTotalAmount()) > 0) {
-            discountAmount = booking.getTotalAmount();
+        // Limit discount to base room rate
+        if (discountAmount.compareTo(baseRoomRate) > 0) {
+            discountAmount = baseRoomRate;
         }
 
         BigDecimal finalPrice = booking.getTotalAmount().subtract(discountAmount);
@@ -711,8 +828,8 @@ public class BookingServiceImpl implements BookingService {
                 .bookingCode(bookingCode)
                 .user(user)
                 .hotel(hotel)
-                .checkInDate(request.getCheckInDate().atStartOfDay())
-                .checkOutDate(request.getCheckOutDate().atStartOfDay())
+                .checkInDate(request.getCheckInDate().atTime(12, 0))
+                .checkOutDate(request.getCheckOutDate().atTime(12, 0))
                 .totalAmount(totalAmount)
                 .status("PENDING")
                 .build();
@@ -772,15 +889,22 @@ public class BookingServiceImpl implements BookingService {
                 throw new BusinessException(validation.getMessage());
             }
 
+            if (booking.getAdults() != null && booking.getAdults() > 2 * roomIds.size()) {
+                throw new BusinessException("Total adults exceed the maximum capacity allowed for the updated room(s). Max 2 adults per room.");
+            }
+            if (booking.getChildren() != null && booking.getChildren() > 3 * roomIds.size()) {
+                throw new BusinessException("Total children exceed the maximum capacity allowed for the updated room(s). Max 3 children per room.");
+            }
+
             for (Long roomId : roomIds) {
-                List<Booking> overlapping = bookingRepository.findConfirmedBookingsOverlapping(roomId, checkIn.atStartOfDay(), checkOut.atStartOfDay());
+                List<Booking> overlapping = bookingRepository.findConfirmedBookingsOverlapping(roomId, checkIn.atTime(12, 0), checkOut.atTime(12, 0));
                 boolean hasOtherConfirmed = overlapping.stream().anyMatch(b -> !b.getBookingId().equals(bookingId));
                 if (hasOtherConfirmed) {
                     Room room = roomRepository.findById(roomId).orElse(null);
                     throw new BusinessException(String.format("Room %s is already booked for the selected dates", room != null ? room.getRoomNumber() : roomId));
                 }
 
-                List<RoomLock> activeLocks = roomLockRepository.findActiveLocksOverlapping(roomId, checkIn.atStartOfDay(), checkOut.atStartOfDay(), LocalDateTime.now());
+                List<RoomLock> activeLocks = roomLockRepository.findActiveLocksOverlapping(roomId, checkIn.atTime(12, 0), checkOut.atTime(12, 0), LocalDateTime.now());
                 boolean hasOtherLocks = activeLocks.stream().anyMatch(l -> !l.getBooking().getBookingId().equals(bookingId));
                 if (hasOtherLocks) {
                     Room room = roomRepository.findById(roomId).orElse(null);
@@ -788,8 +912,8 @@ public class BookingServiceImpl implements BookingService {
                 }
             }
 
-            booking.setCheckInDate(checkIn.atStartOfDay());
-            booking.setCheckOutDate(checkOut.atStartOfDay());
+            booking.setCheckInDate(checkIn.atTime(12, 0));
+            booking.setCheckOutDate(checkOut.atTime(12, 0));
 
             roomLockService.releaseLocksForBooking(bookingId);
 
@@ -837,12 +961,31 @@ public class BookingServiceImpl implements BookingService {
         if (request.getStatus() != null) {
             String targetStatus = request.getStatus().toUpperCase();
             if (!targetStatus.equals(booking.getStatus())) {
-                if (("FAILED".equals(targetStatus) || "CANCELLED".equals(targetStatus)) && "PENDING".equals(booking.getStatus())) {
+                if ("FAILED".equals(targetStatus) || "CANCELLED".equals(targetStatus)) {
                     if (booking.getVoucher() != null) {
                         Voucher voucher = booking.getVoucher();
-                        if (voucher.getCurrentUsage() != null && voucher.getCurrentUsage() > 0) {
-                            voucher.setCurrentUsage(voucher.getCurrentUsage() - 1);
-                            voucherRepository.save(voucher);
+                        java.util.Optional<UserVoucher> uvOpt = userVoucherRepository.findByUserUserIdAndVoucherVoucherId(
+                            booking.getUser().getUserId(), 
+                            voucher.getVoucherId()
+                        );
+                        if (uvOpt.isPresent()) {
+                            UserVoucher uv = uvOpt.get();
+                            if (Boolean.TRUE.equals(uv.getIsUsed())) {
+                                uv.setIsUsed(false);
+                                uv.setUsedAt(null);
+                                uv.setBooking(null);
+                                userVoucherRepository.save(uv);
+                                
+                                if (voucher.getCurrentUsage() != null && voucher.getCurrentUsage() > 0) {
+                                    voucher.setCurrentUsage(voucher.getCurrentUsage() - 1);
+                                    voucherRepository.save(voucher);
+                                }
+                            }
+                        } else {
+                            if (voucher.getCurrentUsage() != null && voucher.getCurrentUsage() > 0) {
+                                voucher.setCurrentUsage(voucher.getCurrentUsage() - 1);
+                                voucherRepository.save(voucher);
+                            }
                         }
                     }
                     roomLockService.releaseLocksForBooking(bookingId);
@@ -902,5 +1045,119 @@ public class BookingServiceImpl implements BookingService {
 
         bookingRepository.delete(booking);
         log.info("Successfully deleted booking ID: {}", bookingId);
+    }
+
+    @Override
+    @Transactional
+    public BookingTicketDTO getBookingTicket(Long bookingId) {
+        log.info("Getting E-Ticket Pass for booking ID: {}", bookingId);
+        Booking booking = bookingRepository.findById(bookingId)
+                .orElseThrow(() -> new ResourceNotFoundException("Booking not found with ID: " + bookingId));
+
+        if (booking.getCheckinQrCode() == null) {
+            booking.setCheckinQrCode("CHK-" + booking.getBookingCode());
+            booking.setCheckinQrSignature(UUID.randomUUID().toString().replace("-", ""));
+            booking = bookingRepository.save(booking);
+        }
+
+        Payment payment = paymentRepository.findByBooking_BookingId(bookingId).orElse(null);
+        return buildTicketDTO(booking, payment);
+    }
+
+    @Override
+    @Transactional
+    public void resendBookingTicketEmail(Long bookingId) {
+        log.info("Resending booking ticket email for booking ID: {}", bookingId);
+        Booking booking = bookingRepository.findById(bookingId)
+                .orElseThrow(() -> new ResourceNotFoundException("Booking not found with ID: " + bookingId));
+
+        if (booking.getCheckinQrCode() == null) {
+            booking.setCheckinQrCode("CHK-" + booking.getBookingCode());
+            booking.setCheckinQrSignature(UUID.randomUUID().toString().replace("-", ""));
+            bookingRepository.save(booking);
+        }
+
+        Payment payment = paymentRepository.findByBooking_BookingId(bookingId).orElse(null);
+        emailService.sendBookingTicketEmail(booking, payment);
+    }
+
+    @Override
+    @Transactional
+    public BookingTicketDTO scanCheckInQr(String qrCode) {
+        log.info("Receptionist scanning check-in QR code: {}", qrCode);
+        if (qrCode == null || qrCode.isBlank()) {
+            throw new BusinessException("QR Code cannot be empty");
+        }
+
+        String searchCode = qrCode.trim();
+        Booking booking = bookingRepository.findByBookingCode(searchCode)
+                .orElseGet(() -> bookingRepository.findAll().stream()
+                        .filter(b -> searchCode.equalsIgnoreCase(b.getCheckinQrCode()) || searchCode.equalsIgnoreCase("CHK-" + b.getBookingCode()))
+                        .findFirst()
+                        .orElseThrow(() -> new ResourceNotFoundException("No valid booking found for QR Code: " + qrCode)));
+
+        Payment payment = paymentRepository.findByBooking_BookingId(booking.getBookingId()).orElse(null);
+
+        String message;
+        if ("COMPLETED".equalsIgnoreCase(booking.getStatus()) || "CHECKED_IN".equalsIgnoreCase(booking.getStatus())) {
+            message = "Khách hàng đã nhận phòng trước đó (Checked-in).";
+        } else if ("CANCELLED".equalsIgnoreCase(booking.getStatus())) {
+            message = "CẢNH BÁO: Đơn đặt phòng này đã bị HỦY!";
+        } else {
+            booking.setStatus("COMPLETED");
+            bookingRepository.save(booking);
+            message = "Xác nhận nhận phòng (Check-in) THÀNH CÔNG!";
+        }
+
+        BookingTicketDTO dto = buildTicketDTO(booking, payment);
+        dto.setMessage(message);
+        return dto;
+    }
+
+    private BookingTicketDTO buildTicketDTO(Booking booking, Payment payment) {
+        User user = booking.getUser();
+        Hotel hotel = booking.getHotel();
+        Room room = (booking.getBookingRooms() != null && !booking.getBookingRooms().isEmpty())
+                ? booking.getBookingRooms().get(0).getRoom() : null;
+
+        BigDecimal totalPrice = (booking.getFinalPrice() != null) ? booking.getFinalPrice() : booking.getTotalAmount();
+        BigDecimal paidAmount = (payment != null && payment.getAmount() != null) ? payment.getAmount() : totalPrice;
+        BigDecimal remainingAmount = totalPrice.subtract(paidAmount);
+        if (remainingAmount.compareTo(BigDecimal.ZERO) < 0) remainingAmount = BigDecimal.ZERO;
+
+        String checkinCode = (booking.getCheckinQrCode() != null) ? booking.getCheckinQrCode() : "CHK-" + booking.getBookingCode();
+        String qrSig = (booking.getCheckinQrSignature() != null) ? booking.getCheckinQrSignature() : UUID.randomUUID().toString().substring(0, 8);
+
+        Integer depositRatioVal = 100;
+        if (payment != null && payment.getDepositRatio() != null) {
+            depositRatioVal = payment.getDepositRatio().multiply(new BigDecimal("100")).intValue();
+        }
+
+        return BookingTicketDTO.builder()
+                .bookingId(booking.getBookingId())
+                .bookingCode(booking.getBookingCode())
+                .checkinQrCode(checkinCode)
+                .checkinQrSignature(qrSig)
+                .customerName(user != null ? user.getFullName() : "Khách hàng")
+                .customerEmail(user != null ? user.getEmail() : "")
+                .customerPhone(user != null ? user.getPhoneNumber() : "")
+                .identificationNumber(user != null ? user.getIdentificationNumber() : "")
+                .hotelId(hotel != null ? hotel.getHotelId() : null)
+                .hotelName(hotel != null ? hotel.getName() : "Luxury Hotel")
+                .hotelLocation(hotel != null ? hotel.getLocation() : "")
+                .roomId(room != null ? room.getRoomId() : null)
+                .roomNumber(room != null ? room.getRoomNumber() : "TBD")
+                .roomType(room != null ? room.getRoomType() : "Standard Room")
+                .checkInDate(booking.getCheckInDate())
+                .checkOutDate(booking.getCheckOutDate())
+                .status(booking.getStatus())
+                .paymentStatus(booking.getPaymentStatus())
+                .totalPrice(totalPrice)
+                .paidAmount(paidAmount)
+                .remainingAmount(remainingAmount)
+                .paymentMethod(payment != null ? payment.getPaymentMethod() : "ONLINE")
+                .isDeposit(payment != null ? payment.getIsDeposit() : false)
+                .depositRatio(depositRatioVal)
+                .build();
     }
 }

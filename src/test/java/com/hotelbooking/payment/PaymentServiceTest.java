@@ -7,6 +7,7 @@ import com.hotelbooking.payment.dto.PaymentRequestDTO;
 import com.hotelbooking.payment.dto.PaymentResponseDTO;
 import com.hotelbooking.user.User;
 import com.hotelbooking.voucher.VoucherRepository;
+import com.hotelbooking.voucher.VoucherStoreService;
 import com.stripe.model.PaymentIntent;
 import com.stripe.param.PaymentIntentCreateParams;
 import org.mockito.MockedStatic;
@@ -50,6 +51,21 @@ public class PaymentServiceTest {
 
     @Mock
     private PayoutRepository payoutRepository;
+
+    @Mock
+    private VoucherStoreService voucherStoreService;
+
+    @Mock
+    private com.hotelbooking.payment.refund.RefundPolicyRepository refundPolicyRepository;
+
+    @Mock
+    private com.hotelbooking.payment.refund.RefundAuditLogRepository refundAuditLogRepository;
+
+    @Mock
+    private com.hotelbooking.wallet.WalletRepository walletRepository;
+
+    @Mock
+    private com.hotelbooking.wallet.WalletService walletService;
 
     @InjectMocks
     private PaymentServiceImpl paymentService;
@@ -162,8 +178,14 @@ public class PaymentServiceTest {
         payment.setStatus("SUCCESS");
         payment.setBooking(booking);
 
+        com.hotelbooking.payment.refund.RefundPolicy policy = new com.hotelbooking.payment.refund.RefundPolicy();
+        policy.setDaysBeforeCheckin(3);
+        policy.setRefundPercentage(BigDecimal.valueOf(50)); // 50% refund
+
         when(bookingRepository.findById(1L)).thenReturn(Optional.of(booking));
         when(paymentRepository.findByBooking_BookingId(1L)).thenReturn(Optional.of(payment));
+        when(refundPolicyRepository.findMatchingPoliciesOrdered(anyInt()))
+                .thenReturn(java.util.Collections.singletonList(policy));
 
         paymentService.processRefund(1L);
 
@@ -305,7 +327,8 @@ public class PaymentServiceTest {
         payment.setCountdownEndTime(LocalDateTime.now().minusMinutes(1));
         payment.setBooking(booking);
 
-        when(paymentRepository.findAll()).thenReturn(java.util.Collections.singletonList(payment));
+        when(paymentRepository.findExpiredPayments(eq("PENDING"), any(LocalDateTime.class)))
+                .thenReturn(java.util.Collections.singletonList(payment));
 
         paymentService.checkExpiredPaymentHolds();
 
@@ -318,22 +341,33 @@ public class PaymentServiceTest {
 
     @Test
     void testRefundUnusedMealTickets_Success() {
+        User user = new User();
+        user.setUserId(45L);
+
         Booking booking = new Booking();
         booking.setBookingId(6L);
+        booking.setUser(user);
 
         Payment payment = new Payment();
         payment.setAmount(BigDecimal.valueOf(500));
         payment.setStatus("SUCCESS");
         payment.setBooking(booking);
 
+        com.hotelbooking.wallet.Wallet wallet = new com.hotelbooking.wallet.Wallet();
+        wallet.setWalletId(1L);
+        wallet.setOwnerUser(user);
+
         when(bookingRepository.findById(6L)).thenReturn(Optional.of(booking));
         when(paymentRepository.findByBooking_BookingId(6L)).thenReturn(Optional.of(payment));
+        when(walletRepository.findByOwnerUserUserIdAndWalletType(45L, com.hotelbooking.wallet.WalletType.PERSONAL))
+                .thenReturn(Optional.of(wallet));
 
         paymentService.refundUnusedMealTickets(6L, BigDecimal.valueOf(50));
 
         assertEquals(BigDecimal.valueOf(50), payment.getMealRefundAmount());
         assertEquals(BigDecimal.valueOf(50), payment.getRefundAmount());
         verify(paymentRepository, times(1)).save(payment);
+        verify(walletService, times(1)).refundToWallet(eq(1L), eq(6L), eq(BigDecimal.valueOf(50)));
     }
 
     @Test

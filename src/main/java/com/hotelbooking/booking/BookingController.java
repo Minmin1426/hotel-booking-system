@@ -3,6 +3,7 @@ import com.hotelbooking.booking.dto.BookingConfirmResponse;
 import com.hotelbooking.booking.dto.BookingHistoryResponse;
 import com.hotelbooking.booking.dto.BookingRequest;
 import com.hotelbooking.booking.dto.BookingResponse;
+import com.hotelbooking.booking.dto.BookingTicketDTO;
 import com.hotelbooking.booking.dto.CancelBookingResponse;
 import com.hotelbooking.booking.dto.DateValidationRequest;
 import com.hotelbooking.booking.dto.DateValidationResponse;
@@ -105,5 +106,35 @@ public class BookingController {
         log.info("API: Retrieving booking ID: {}", bookingId);
         BookingResponse response = bookingService.getBookingById(bookingId);
         return ResponseEntity.ok(ApiResponse.success("Booking retrieved successfully", response));
+    }
+
+    // Retrieve E-Ticket Pass details
+    @GetMapping("/{id}/ticket")
+    @PreAuthorize("hasAnyRole('CUSTOMER', 'STAFF', 'ADMIN', 'DIRECTOR', 'RECEPTIONIST')")
+    public ResponseEntity<ApiResponse<BookingTicketDTO>> getBookingTicket(
+            @PathVariable("id") Long bookingId) {
+        log.info("API: Retrieving E-Ticket Pass for booking ID: {}", bookingId);
+        BookingTicketDTO response = bookingService.getBookingTicket(bookingId);
+        return ResponseEntity.ok(ApiResponse.success("E-Ticket pass retrieved successfully", response));
+    }
+
+    // Resend Booking Ticket Email
+    @PostMapping("/{id}/resend-email")
+    @PreAuthorize("hasAnyRole('CUSTOMER', 'STAFF', 'ADMIN', 'DIRECTOR', 'RECEPTIONIST')")
+    public ResponseEntity<ApiResponse<Void>> resendBookingTicketEmail(
+            @PathVariable("id") Long bookingId) {
+        log.info("API: Resending ticket email for booking ID: {}", bookingId);
+        bookingService.resendBookingTicketEmail(bookingId);
+        return ResponseEntity.ok(ApiResponse.success("Confirmation email resent successfully", null));
+    }
+
+    // Receptionist Scan Check-in QR Code
+    @PostMapping("/check-in/scan")
+    @PreAuthorize("hasAnyRole('STAFF', 'ADMIN', 'DIRECTOR', 'RECEPTIONIST')")
+    public ResponseEntity<ApiResponse<BookingTicketDTO>> scanCheckInQr(
+            @RequestParam("qrCode") String qrCode) {
+        log.info("API: Receptionist scanning check-in QR code: {}", qrCode);
+        BookingTicketDTO response = bookingService.scanCheckInQr(qrCode);
+        return ResponseEntity.ok(ApiResponse.success(response.getMessage(), response));
     }
 }

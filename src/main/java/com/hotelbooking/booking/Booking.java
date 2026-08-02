@@ -57,6 +57,12 @@ public class Booking {
     @Column(columnDefinition = "TEXT")
     private String notes;
 
+    @Column(name = "checkin_qr_code")
+    private String checkinQrCode;
+
+    @Column(name = "checkin_qr_signature")
+    private String checkinQrSignature;
+
 
     @Column(name = "payment_status")
     private String paymentStatus;
