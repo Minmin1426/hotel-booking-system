@@ -17,6 +17,7 @@ public interface HotelService {
     HotelDetailResponse getHotelDetail(Long hotelId);
     HotelResponse createHotel(HotelCreateRequest request);
     HotelResponse updateHotel(Long id, HotelUpdateRequest request);
+    HotelResponse toggleHotelStatus(Long id, boolean active);
     void deleteHotel(Long id);
     String uploadImage(Long hotelId, org.springframework.web.multipart.MultipartFile file) throws java.io.IOException;
 }

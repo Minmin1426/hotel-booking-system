@@ -112,9 +112,34 @@ function HotelsPage() {
   const [includeMeals, setIncludeMeals] = useState(true);
   const [mealType, setMealType] = useState('ALL');
 
-  // Handle Search Submission
+  // Handle Search Submission with validation
   const handleSearchSubmit = (e) => {
     e.preventDefault();
+
+    if (searchName && searchName.length > 100) {
+      setError("Tên khách sạn tìm kiếm quá dài (Tối đa 100 ký tự).");
+      return;
+    }
+    if (searchLocation && searchLocation.length > 100) {
+      setError("Địa điểm tìm kiếm quá dài (Tối đa 100 ký tự).");
+      return;
+    }
+
+    if (searchType === 'group') {
+      if (!groupRooms || groupRooms < 1 || groupRooms > 200) {
+        setError("Số lượng phòng đặt cho đoàn phải từ 1 đến 200 phòng.");
+        return;
+      }
+    }
+
+    if (searchType === 'meal') {
+      if (!groupGuests || groupGuests < 1 || groupGuests > 500) {
+        setError("Số lượng suất ăn phải từ 1 đến 500 suất.");
+        return;
+      }
+    }
+
+    setError('');
     const normName = searchName.replace(/\s+/g, '');
     const normLoc = searchLocation.replace(/\s+/g, '');
     

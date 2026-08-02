@@ -25,6 +25,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -158,5 +159,23 @@ class HotelControllerTest {
                 .andExpect(jsonPath("$.hotelId").value(1L))
                 .andExpect(jsonPath("$.name").value("Sheraton Hanoi"))
                 .andExpect(jsonPath("$.rating").value(4.5));
+    }
+
+    @Test
+    void toggleHotelStatus_Success() throws Exception {
+        HotelResponse response = HotelResponse.builder()
+                .hotelId(1L)
+                .name("Sheraton Hanoi")
+                .isActive(false)
+                .build();
+
+        when(hotelService.toggleHotelStatus(eq(1L), eq(false))).thenReturn(response);
+
+        mockMvc.perform(patch("/api/v1/hotels/{id}/status", 1L)
+                        .param("active", "false")
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.hotelId").value(1L))
+                .andExpect(jsonPath("$.isActive").value(false));
     }
 }

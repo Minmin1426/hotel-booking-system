@@ -323,26 +323,52 @@ class HotelServiceImplTest {
     }
 
     @Test
-    void deleteHotel_Success() {
+    void deleteHotel_ThrowsForbiddenException() {
+        assertThatThrownBy(() -> hotelService.deleteHotel(1L))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("Chức năng xoá khách sạn bị cấm");
+    }
+
+    @Test
+    void toggleHotelStatus_LockSuccess() {
         when(hotelRepository.findById(1L)).thenReturn(Optional.of(activeHotel));
         when(bookingRepository.existsByHotel_HotelIdAndStatus(1L, "CONFIRMED")).thenReturn(false);
         when(bookingRepository.existsByHotel_HotelIdAndStatus(1L, "PENDING")).thenReturn(false);
-        when(roomRepository.findByHotel_HotelId(1L)).thenReturn(new ArrayList<>());
+        
+        Room room = Room.builder().roomId(101L).status("AVAILABLE").build();
+        when(roomRepository.findByHotel_HotelId(1L)).thenReturn(List.of(room));
+        when(hotelRepository.save(any(Hotel.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        hotelService.deleteHotel(1L);
+        HotelResponse response = hotelService.toggleHotelStatus(1L, false);
 
+        assertThat(response).isNotNull();
         assertThat(activeHotel.getIsActive()).isFalse();
+        assertThat(room.getStatus()).isEqualTo("UNAVAILABLE");
+        verify(roomRepository, times(1)).saveAll(anyList());
         verify(hotelRepository, times(1)).save(activeHotel);
     }
 
     @Test
-    void deleteHotel_WithActiveBookings_ThrowsException() {
+    void toggleHotelStatus_LockWithActiveBookings_ThrowsException() {
         when(hotelRepository.findById(1L)).thenReturn(Optional.of(activeHotel));
         when(bookingRepository.existsByHotel_HotelIdAndStatus(1L, "CONFIRMED")).thenReturn(true);
 
-        assertThatThrownBy(() -> hotelService.deleteHotel(1L))
+        assertThatThrownBy(() -> hotelService.toggleHotelStatus(1L, false))
                 .isInstanceOf(BusinessException.class)
-                .hasMessageContaining("Cannot delete hotel because active bookings exist");
+                .hasMessageContaining("Không thể khoá khách sạn vì đang có các đơn đặt phòng hoạt động");
+    }
+
+    @Test
+    void toggleHotelStatus_UnlockSuccess() {
+        activeHotel.setIsActive(false);
+        when(hotelRepository.findById(1L)).thenReturn(Optional.of(activeHotel));
+        when(hotelRepository.save(any(Hotel.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        HotelResponse response = hotelService.toggleHotelStatus(1L, true);
+
+        assertThat(response).isNotNull();
+        assertThat(activeHotel.getIsActive()).isTrue();
+        verify(hotelRepository, times(1)).save(activeHotel);
     }
 
     @Test

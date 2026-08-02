@@ -124,6 +124,7 @@ export default function ProfilePage() {
   const loadTickets = async () => {
     setTicketsLoading(true);
     setError(null);
+    let apiTickets = [];
     try {
       const token = sessionStorage.getItem("accessToken");
       const baseApiUrl = import.meta.env.VITE_API_URL || (window.location.origin.includes("localhost") ? "http://localhost:8080/api/v1" : "https://hotel-booking-system-0wv2.onrender.com/api/v1");
@@ -132,24 +133,38 @@ export default function ProfilePage() {
           "Authorization": `Bearer ${token}`
         }
       });
-      if (!response.ok) {
-        throw new Error("Failed to load meal tickets");
+      if (response.ok) {
+        const data = await response.json();
+        apiTickets = data.data?.content || data.content || [];
       }
-      const data = await response.json();
-      const content = data.data?.content || data.content || [];
-      setTickets(content);
     } catch (err) {
-      console.error("Failed to fetch tickets:", err);
-      setError(err.message || "Failed to load meal tickets");
-    } finally {
-      setTicketsLoading(false);
+      console.warn("Could not fetch API meal tickets:", err);
     }
+
+    let localTickets = [];
+    try {
+      const localStr = localStorage.getItem("my_purchased_meal_tickets");
+      localTickets = localStr ? JSON.parse(localStr) : [];
+    } catch (e) {
+      console.error("Failed to parse local meal tickets:", e);
+    }
+
+    const combined = [...localTickets, ...apiTickets];
+    setTickets(combined);
+    setTicketsLoading(false);
   };
 
   const handleShowQr = async (ticket) => {
     setSelectedTicketForQr(ticket);
     setQrLoading(true);
     setQrUrl(null);
+
+    if (ticket.qrCodeUrl) {
+      setQrUrl(ticket.qrCodeUrl);
+      setQrLoading(false);
+      return;
+    }
+
     try {
       const token = sessionStorage.getItem("accessToken");
       const baseApiUrl = import.meta.env.VITE_API_URL || (window.location.origin.includes("localhost") ? "http://localhost:8080/api/v1" : "https://hotel-booking-system-0wv2.onrender.com/api/v1");
@@ -166,7 +181,8 @@ export default function ProfilePage() {
       setQrUrl(url);
     } catch (err) {
       console.error("Failed to load QR code:", err);
-      alert(err.message || "Không thể tải mã QR.");
+      const code = ticket.orderCode || ticket.qrCode || `TICKET-${ticket.ticketId}`;
+      setQrUrl(`https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${code}`);
     } finally {
       setQrLoading(false);
     }
@@ -778,15 +794,18 @@ export default function ProfilePage() {
                           </div>
 
                           <div className="space-y-1 mt-4 text-[11px] text-slate-500 font-medium">
-                            <p>🏨 Guest: <span className="font-semibold text-slate-700">{t.userFullName}</span></p>
-                            <p>📅 Valid Until: <span className="font-semibold text-slate-700">{expiryDate}</span></p>
+                            <p>👤 Người đặt: <span className="font-semibold text-slate-700">{t.userFullName}</span></p>
+                            {t.bookerPhone && <p>📞 SĐT: <span className="font-mono font-semibold text-slate-700">{t.bookerPhone}</span></p>}
+                            {t.bookerIdNumber && <p>🪪 CCCD: <span className="font-mono font-semibold text-slate-700">{t.bookerIdNumber}</span></p>}
+                            <p>📅 Ngày sử dụng: <span className="font-semibold text-slate-700">{expiryDate}</span> {t.session && <span className="text-amber-700 font-bold">({t.session})</span>}</p>
+                            {t.quantity && <p>🎟️ Số lượng vé: <span className="font-bold text-slate-900">{t.quantity} vé</span> {t.totalPrice && <span className="text-emerald-700 font-extrabold font-mono">(${(t.totalPrice).toFixed(0)})</span>}</p>}
                             {t.bookingId && <p>🔖 Booking Ref: <span className="font-semibold text-slate-700">#{t.bookingId}</span></p>}
                           </div>
                         </div>
 
                         <div className="mt-6 pt-4 border-t border-[#f5f5f7] flex justify-between items-center gap-3">
-                          <span className="text-[10px] font-mono text-slate-400">
-                            {t.qrCode ? t.qrCode.substring(0, 10) + '...' : ''}
+                          <span className="text-[10px] font-mono font-bold text-amber-700">
+                            {t.orderCode || (t.qrCode ? t.qrCode.substring(0, 12) + '...' : '')}
                           </span>
                           <button
                             onClick={() => handleShowQr(t)}

@@ -206,29 +206,40 @@ public class HotelServiceImpl implements HotelService {
 
     @Override
     @Transactional
-    public void deleteHotel(Long id) {
-        log.info("Deleting hotel. Hotel ID: {}", id);
+    public HotelResponse toggleHotelStatus(Long id, boolean active) {
+        log.info("Toggling status of hotel ID: {} to active={}", id, active);
         Hotel hotel = hotelRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Hotel", "id", id.toString()));
 
-        // Check if there are active bookings
-        boolean hasActiveBookings = bookingRepository.existsByHotel_HotelIdAndStatus(id, "CONFIRMED") 
-                || bookingRepository.existsByHotel_HotelIdAndStatus(id, "PENDING");
-        
-        if (hasActiveBookings) {
-            throw new BusinessException("Cannot delete hotel because active bookings exist");
+        if (!active) {
+            // Check if there are active bookings before locking
+            boolean hasActiveBookings = bookingRepository.existsByHotel_HotelIdAndStatus(id, "CONFIRMED") 
+                    || bookingRepository.existsByHotel_HotelIdAndStatus(id, "PENDING");
+            if (hasActiveBookings) {
+                throw new BusinessException("Không thể khoá khách sạn vì đang có các đơn đặt phòng hoạt động (CONFIRMED/PENDING)");
+            }
+            
+            // Set hotel inactive and disable all rooms
+            hotel.setIsActive(false);
+            List<Room> rooms = roomRepository.findByHotel_HotelId(id);
+            for (Room room : rooms) {
+                room.setStatus("UNAVAILABLE");
+            }
+            roomRepository.saveAll(rooms);
+        } else {
+            // Activate hotel
+            hotel.setIsActive(true);
         }
 
-        // Soft delete hotel
-        hotel.setIsActive(false);
-        hotelRepository.save(hotel);
+        Hotel saved = hotelRepository.save(hotel);
+        return convertToFilterResponse(saved);
+    }
 
-        // Disable all rooms
-        List<Room> rooms = roomRepository.findByHotel_HotelId(id);
-        for (Room room : rooms) {
-            room.setStatus("UNAVAILABLE");
-        }
-        roomRepository.saveAll(rooms);
+    @Override
+    @Transactional
+    public void deleteHotel(Long id) {
+        log.warn("Attempted to delete hotel ID: {}. Deletion is disabled; use lock/unlock status toggle instead.", id);
+        throw new BusinessException("Chức năng xoá khách sạn bị cấm. Admin chỉ được phép khoá hoặc mở khoá khách sạn.");
     }
 
     @Override

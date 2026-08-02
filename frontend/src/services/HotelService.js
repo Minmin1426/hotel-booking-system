@@ -122,6 +122,19 @@ export const HotelService = {
     return data;
   },
 
+  // Lock / Unlock hotel status (Admin only)
+  toggleHotelStatus: async (hotelId, active) => {
+    const response = await fetch(`${API_BASE_URL}/hotels/${hotelId}/status?active=${active}`, {
+      method: "PATCH",
+      headers: getHeaders()
+    });
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.message || "Failed to update hotel status");
+    }
+    return data;
+  },
+
   // UC-27: Delete a hotel (Admin only)
   deleteHotel: async (hotelId) => {
     const response = await fetch(`${API_BASE_URL}/hotels/${hotelId}`, {
