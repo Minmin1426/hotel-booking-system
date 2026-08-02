@@ -1,0 +1,144 @@
+-- V1__Init_database.sql
+-- Description: Khởi tạo database schema cho Hotel Booking System (SQL Server)
+
+-- 1. Bảng users
+CREATE TABLE users (
+    user_id BIGINT IDENTITY(1,1) PRIMARY KEY,
+    email VARCHAR(255) NOT NULL UNIQUE,
+    password_hash VARCHAR(255) NOT NULL,
+    full_name NVARCHAR(255) NOT NULL,
+    role VARCHAR(50) NOT NULL,
+    status VARCHAR(50) NOT NULL DEFAULT 'ACTIVE',
+    created_at DATETIME2 NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME2 NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 2. Bảng hotels
+CREATE TABLE hotels (
+    hotel_id BIGINT IDENTITY(1,1) PRIMARY KEY,
+    name NVARCHAR(255) NOT NULL,
+    location NVARCHAR(MAX) NOT NULL,
+    description NVARCHAR(MAX),
+    is_active BIT NOT NULL DEFAULT 1,
+    created_at DATETIME2 NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME2 NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 3. Bảng hotel_images
+CREATE TABLE hotel_images (
+    image_id BIGINT IDENTITY(1,1) PRIMARY KEY,
+    hotel_id BIGINT NOT NULL,
+    image_url VARCHAR(MAX) NOT NULL,
+    image_format VARCHAR(50),
+    created_at DATETIME2 NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME2 NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_hotel_images_hotel FOREIGN KEY (hotel_id) REFERENCES hotels(hotel_id)
+);
+
+-- 4. Bảng rooms
+CREATE TABLE rooms (
+    room_id BIGINT IDENTITY(1,1) PRIMARY KEY,
+    hotel_id BIGINT NOT NULL,
+    room_type NVARCHAR(100) NOT NULL,
+    price DECIMAL(18,2) NOT NULL,
+    room_number NVARCHAR(50) NOT NULL,
+    created_at DATETIME2 NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME2 NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_rooms_hotel FOREIGN KEY (hotel_id) REFERENCES hotels(hotel_id)
+);
+
+-- 5. Bảng bookings
+CREATE TABLE bookings (
+    booking_id BIGINT IDENTITY(1,1) PRIMARY KEY,
+    booking_code VARCHAR(100) NOT NULL UNIQUE,
+    user_id BIGINT NOT NULL,
+    hotel_id BIGINT NOT NULL,
+    check_in_date DATETIME2 NOT NULL,
+    check_out_date DATETIME2 NOT NULL,
+    total_amount DECIMAL(18,2) NOT NULL,
+    status VARCHAR(50) NOT NULL,
+    created_at DATETIME2 NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME2 NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_bookings_user FOREIGN KEY (user_id) REFERENCES users(user_id),
+    CONSTRAINT fk_bookings_hotel FOREIGN KEY (hotel_id) REFERENCES hotels(hotel_id)
+);
+
+-- 6. Bảng booking_rooms
+CREATE TABLE booking_rooms (
+    booking_id BIGINT NOT NULL,
+    room_id BIGINT NOT NULL,
+    quantity INT NOT NULL DEFAULT 1,
+    price_at_booking DECIMAL(18,2) NOT NULL,
+    created_at DATETIME2 NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME2 NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (booking_id, room_id),
+    CONSTRAINT fk_booking_rooms_booking FOREIGN KEY (booking_id) REFERENCES bookings(booking_id),
+    CONSTRAINT fk_booking_rooms_room FOREIGN KEY (room_id) REFERENCES rooms(room_id)
+);
+
+-- 7. Bảng payments
+CREATE TABLE payments (
+    payment_id BIGINT IDENTITY(1,1) PRIMARY KEY,
+    booking_id BIGINT NOT NULL,
+    payment_method VARCHAR(50) NOT NULL,
+    amount DECIMAL(18,2) NOT NULL,
+    status VARCHAR(50) NOT NULL,
+    created_at DATETIME2 NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME2 NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_payments_booking FOREIGN KEY (booking_id) REFERENCES bookings(booking_id)
+);
+
+-- 8. Bảng reviews
+CREATE TABLE reviews (
+    review_id BIGINT IDENTITY(1,1) PRIMARY KEY,
+    user_id BIGINT NOT NULL,
+    hotel_id BIGINT NOT NULL,
+    booking_id BIGINT NOT NULL UNIQUE, -- Đảm bảo 1 booking chỉ có 1 review
+    rating INT NOT NULL CHECK (rating >= 1 AND rating <= 5),
+    comment NVARCHAR(MAX),
+    created_at DATETIME2 NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME2 NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_reviews_user FOREIGN KEY (user_id) REFERENCES users(user_id),
+    CONSTRAINT fk_reviews_hotel FOREIGN KEY (hotel_id) REFERENCES hotels(hotel_id),
+    CONSTRAINT fk_reviews_booking FOREIGN KEY (booking_id) REFERENCES bookings(booking_id)
+);
+
+-- 9. Bảng favorites
+CREATE TABLE favorites (
+    favorite_id BIGINT IDENTITY(1,1) PRIMARY KEY,
+    user_id BIGINT NOT NULL,
+    hotel_id BIGINT NOT NULL,
+    created_at DATETIME2 NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME2 NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_favorites_user FOREIGN KEY (user_id) REFERENCES users(user_id),
+    CONSTRAINT fk_favorites_hotel FOREIGN KEY (hotel_id) REFERENCES hotels(hotel_id)
+);
+
+-- 10. Bảng support_tickets
+CREATE TABLE support_tickets (
+    ticket_id BIGINT IDENTITY(1,1) PRIMARY KEY,
+    user_id BIGINT NOT NULL,
+    staff_id BIGINT,
+    issue_description NVARCHAR(MAX) NOT NULL,
+    status VARCHAR(50) NOT NULL,
+    created_at DATETIME2 NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME2 NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_tickets_user FOREIGN KEY (user_id) REFERENCES users(user_id),
+    CONSTRAINT fk_tickets_staff FOREIGN KEY (staff_id) REFERENCES users(user_id)
+);
+
+-- ==========================================
+-- TẠO INDEX CHO TẤT CẢ FOREIGN KEYS VÀ CỘT TÌM KIẾM
+-- ==========================================
+CREATE INDEX idx_hotel_images_hotel_id ON hotel_images(hotel_id);
+CREATE INDEX idx_rooms_hotel_id ON rooms(hotel_id);
+CREATE INDEX idx_bookings_user_id ON bookings(user_id);
+CREATE INDEX idx_bookings_hotel_id ON bookings(hotel_id);
+CREATE INDEX idx_booking_rooms_room_id ON booking_rooms(room_id);
+CREATE INDEX idx_payments_booking_id ON payments(booking_id);
+CREATE INDEX idx_reviews_user_id ON reviews(user_id);
+CREATE INDEX idx_reviews_hotel_id ON reviews(hotel_id);
+CREATE INDEX idx_favorites_user_id ON favorites(user_id);
+CREATE INDEX idx_favorites_hotel_id ON favorites(hotel_id);
+CREATE INDEX idx_support_tickets_user_id ON support_tickets(user_id);
+CREATE INDEX idx_support_tickets_staff_id ON support_tickets(staff_id);

@@ -1,0 +1,29 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: hotel-booking-backend
+    ports:
+      - "8080:8080"
+    environment:
+      - SPRING_PROFILES_ACTIVE=dev
+      - DB_URL=jdbc:postgresql://ep-summer-rain-a1x2yb3z.ap-southeast-1.aws.neon.tech/neondb?sslmode=require
+      - DB_USERNAME=neondb_owner
+      - DB_PASSWORD=npg_w8QxX0vS1ZbL
+      - JWT_SECRET=c2VjdXJlX2p3dF9zZWNyZXRfa2V5X2Zvcl9ob3RlbF9ib29raW5nX3N5c3RlbV8yMDI2
+    restart: always
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: hotel-booking-frontend
+    ports:
+      - "80:80"
+      - "5173:80"
+    depends_on:
+      - backend
+    restart: always

@@ -2,7 +2,7 @@
 # Project Constitution & AI Collaboration Memory
 
 > Version: 3.0.0  
-> Architecture: Hybrid SDD + ADD  
+> Architecture: SDD + ADD  
 > Stack: Spring Boot 3 + SQL Server + JWT + JPA  
 > Auther: VudtlHE190770
 > Last Updated: 2026-05-26
@@ -40,7 +40,7 @@ Frontend future phase:
 
 Dự án áp dụng mô hình:
 
-## Hybrid SDD + ADD
+## SDD + ADD
 
 ```text
 SDD = Spec-Driven Development
@@ -149,9 +149,9 @@ AI chịu trách nhiệm:
 | ORM | Spring Data JPA / Hibernate |
 | Build Tool | Maven |
 | API Style | RESTful API |
-| Frontend | React / Vue (future phase) |
+| Frontend | React (future phase) |
 | Version Control | Git + GitHub |
-| AI Tools | Cursor / Claude Code / Roo Code / Cline |
+| AI Tools | Codex |
 
 ---
 
@@ -1110,6 +1110,15 @@ Sử dụng SQL Server vì:
 Authentication dùng JWT Stateless Authentication.
 
 Session-based authentication không được dùng cho REST API.
+
+---
+
+## ADR-004 — PostgreSQL / Neon DB Support
+
+Bổ sung hỗ trợ PostgreSQL (Neon DB) cho online database server vì:
+- Cloud-native serverless database với auto-scaling.
+- Phù hợp cho việc deploy online và kiểm thử môi trường production.
+- Tương thích tốt với Flyway sử dụng cấu trúc thư mục migrations phân tách theo vendor (`db/migration/{vendor}`).
 
 ---
 

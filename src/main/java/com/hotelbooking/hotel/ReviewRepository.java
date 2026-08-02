@@ -1,0 +1,34 @@
+package com.hotelbooking.hotel;
+
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+import org.springframework.stereotype.Repository;
+
+@Repository
+public interface ReviewRepository extends JpaRepository<Review, Long> {
+
+    // UC-31: lấy tất cả reviews, filter theo status
+    @Query("SELECT r FROM Review r WHERE (:status IS NULL OR r.status = :status) ORDER BY r.createdAt DESC")
+    Page<Review> findAllByStatus(@Param("status") String status, Pageable pageable);
+
+    // UC-26: đếm bookings theo hotel và khoảng thời gian (room usage)
+    @Query("SELECT COUNT(r) FROM Review r WHERE r.hotel.hotelId = :hotelId")
+    long countByHotelId(@Param("hotelId") Long hotelId);
+
+    long countByUser_UserId(Long userId);
+
+    boolean existsByBookingBookingId(Long bookingId);
+
+    Page<Review> findByHotelHotelIdAndStatusOrderByCreatedAtDesc(Long hotelId, String status, Pageable pageable);
+
+    @Query("SELECT AVG(CAST(r.rating AS double)) FROM Review r WHERE r.hotel.hotelId = :hotelId AND r.status = 'VISIBLE'")
+    Double getAverageRatingForHotel(@Param("hotelId") Long hotelId);
+
+    @org.springframework.data.jpa.repository.Modifying
+    @org.springframework.transaction.annotation.Transactional
+    @Query("DELETE FROM Review r WHERE r.user.userId = :userId")
+    void deleteByUser_UserId(@Param("userId") Long userId);
+}

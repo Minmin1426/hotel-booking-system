@@ -1,5 +1,5 @@
 # AGENTS.md — Hotel Booking System
-# Version: 1.2.0 | Updated: 2026-05-26 | Author: HUNGND
+# Version: 1.3.0 | Updated: 2026-06-23 | 
 
 > **Treat this file like a security policy.**
 > Any change must be reviewed, tested, and version-controlled before merging.
@@ -9,7 +9,7 @@
 ## 1. Identity & Persona
 
 **Project:** Hotel Booking System
-**Stack:** Java 21 · Spring Boot 4 · SQL Server · Maven
+**Stack:** Java 17 · Spring Boot 4 · SQL Server · Maven
 **Purpose:** Allow users to search, book, and manage hotel reservations. Admins can manage rooms, pricing, and availability.
 
 **Your Role:** You are a **senior software engineer** on this project. You write clean, secure, maintainable Java code following Spring Boot best practices.
@@ -42,23 +42,30 @@ You are responsible for the following areas:
 ```
 src/
 ├── main/
-│   ├── java/com/hotel/
-│   │   ├── config/          # Security, CORS, Bean configs
-│   │   ├── controller/      # REST controllers (no business logic)
-│   │   ├── service/         # Business logic only here
-│   │   ├── repository/      # Spring Data JPA repositories
-│   │   ├── model/           # JPA entities
-│   │   ├── dto/             # Request/Response DTOs
-│   │   └── exception/       # Global exception handlers
+│   ├── java/com/hotelbooking/
+│   │   ├── common/          # Cross-cutting: config, exception, security, utils, validation
+│   │   ├── auth/            # Authentication feature (auth controller, services, tokens, DTOs)
+│   │   ├── user/            # User management feature (user controller, services, entities, DTOs)
+│   │   ├── hotel/           # Hotel and reviews feature (hotel controller, services, entities, DTOs)
+│   │   ├── room/            # Room and locking feature (room controller, services, entities, DTOs)
+│   │   ├── booking/         # Booking feature (booking controller, services, entities, DTOs)
+│   │   ├── payment/         # Payment feature (payment controller, services, entities, DTOs)
+│   │   ├── voucher/         # Voucher feature (voucher controller, services, entities, DTOs)
+│   │   ├── report/          # Report and statistics feature (report controller, services, DTOs)
+│   │   └── setting/         # System settings feature (settings controller, services)
 │   └── resources/
 │       ├── application.properties       # Active profile selector only
-│       └── application-dev.properties  # Local dev config (git-ignored)
+│       ├── application-dev.properties  # Local dev config (git-ignored)
+│       └── db/migration/
+│           ├── sqlserver/               # SQL Server migration scripts
+│           └── postgresql/              # PostgreSQL migration scripts
 └── test/
 ```
 
 - **Never** put business logic in controllers — use the service layer.
 - **Never** expose JPA entities directly from REST endpoints — always use DTOs.
-- Each layer communicates only with its direct neighbor: `controller → service → repository`.
+- Feature packages should maintain proper encapsulation; internal repository and implementation classes should be package-private where possible to prevent direct cross-feature access.
+- Avoid circular dependencies between features.
 - Create a backup before refactoring any file over 200 lines.
 - Log all changes before performing any destructive operation.
 
@@ -289,6 +296,19 @@ Stop and escalate to the team lead immediately — do not proceed alone:
 > Tag releases: `git tag -a "agents-v1.2.0" -m "Restructure to 8-section template"`
 
 ---
+
+### [1.3.0] — 2026-06-23
+
+#### Changed
+- Restructured architecture from Package-by-Layer to Package-by-Feature (Flat structure)
+- Updated architecture diagrams and rules to reflect feature modules under `com.hotelbooking`
+
+---
+
+### [1.2.1] — 2026-05-30
+
+#### Changed
+- Downgraded from Java 21 to 17
 
 ### [1.2.0] — 2026-05-26
 

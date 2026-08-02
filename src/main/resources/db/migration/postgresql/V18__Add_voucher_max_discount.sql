@@ -1,0 +1,1 @@
+ALTER TABLE vouchers ADD COLUMN max_discount DECIMAL(18,2) NULL;
