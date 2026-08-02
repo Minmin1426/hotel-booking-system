@@ -63,16 +63,16 @@ public class AdminUserServiceTest {
         // Arrange
         PageRequest pageRequest = PageRequest.of(0, 20);
         Page<User> userPage = new PageImpl<>(List.of(mockUser));
-        when(userRepository.findAll(pageRequest)).thenReturn(userPage);
+        when(userRepository.findAll(any(org.springframework.data.jpa.domain.Specification.class), any(PageRequest.class)))
+                .thenReturn(userPage);
 
         // Act
-        Page<UserResponse> result = adminUserService.getAllUsers(pageRequest);
+        Page<UserResponse> result = adminUserService.getAllUsers(null, null, null, pageRequest);
 
         // Assert
         assertNotNull(result);
         assertEquals(1, result.getTotalElements());
         assertEquals(mockUser.getEmail(), result.getContent().get(0).email());
-        verify(userRepository, times(1)).findAll(pageRequest);
     }
 
     @Test

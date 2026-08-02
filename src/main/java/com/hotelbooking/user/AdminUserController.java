@@ -26,8 +26,11 @@ public class AdminUserController {
 
     @GetMapping
     public ResponseEntity<Page<UserResponse>> getAllUsers(
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) String role,
+            @RequestParam(required = false) String status,
             @PageableDefault(size = 20) Pageable pageable) {
-        Page<UserResponse> users = adminUserService.getAllUsers(pageable);
+        Page<UserResponse> users = adminUserService.getAllUsers(search, role, status, pageable);
         return ResponseEntity.ok(users);
     }
 

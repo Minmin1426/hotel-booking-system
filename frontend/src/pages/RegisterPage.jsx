@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { AuthService } from '../services/AuthService';
+import { Validators } from '../utils/validators';
 
 export default function RegisterPage() {
   const { t } = useTranslation();
@@ -13,6 +14,7 @@ export default function RegisterPage() {
     phoneNumber: '',
     identificationNumber: ''
   });
+  const [fieldErrors, setFieldErrors] = useState({});
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [agreeTerms, setAgreeTerms] = useState(false);
@@ -43,22 +45,45 @@ export default function RegisterPage() {
   };
 
   const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+    const { name, value } = e.target;
+    setFormData({ ...formData, [name]: value });
+    // Clear field error as the user types
+    if (fieldErrors[name]) {
+      setFieldErrors((prev) => ({ ...prev, [name]: '' }));
+    }
+  };
+
+  const handleBlur = (e) => {
+    const { name, value } = e.target;
+    const validator = Validators[name];
+    if (validator) {
+      const msg = validator(value);
+      setFieldErrors((prev) => ({ ...prev, [name]: msg }));
+    }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError(null);
 
-    // Complexity validation: min 8 chars, uppercase, lowercase, digit, special character
-    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*(),.?":{}|<>]).{8,}$/;
-    if (!passwordRegex.test(formData.password)) {
-      setError(t('register.errorPasswordComplexity'));
+    // Run all field validators
+    const newErrors = {};
+    newErrors.fullName = Validators.fullName(formData.fullName);
+    newErrors.email = Validators.email(formData.email);
+    newErrors.phoneNumber = Validators.phoneVN(formData.phoneNumber);
+    newErrors.identificationNumber = Validators.identificationNumber(formData.identificationNumber);
+    newErrors.password = Validators.password(formData.password);
+    Object.keys(newErrors).forEach((k) => { if (!newErrors[k]) delete newErrors[k]; });
+    setFieldErrors(newErrors);
+
+    if (Object.keys(newErrors).length > 0) {
+      setError('Vui lòng kiểm tra các trường được đánh dấu bên dưới');
       return;
     }
-    
+
     if (formData.password !== formData.confirmPassword) {
-      setError(t('register.errorConfirmPasswordMismatch'));
+      setFieldErrors((prev) => ({ ...prev, confirmPassword: 'Mật khẩu xác nhận không khớp' }));
+      setError('Mật khẩu xác nhận không khớp');
       return;
     }
 
@@ -75,31 +100,33 @@ export default function RegisterPage() {
         phoneNumber: formData.phoneNumber,
         identificationNumber: formData.identificationNumber
       });
-      // Redirect to login after successful registration
       window.location.href = '/login';
     } catch (err) {
       setError(err.message);
     }
   };
 
+  const FieldError = ({ name }) =>
+    fieldErrors[name] ? (
+      <p className="text-[11px] text-red-500 mt-1 ml-1 font-medium">{fieldErrors[name]}</p>
+    ) : null;
+
   return (
     <div className="min-h-screen bg-[url('/images/hotel_lobby_bg.png')] bg-cover bg-center flex items-center justify-center py-[40px] px-4 relative">
-      {/* Dark blur ambient overlay for visual contrast */}
       <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px] z-0"></div>
 
       <div className="w-full max-w-[960px] min-h-[640px] bg-white/10 backdrop-blur-md rounded-[32px] border border-white/20 shadow-[0_25px_60px_rgba(0,0,0,0.35)] overflow-hidden flex flex-col lg:flex-row z-10 relative">
-        
-        {/* Left Side: Branding / Marketing Hero Section (Desktop only) */}
+
+        {/* Left Side: Branding */}
         <div className="hidden lg:flex lg:w-[52%] p-12 flex-col justify-between text-left text-white relative overflow-hidden border-r border-white/10">
-          {/* Subtle gradient overlay for extra legibility */}
           <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/35 to-black/50 z-0"></div>
-          
+
           <div className="z-10 flex flex-col gap-2">
             <div className="flex items-center gap-2 mb-8">
               <span className="text-xl">✨</span>
               <span className="text-xs uppercase tracking-[0.2em] font-extrabold text-[#d4af37]">LUXURY STAY</span>
             </div>
-            
+
             <h2 className="text-4xl font-semibold leading-tight tracking-tight mb-4 font-serif">
               Create your <br />travel profile.
             </h2>
@@ -115,7 +142,7 @@ export default function RegisterPage() {
                   <p className="text-[10px] text-white/60">Explore hand-picked top-tier hotels and views</p>
                 </div>
               </div>
-              
+
               <div className="flex items-center gap-3 bg-white/5 backdrop-blur-md border border-white/10 px-4 py-3 rounded-2xl hover:bg-white/10 transition-colors">
                 <span className="text-lg">🏊</span>
                 <div>
@@ -155,52 +182,79 @@ export default function RegisterPage() {
                 </div>
               )}
 
-              <input
-                type="text"
-                name="fullName"
-                placeholder={t('register.fullNamePlaceholder')}
-                className="w-full h-[42px] px-[18px] py-[10px] rounded-2xl border border-[#e3e3e8] bg-white text-[#1d1d1f] text-sm focus:outline-none focus:border-[#0066cc] focus:ring-1 focus:ring-[#0066cc] transition-all placeholder:text-[#a1a1a6]"
-                value={formData.fullName}
-                onChange={handleChange}
-                required
-              />
-              
-              <input
-                type="email"
-                name="email"
-                placeholder={t('register.emailPlaceholder')}
-                className="w-full h-[42px] px-[18px] py-[10px] rounded-2xl border border-[#e3e3e8] bg-white text-[#1d1d1f] text-sm focus:outline-none focus:border-[#0066cc] focus:ring-1 focus:ring-[#0066cc] transition-all placeholder:text-[#a1a1a6]"
-                value={formData.email}
-                onChange={handleChange}
-                required
-              />
+              <div>
+                <input
+                  type="text"
+                  name="fullName"
+                  placeholder={t('register.fullNamePlaceholder')}
+                  className={`w-full h-[42px] px-[18px] py-[10px] rounded-2xl border bg-white text-[#1d1d1f] text-sm focus:outline-none focus:ring-1 transition-all placeholder:text-[#a1a1a6] ${
+                    fieldErrors.fullName ? 'border-red-400 focus:border-red-500 focus:ring-red-500' : 'border-[#e3e3e8] focus:border-[#0066cc] focus:ring-[#0066cc]'
+                  }`}
+                  value={formData.fullName}
+                  onChange={handleChange}
+                  onBlur={handleBlur}
+                  required
+                />
+                <FieldError name="fullName" />
+              </div>
 
-              <input
-                type="text"
-                name="phoneNumber"
-                placeholder={t('register.phoneNumberPlaceholder')}
-                className="w-full h-[42px] px-[18px] py-[10px] rounded-2xl border border-[#e3e3e8] bg-white text-[#1d1d1f] text-sm focus:outline-none focus:border-[#0066cc] focus:ring-1 focus:ring-[#0066cc] transition-all placeholder:text-[#a1a1a6]"
-                value={formData.phoneNumber}
-                onChange={handleChange}
-              />
-              
-              <input
-                type="text"
-                name="identificationNumber"
-                placeholder={t('register.idPlaceholder')}
-                className="w-full h-[42px] px-[18px] py-[10px] rounded-2xl border border-[#e3e3e8] bg-white text-[#1d1d1f] text-sm focus:outline-none focus:border-[#0066cc] focus:ring-1 focus:ring-[#0066cc] transition-all placeholder:text-[#a1a1a6]"
-                value={formData.identificationNumber}
-                onChange={handleChange}
-              />
-              
+              <div>
+                <input
+                  type="email"
+                  name="email"
+                  placeholder={t('register.emailPlaceholder')}
+                  className={`w-full h-[42px] px-[18px] py-[10px] rounded-2xl border bg-white text-[#1d1d1f] text-sm focus:outline-none focus:ring-1 transition-all placeholder:text-[#a1a1a6] ${
+                    fieldErrors.email ? 'border-red-400 focus:border-red-500 focus:ring-red-500' : 'border-[#e3e3e8] focus:border-[#0066cc] focus:ring-[#0066cc]'
+                  }`}
+                  value={formData.email}
+                  onChange={handleChange}
+                  onBlur={handleBlur}
+                  required
+                />
+                <FieldError name="email" />
+              </div>
+
+              <div>
+                <input
+                  type="text"
+                  name="phoneNumber"
+                  placeholder={t('register.phoneNumberPlaceholder')}
+                  className={`w-full h-[42px] px-[18px] py-[10px] rounded-2xl border bg-white text-[#1d1d1f] text-sm focus:outline-none focus:ring-1 transition-all placeholder:text-[#a1a1a6] ${
+                    fieldErrors.phoneNumber ? 'border-red-400 focus:border-red-500 focus:ring-red-500' : 'border-[#e3e3e8] focus:border-[#0066cc] focus:ring-[#0066cc]'
+                  }`}
+                  value={formData.phoneNumber}
+                  onChange={handleChange}
+                  onBlur={handleBlur}
+                />
+                <FieldError name="phoneNumber" />
+              </div>
+
+              <div>
+                <input
+                  type="text"
+                  name="identificationNumber"
+                  placeholder={t('register.idPlaceholder')}
+                  className={`w-full h-[42px] px-[18px] py-[10px] rounded-2xl border bg-white text-[#1d1d1f] text-sm focus:outline-none focus:ring-1 transition-all placeholder:text-[#a1a1a6] ${
+                    fieldErrors.identificationNumber ? 'border-red-400 focus:border-red-500 focus:ring-red-500' : 'border-[#e3e3e8] focus:border-[#0066cc] focus:ring-[#0066cc]'
+                  }`}
+                  value={formData.identificationNumber}
+                  onChange={handleChange}
+                  onBlur={handleBlur}
+                />
+                <FieldError name="identificationNumber" />
+              </div>
+
               <div className="relative">
                 <input
                   type={showPassword ? "text" : "password"}
                   name="password"
                   placeholder={t('register.passwordPlaceholder')}
-                  className="w-full h-[42px] pl-[18px] pr-[55px] py-[10px] rounded-2xl border border-[#e3e3e8] bg-white text-[#1d1d1f] text-sm focus:outline-none focus:border-[#0066cc] focus:ring-1 focus:ring-[#0066cc] transition-all placeholder:text-[#a1a1a6]"
+                  className={`w-full h-[42px] pl-[18px] pr-[55px] py-[10px] rounded-2xl border bg-white text-[#1d1d1f] text-sm focus:outline-none focus:ring-1 transition-all placeholder:text-[#a1a1a6] ${
+                    fieldErrors.password ? 'border-red-400 focus:border-red-500 focus:ring-red-500' : 'border-[#e3e3e8] focus:border-[#0066cc] focus:ring-[#0066cc]'
+                  }`}
                   value={formData.password}
                   onChange={handleChange}
+                  onBlur={handleBlur}
                   required
                   minLength={8}
                 />
@@ -211,6 +265,7 @@ export default function RegisterPage() {
                 >
                   {showPassword ? t('register.hidePassword') : t('register.showPassword')}
                 </button>
+                <FieldError name="password" />
               </div>
 
               <div className="relative">
@@ -218,9 +273,12 @@ export default function RegisterPage() {
                   type={showConfirmPassword ? "text" : "password"}
                   name="confirmPassword"
                   placeholder={t('register.confirmPasswordPlaceholder')}
-                  className="w-full h-[42px] pl-[18px] pr-[55px] py-[10px] rounded-2xl border border-[#e3e3e8] bg-white text-[#1d1d1f] text-sm focus:outline-none focus:border-[#0066cc] focus:ring-1 focus:ring-[#0066cc] transition-all placeholder:text-[#a1a1a6]"
+                  className={`w-full h-[42px] pl-[18px] pr-[55px] py-[10px] rounded-2xl border bg-white text-[#1d1d1f] text-sm focus:outline-none focus:ring-1 transition-all placeholder:text-[#a1a1a6] ${
+                    fieldErrors.confirmPassword ? 'border-red-400 focus:border-red-500 focus:ring-red-500' : 'border-[#e3e3e8] focus:border-[#0066cc] focus:ring-[#0066cc]'
+                  }`}
                   value={formData.confirmPassword}
                   onChange={handleChange}
+                  onBlur={handleBlur}
                   required
                 />
                 <button
@@ -230,6 +288,7 @@ export default function RegisterPage() {
                 >
                   {showConfirmPassword ? t('register.hidePassword') : t('register.showPassword')}
                 </button>
+                <FieldError name="confirmPassword" />
               </div>
 
               <div className="flex items-start gap-2.5 mt-1 px-1">

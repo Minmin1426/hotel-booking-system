@@ -27,4 +27,5 @@ public class VoucherStoreResponse {
     private LocalDateTime startDate;
     private LocalDateTime endDate;
     private String forAccountType;
+    private Integer pointsCost;
 }

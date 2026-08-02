@@ -99,12 +99,12 @@ export const AuthService = {
     return true;
   },
 
-  // Reset password using token
-  resetPassword: async (token, newPassword, confirmPassword) => {
+  // Reset password using OTP
+  resetPassword: async (email, otp, newPassword) => {
     const response = await fetch(`${API_BASE_URL}/auth/reset-password`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ token, newPassword, confirmPassword }),
+      body: JSON.stringify({ email, otp, newPassword }),
     });
 
     if (!response.ok) {
@@ -158,16 +158,21 @@ export const AuthService = {
     return data.data;
   },
 
-  // Get all users (Admin only)
-  getAllUsers: async (page = 0, size = 20) => {
+  // Get all users (Admin only) — supports search, role, status filters
+  getAllUsers: async (page = 0, size = 20, search = '', role = 'ALL', status = 'ALL') => {
     const accessToken = sessionStorage.getItem("accessToken");
     if (!accessToken) {
       throw new Error("No access token found");
     }
 
-    const response = await fetch(`${API_BASE_URL}/admin/users?page=${page}&size=${size}`, {
+    const params = new URLSearchParams({ page, size });
+    if (search) params.set('search', search);
+    if (role && role !== 'ALL') params.set('role', role);
+    if (status && status !== 'ALL') params.set('status', status);
+
+    const response = await fetch(`${API_BASE_URL}/admin/users?${params}`, {
       method: "GET",
-      headers: { 
+      headers: {
         "Authorization": `Bearer ${accessToken}`
       },
     });

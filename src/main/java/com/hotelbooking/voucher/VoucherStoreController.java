@@ -12,6 +12,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Map;
+
 @RestController
 @RequestMapping("/api/v1")
 @RequiredArgsConstructor
@@ -55,5 +57,26 @@ public class VoucherStoreController {
     private Long extractUserId(String authorizationHeader) {
         String token = authorizationHeader.substring(7);
         return jwtService.extractUserId(token);
+    }
+
+    // GET /api/v1/vouchers/shop
+    @GetMapping("/vouchers/shop")
+    public ResponseEntity<ApiResponse<Page<VoucherStoreResponse>>> getShopVouchers(
+            @RequestHeader("Authorization") String authorizationHeader,
+            @PageableDefault(size = 20) Pageable pageable) {
+        Long userId = extractUserId(authorizationHeader);
+        Page<VoucherStoreResponse> vouchers = voucherStoreService.getShopVouchers(userId, pageable);
+        return ResponseEntity.ok(ApiResponse.success("Shop vouchers retrieved", vouchers));
+    }
+
+    // POST /api/v1/users/me/vouchers/shop/claim
+    @PostMapping("/users/me/vouchers/shop/claim")
+    public ResponseEntity<ApiResponse<ClaimVoucherResponse>> spendPointsForVoucher(
+            @RequestHeader("Authorization") String authorizationHeader,
+            @RequestBody Map<String, Object> body) {
+        Long userId = extractUserId(authorizationHeader);
+        Integer pointsCost = ((Number) body.get("pointsCost")).intValue();
+        ClaimVoucherResponse response = voucherStoreService.spendPointsForRandomVoucher(userId, pointsCost);
+        return ResponseEntity.ok(ApiResponse.success(response.getMessage(), response));
     }
 }

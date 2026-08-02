@@ -239,15 +239,15 @@ export const BookingService = {
   },
 
   getActiveVouchers: async () => {
-    const response = await fetch(`${API_BASE_URL}/vouchers`, {
+    const response = await fetch(`${API_BASE_URL}/users/me/vouchers?size=100`, {
       method: "GET",
       headers: getHeaders(),
     });
 
-    const data = await response.json();
+    const json = await response.json();
     if (!response.ok) {
-      throw new Error(data.message || "Failed to load active vouchers");
+      throw new Error(json.message || "Failed to load active vouchers");
     }
-    return data;
+    return (json.data && json.data.content) ? json.data.content : (json.data || []);
   }
 };

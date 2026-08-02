@@ -30,4 +30,8 @@ public interface LoyaltyService {
     TierAdjustmentResponse adjustUserTier(Long adminId, Long userId, String tier, String reason);
 
     Page<PointsLedgerResponse> getUserPointsLedger(Long userId, Pageable pageable);
+
+    PointsLedgerResponse addPointsManually(Long adminId, Long userId, Integer points, String reason);
+
+    void deductPoints(Long userId, Integer points, String reason, Long bookingId, Long voucherId);
 }

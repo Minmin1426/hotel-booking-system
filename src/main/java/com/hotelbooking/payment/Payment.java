@@ -42,7 +42,7 @@ public class Payment {
     @Column(name = "gateway")
     private String gateway;
 
-    @Column(name = "payment_time")
+    @Column(name = "paid_at")
     private LocalDateTime paymentTime;
 
     @Column(name = "refund_status", length = 50)

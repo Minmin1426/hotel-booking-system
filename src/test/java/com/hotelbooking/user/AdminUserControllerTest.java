@@ -63,8 +63,8 @@ public class AdminUserControllerTest {
     @WithMockUser(roles = "ADMIN")
     void getAllUsers_WithAdminRole_ShouldReturn200Ok() throws Exception {
         // Arrange
-        UserResponse response = new UserResponse(1L, "test@email.com", "Name", "ROLE_USER", "ACTIVE", LocalDateTime.now());
-        when(adminUserService.getAllUsers(any(Pageable.class))).thenReturn(new PageImpl<>(List.of(response)));
+        UserResponse response = new UserResponse(1L, "test@email.com", "Name", "ROLE_USER", "ACTIVE", "BRONZE", LocalDateTime.now());
+        when(adminUserService.getAllUsers(any(), any(), any(), any(Pageable.class))).thenReturn(new PageImpl<>(List.of(response)));
 
         // Act & Assert
         mockMvc.perform(get("/api/v1/admin/users")
@@ -88,7 +88,7 @@ public class AdminUserControllerTest {
         // Arrange
         Long userId = 1L;
         UpdateUserStatusRequest request = new UpdateUserStatusRequest("LOCKED");
-        UserResponse response = new UserResponse(userId, "test@email.com", "Name", "ROLE_USER", "LOCKED", LocalDateTime.now());
+        UserResponse response = new UserResponse(userId, "test@email.com", "Name", "ROLE_USER", "LOCKED", "BRONZE", LocalDateTime.now());
         
         when(adminUserService.updateUserStatus(eq(userId), any(UpdateUserStatusRequest.class)))
                 .thenReturn(response);
@@ -127,7 +127,7 @@ public class AdminUserControllerTest {
                 .role("CUSTOMER")
                 .status("ACTIVE")
                 .build();
-        UserResponse response = new UserResponse(2L, "newuser@example.com", "New User", "CUSTOMER", "ACTIVE", LocalDateTime.now());
+        UserResponse response = new UserResponse(2L, "newuser@example.com", "New User", "CUSTOMER", "ACTIVE", "BRONZE", LocalDateTime.now());
 
         when(adminUserService.createUser(any(CreateUserRequest.class))).thenReturn(response);
 
@@ -147,7 +147,7 @@ public class AdminUserControllerTest {
         UpdateUserRequest request = UpdateUserRequest.builder()
                 .fullName("Updated Name")
                 .build();
-        UserResponse response = new UserResponse(userId, "test@email.com", "Updated Name", "ROLE_USER", "ACTIVE", LocalDateTime.now());
+        UserResponse response = new UserResponse(userId, "test@email.com", "Updated Name", "ROLE_USER", "ACTIVE", "BRONZE", LocalDateTime.now());
 
         when(adminUserService.updateUser(eq(userId), any(UpdateUserRequest.class))).thenReturn(response);
 

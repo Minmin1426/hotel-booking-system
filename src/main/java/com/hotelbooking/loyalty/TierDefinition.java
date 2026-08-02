@@ -8,7 +8,7 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "tier_definitions")
+@Table(name = "loyalty_tier_configs")
 @Getter
 @Setter
 @NoArgsConstructor
@@ -21,7 +21,7 @@ public class TierDefinition {
     @Column(name = "tier_id")
     private Long tierId;
 
-    @Column(nullable = false, unique = true, length = 50)
+    @Column(name = "tier_name", nullable = false, unique = true, length = 50)
     private String name; // BRONZE, SILVER, GOLD, PLATINUM, *_BUSINESS
 
     @Column(name = "account_type", nullable = false, length = 30)

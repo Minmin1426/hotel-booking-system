@@ -72,6 +72,13 @@ public class User implements UserDetails {
     @Column(name = "google_subject_id", unique = true)
     private String googleSubjectId;
 
+    // Password reset OTP
+    @Column(name = "otp_code")
+    private String otpCode;
+
+    @Column(name = "otp_expiry")
+    private LocalDateTime otpExpiry;
+
     // --- Corporate Tax Profile (CTP) fields ---
     @Column(name = "company_name")
     private String companyName;

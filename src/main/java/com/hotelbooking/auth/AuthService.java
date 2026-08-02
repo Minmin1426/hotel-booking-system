@@ -11,4 +11,7 @@ public interface AuthService {
     LoginResponse authenticate(LoginRequest request, String ipAddress, String userAgent);
     LoginResponse loginWithGoogle(SocialLoginRequest request, String ipAddress, String userAgent);
     void logout(String authHeader, LogoutRequest request, String ipAddress, String userAgent);
+    void forgotPassword(String email, String ipAddress);
+    void resetPassword(String token, String newPassword, String ipAddress);
+    void resetPasswordWithOtp(String email, String otp, String newPassword, String ipAddress);
 }

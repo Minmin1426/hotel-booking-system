@@ -18,6 +18,7 @@ public class UserProfileResponse {
     private String status;
     private String phoneNumber;
     private String identificationNumber;
+    private String currentTier;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }

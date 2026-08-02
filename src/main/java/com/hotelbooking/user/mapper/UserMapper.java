@@ -16,6 +16,7 @@ public class UserMapper {
                 .status(user.getStatus())
                 .phoneNumber(user.getPhoneNumber())
                 .identificationNumber(user.getIdentificationNumber())
+                .currentTier(user.getCurrentTier())
                 .createdAt(user.getCreatedAt())
                 .updatedAt(user.getUpdatedAt())
                 .build();
