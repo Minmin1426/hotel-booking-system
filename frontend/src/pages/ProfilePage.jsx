@@ -995,13 +995,14 @@ export default function ProfilePage() {
                 </div>
               )}
 
-              {tierLoading && !tierInfo ? (
+              {tierLoading && !tierInfo && (
                 <div className="text-center py-10 text-[#86868b] text-xs font-medium">
                   Loading tier information...
                 </div>
-              ) : tierInfo ? (
-                <>
-                  {/* Tier Hero Card */}
+              )}
+
+              {tierInfo && (
+                <div>
                   <div className={`rounded-3xl p-6 mb-6 border-2 ${
                     tierInfo.currentTier === 'PLATINUM' ? 'bg-gradient-to-br from-slate-800 to-slate-900 text-white border-slate-600' :
                     tierInfo.currentTier === 'GOLD' ? 'bg-gradient-to-br from-amber-50 to-amber-100 border-amber-300 text-slate-900' :
@@ -1158,10 +1159,11 @@ export default function ProfilePage() {
                       </div>
                     )}
                   </div>
-                </>
-              ) : null}
+                </div>
+              )}
+            </div>
+          )}
 
-          {/* Voucher Shop Tab */}
           {activeTab === 'shop' && !isAdmin && (
             <div className="w-full bg-white p-[32px] md:p-[40px] rounded-[24px] border border-[#e3e3e8]/50 shadow-[0_10px_40px_rgba(0,0,0,0.02)] text-left animate-fade-in">
               <div className="mb-8 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-[#f5f5f7] pb-6">
