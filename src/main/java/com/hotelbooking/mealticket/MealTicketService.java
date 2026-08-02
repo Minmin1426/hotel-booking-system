@@ -4,6 +4,8 @@ import com.hotelbooking.mealticket.dto.*;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
+import java.util.List;
+
 public interface MealTicketService {
     MealTicketResponse issueTicket(Long userId, Long bookingId, String ticketTypeCode, int validDays, Long issuerUserId);
     MealTicketResponse issueManualTicket(Long userId, String ticketTypeCode, int validDays, Long issuerUserId, String notes);
@@ -13,5 +15,10 @@ public interface MealTicketService {
     String getQrImage(Long userId, Long ticketId);
     void expireOldTickets();
     void autoIssueMealTicketsForBooking(com.hotelbooking.booking.Booking booking);
-}
 
+    // ── Physical Wristband System ──────────────────────────────────────────────
+    WristbandResponse issuePhysicalWristband(IssueWristbandRequest request, Long staffUserId);
+    WristbandResponse verifyWristband(String wristbandCode);
+    WristbandResponse returnWristband(String wristbandCode);
+    List<WristbandResponse> getWristbandsByBooking(Long bookingId);
+}

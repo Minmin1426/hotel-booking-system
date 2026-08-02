@@ -102,6 +102,43 @@ public class AdminMealTicketController {
                 request.getMemberIds().size() + " meal tickets issued to group members", null));
     }
 
+    // ── Physical Wristband REST API Endpoints ──────────────────────────────
+
+    // POST /api/v1/admin/wristbands/issue
+    @PostMapping("/admin/wristbands/issue")
+    @PreAuthorize("hasAnyRole('RECEPTIONIST', 'ADMIN', 'RECEPTIONIST_STAFF', 'STAFF')")
+    public ResponseEntity<ApiResponse<WristbandResponse>> issueWristband(
+            @RequestHeader("Authorization") String authorizationHeader,
+            @Valid @RequestBody IssueWristbandRequest request) {
+        Long staffId = extractUserId(authorizationHeader);
+        WristbandResponse response = mealTicketService.issuePhysicalWristband(request, staffId);
+        return ResponseEntity.ok(ApiResponse.success("Physical wristband issued successfully", response));
+    }
+
+    // GET /api/v1/admin/wristbands/verify/{code}
+    @GetMapping("/admin/wristbands/verify/{code}")
+    @PreAuthorize("hasAnyRole('RECEPTIONIST', 'ADMIN', 'RECEPTIONIST_STAFF', 'STAFF', 'RESTAURANT_STAFF')")
+    public ResponseEntity<ApiResponse<WristbandResponse>> verifyWristband(@PathVariable String code) {
+        WristbandResponse response = mealTicketService.verifyWristband(code);
+        return ResponseEntity.ok(ApiResponse.success("Wristband verified successfully", response));
+    }
+
+    // POST /api/v1/admin/wristbands/return/{code}
+    @PostMapping("/admin/wristbands/return/{code}")
+    @PreAuthorize("hasAnyRole('RECEPTIONIST', 'ADMIN', 'RECEPTIONIST_STAFF', 'STAFF')")
+    public ResponseEntity<ApiResponse<WristbandResponse>> returnWristband(@PathVariable String code) {
+        WristbandResponse response = mealTicketService.returnWristband(code);
+        return ResponseEntity.ok(ApiResponse.success("Wristband returned successfully", response));
+    }
+
+    // GET /api/v1/admin/wristbands/booking/{bookingId}
+    @GetMapping("/admin/wristbands/booking/{bookingId}")
+    @PreAuthorize("hasAnyRole('RECEPTIONIST', 'ADMIN', 'RECEPTIONIST_STAFF', 'STAFF', 'CUSTOMER')")
+    public ResponseEntity<ApiResponse<List<WristbandResponse>>> getWristbandsByBooking(@PathVariable Long bookingId) {
+        List<WristbandResponse> wristbands = mealTicketService.getWristbandsByBooking(bookingId);
+        return ResponseEntity.ok(ApiResponse.success("Booking wristbands retrieved", wristbands));
+    }
+
     private Long extractUserId(String authorizationHeader) {
         String token = authorizationHeader.substring(7);
         return jwtService.extractUserId(token);

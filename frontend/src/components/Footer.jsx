@@ -7,9 +7,9 @@ export default function Footer() {
         
         {/* About / Info */}
         <div className="flex flex-col gap-4">
-          <div className="flex items-center gap-2">
-            <span className="text-lg">✨</span>
-            <span className="text-sm font-extrabold tracking-[0.2em] text-[#1d1d1f]">LUXURY STAY</span>
+          <div className="flex items-center gap-2.5">
+            <img src="/logo.png" alt="LuxuryStay" className="h-8 w-auto object-contain" />
+            <span className="text-sm font-extrabold tracking-[0.2em] bg-gradient-to-r from-amber-600 to-yellow-600 bg-clip-text text-transparent">LUXURY STAY</span>
           </div>
           <p className="text-xs text-[#86868b] leading-relaxed max-w-[280px]">
             Experience curated hotel bookings. Our system aggregates premium rooms and suites, blending upscale choices with seamless online reservations.

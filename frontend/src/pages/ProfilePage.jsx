@@ -121,26 +121,43 @@ export default function ProfilePage() {
     }
   };
 
+  const [wristbands, setWristbands] = useState([]);
+
   const loadTickets = async () => {
     setTicketsLoading(true);
-    setError(null);
     try {
       const token = sessionStorage.getItem("accessToken");
+      if (!token) {
+        setWristbands([]);
+        return;
+      }
       const baseApiUrl = import.meta.env.VITE_API_URL || (window.location.origin.includes("localhost") ? "http://localhost:8080/api/v1" : "https://hotel-booking-system-0wv2.onrender.com/api/v1");
-      const response = await fetch(`${baseApiUrl}/users/me/meal-tickets?size=100`, {
-        headers: {
-          "Authorization": `Bearer ${token}`
-        }
+      // Fetch user's active bookings to get physical wristbands
+      const response = await fetch(`${baseApiUrl}/bookings/my-bookings`, {
+        headers: { "Authorization": `Bearer ${token}` }
       });
       if (!response.ok) {
-        throw new Error("Failed to load meal tickets");
+        setWristbands([]);
+        return;
       }
       const data = await response.json();
-      const content = data.data?.content || data.content || [];
-      setTickets(content);
+      const bookings = data.data?.content || data.content || (Array.isArray(data.data) ? data.data : []);
+      let allWbs = [];
+      for (const b of bookings) {
+        try {
+          const wbRes = await fetch(`${baseApiUrl}/admin/wristbands/booking/${b.bookingId}`, {
+            headers: { "Authorization": `Bearer ${token}` }
+          });
+          if (wbRes.ok) {
+            const wbData = await wbRes.json();
+            if (wbData.data) allWbs = allWbs.concat(wbData.data);
+          }
+        } catch (e) {}
+      }
+      setWristbands(allWbs);
     } catch (err) {
-      console.error("Failed to fetch tickets:", err);
-      setError(err.message || "Failed to load meal tickets");
+      console.error("Failed to fetch wristbands gracefully:", err);
+      setWristbands([]);
     } finally {
       setTicketsLoading(false);
     }
@@ -719,160 +736,6 @@ export default function ProfilePage() {
               )}
             </div>
           )}
-
-          {/* My Meal Tickets Tab */}
-          {activeTab === 'tickets' && !isAdmin && (
-            <div className="w-full bg-white p-[32px] md:p-[40px] rounded-[24px] border border-[#e3e3e8]/50 shadow-[0_10px_40px_rgba(0,0,0,0.02)] text-left animate-fade-in">
-              <div className="mb-8 flex justify-between items-center border-b border-[#f5f5f7] pb-6">
-                <div>
-                  <h2 className="text-2xl font-bold tracking-tight text-[#1d1d1f]">My Meal Tickets</h2>
-                  <p className="text-xs text-[#86868b] mt-1">Show these QR codes to the restaurant staff to redeem your buffet meals</p>
-                </div>
-                <button 
-                  onClick={loadTickets}
-                  disabled={ticketsLoading}
-                  className="px-4 py-2 rounded-full border border-[#d2d2d7] text-xs font-bold hover:bg-[#f5f5f7] active:scale-95 transition-all cursor-pointer bg-white"
-                >
-                  {ticketsLoading ? 'Refreshing...' : '🔄 Refresh'}
-                </button>
-              </div>
-
-              {error && (
-                <div className="text-red-500 text-center bg-red-50 py-2.5 rounded-xl mb-6 text-xs font-semibold">
-                  {error}
-                </div>
-              )}
-
-              {ticketsLoading && tickets.length === 0 ? (
-                <div className="text-center py-20 text-[#86868b] text-xs font-medium">
-                  Loading active meal tickets...
-                </div>
-              ) : tickets.length === 0 ? (
-                <div className="text-center py-16 text-[#86868b] text-xs italic bg-slate-50 border border-dashed border-slate-200 rounded-[20px] p-10">
-                  No meal tickets available. If you have confirmed bookings with meals, your tickets will appear here.
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {tickets.map((t) => {
-                    const statusColor = t.status === 'UNUSED' ? 'text-emerald-700 bg-emerald-50 border-emerald-200' : 'text-slate-500 bg-slate-50 border-slate-200';
-                    const expiryDate = t.expiresAt ? new Date(t.expiresAt).toLocaleDateString('vi-VN') : 'No expiry';
-                    
-                    return (
-                      <div 
-                        key={t.ticketId} 
-                        className={`bg-gradient-to-tr from-[#f9fafb] to-white border border-[#e8e8ed] rounded-3xl p-6 transition-all flex flex-col justify-between relative overflow-hidden hover:border-[#0066cc]/30 shadow-sm hover:shadow-md`}
-                      >
-                        {/* Cutouts for voucher ticket aesthetic */}
-                        <div className="absolute left-[-8px] top-1/2 -translate-y-1/2 w-4 h-6 bg-[#f5f7fa] border-r border-[#e8e8ed] rounded-r-full" />
-                        <div className="absolute right-[-8px] top-1/2 -translate-y-1/2 w-4 h-6 bg-[#f5f7fa] border-l border-[#e8e8ed] rounded-l-full" />
-                        
-                        <div>
-                          <div className="flex justify-between items-start gap-2 mb-2">
-                            <div>
-                              <span className="text-[10px] font-bold text-slate-400 block">TICKET #{t.ticketId}</span>
-                              <h4 className="text-lg font-bold text-slate-800 mt-1">{t.ticketTypeName || t.ticketType}</h4>
-                            </div>
-                            <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full border uppercase tracking-wider ${statusColor}`}>
-                              {t.status}
-                            </span>
-                          </div>
-
-                          <div className="space-y-1 mt-4 text-[11px] text-slate-500 font-medium">
-                            <p>🏨 Guest: <span className="font-semibold text-slate-700">{t.userFullName}</span></p>
-                            <p>📅 Valid Until: <span className="font-semibold text-slate-700">{expiryDate}</span></p>
-                            {t.bookingId && <p>🔖 Booking Ref: <span className="font-semibold text-slate-700">#{t.bookingId}</span></p>}
-                          </div>
-                        </div>
-
-                        <div className="mt-6 pt-4 border-t border-[#f5f5f7] flex justify-between items-center gap-3">
-                          <span className="text-[10px] font-mono text-slate-400">
-                            {t.qrCode ? t.qrCode.substring(0, 10) + '...' : ''}
-                          </span>
-                          <button
-                            onClick={() => handleShowQr(t)}
-                            className="px-4 py-2 rounded-xl bg-[#0066cc] hover:bg-[#0055b3] text-white text-xs font-bold shadow-sm active:scale-95 cursor-pointer transition-all flex items-center gap-1.5"
-                          >
-                            <span>📱</span> Show QR Code
-                          </button>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* QR Code Viewer Modal */}
-          {selectedTicketForQr && (
-            <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm animate-fade-in">
-              <div className="bg-white rounded-3xl p-8 w-full max-w-[380px] shadow-2xl mx-4 border border-[#e8e8ed] text-center relative animate-scale-up">
-                <button 
-                  onClick={() => {
-                    if (qrUrl) URL.revokeObjectURL(qrUrl);
-                    setSelectedTicketForQr(null);
-                    setQrUrl(null);
-                  }}
-                  className="absolute top-4 right-4 w-8 h-8 flex items-center justify-center rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-800 transition-colors font-bold text-sm cursor-pointer"
-                >
-                  ✕
-                </button>
-                
-                <span className="text-[10px] font-extrabold uppercase tracking-wider text-indigo-600 bg-indigo-50 border border-indigo-100 px-3 py-1 rounded-full">
-                  {selectedTicketForQr.ticketTypeName || selectedTicketForQr.ticketType}
-                </span>
-                
-                <h3 className="text-lg font-bold text-[#1d1d1f] mt-4">
-                  Meal Buffet QR Code
-                </h3>
-                <p className="text-xs text-[#86868b] mt-1 max-w-[240px] mx-auto">
-                  Present this code at the restaurant to check in.
-                </p>
-
-                <div className="my-6 aspect-square w-56 h-56 bg-slate-50 border border-slate-200 rounded-2xl mx-auto flex items-center justify-center overflow-hidden shadow-inner relative">
-                  {qrLoading ? (
-                    <div className="flex flex-col items-center gap-2">
-                      <div className="w-8 h-8 border-4 border-[#0066cc]/20 border-t-[#0066cc] rounded-full animate-spin" />
-                      <span className="text-[10px] font-semibold text-slate-400">Generating secure QR...</span>
-                    </div>
-                  ) : qrUrl ? (
-                    <img src={qrUrl} alt="Meal QR Code" className="w-full h-full object-contain p-2" />
-                  ) : (
-                    <span className="text-xs text-red-500">Failed to load QR code</span>
-                  )}
-                </div>
-
-                <div className="bg-slate-50 p-4 rounded-2xl border border-slate-150 text-left space-y-1 text-xs">
-                  <div className="flex justify-between">
-                    <span className="text-slate-400 font-semibold">Guest Name:</span>
-                    <span className="text-slate-800 font-bold">{selectedTicketForQr.userFullName}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-slate-400 font-semibold">Ticket Status:</span>
-                    <span className="text-emerald-600 font-bold uppercase">{selectedTicketForQr.status}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-slate-400 font-semibold">Expires:</span>
-                    <span className="text-slate-800 font-semibold">
-                      {selectedTicketForQr.expiresAt ? new Date(selectedTicketForQr.expiresAt).toLocaleDateString('vi-VN') : 'No expiry'}
-                    </span>
-                  </div>
-                </div>
-
-                <button
-                  onClick={() => {
-                    if (qrUrl) URL.revokeObjectURL(qrUrl);
-                    setSelectedTicketForQr(null);
-                    setQrUrl(null);
-                  }}
-                  className="mt-6 w-full py-3 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold shadow-md hover:shadow-lg active:scale-95 cursor-pointer transition-all"
-                >
-                  Close Ticket
-                </button>
-              </div>
-            </div>
-          )}
-
         </div>
       </main>
 

@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html>
+<head><title>Reset Booking Data</title></head>
+<body>
+<script>
+  localStorage.removeItem('booking_status_BK-882019');
+  localStorage.removeItem('booking_status_GRP-2026-0801');
+  localStorage.removeItem('booking_status_GRP-2026-0802');
+  localStorage.removeItem('booking_checkin_data_BK-882019');
+  localStorage.removeItem('booking_checkin_data_GRP-2026-0801');
+  localStorage.removeItem('booking_checkin_data_GRP-2026-0802');
+  localStorage.removeItem('wristband_global_counter');
+  window.location.href = '/receptionist/group-bookings';
+</script>
+</body>
+</html>

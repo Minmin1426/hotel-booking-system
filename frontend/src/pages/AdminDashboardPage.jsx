@@ -2040,6 +2040,18 @@ export default function AdminDashboardPage() {
             </div>
 
             <form onSubmit={handleSaveBooking} className="p-8 space-y-5">
+              {editingBooking && (editingBooking.status === 'CONFIRMED' || editingBooking.status === 'CHECKED_IN' || editingBooking.status === 'CHECKED_OUT' || editingBooking.status === 'COMPLETED' || editingBooking.status === 'CANCELLED') && (
+                <div className="bg-amber-50 border border-amber-200 text-amber-900 p-4 rounded-2xl text-xs space-y-1">
+                  <div className="flex items-center gap-1.5 font-bold text-amber-800">
+                    <span>🔒</span>
+                    <span>Đơn hàng đã xác nhận/thanh toán (Trạng thái: {editingBooking.status})</span>
+                  </div>
+                  <p className="text-amber-700 text-[11px] leading-relaxed">
+                    Theo chuẩn nghiệp vụ khách sạn, các trường phòng, ngày lưu trú, voucher và phương thức thanh toán bị khóa để bảo đảm tính toàn vẹn tài chính và tránh đè phòng. Bạn chỉ có thể cập nhật trạng thái đơn.
+                  </p>
+                </div>
+              )}
+
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-bold text-[#86868b] mb-1.5 uppercase tracking-wider">User ID *</label>
@@ -2047,7 +2059,7 @@ export default function AdminDashboardPage() {
                     type="number"
                     required
                     disabled={!!editingBooking}
-                    className="w-full h-[44px] px-4 rounded-xl border border-[#e8e8ed] text-sm focus:outline-none focus:border-[#0066cc] transition-all bg-[#f5f5f7] focus:bg-white disabled:opacity-60"
+                    className="w-full h-[44px] px-4 rounded-xl border border-[#e8e8ed] text-sm focus:outline-none focus:border-[#0066cc] transition-all bg-[#f5f5f7] focus:bg-white disabled:opacity-60 disabled:cursor-not-allowed"
                     value={bookingUserId}
                     onChange={(e) => setBookingUserId(e.target.value)}
                     placeholder="e.g. 5"
@@ -2060,7 +2072,7 @@ export default function AdminDashboardPage() {
                     type="number"
                     required
                     disabled={!!editingBooking}
-                    className="w-full h-[44px] px-4 rounded-xl border border-[#e8e8ed] text-sm focus:outline-none focus:border-[#0066cc] transition-all bg-[#f5f5f7] focus:bg-white disabled:opacity-60"
+                    className="w-full h-[44px] px-4 rounded-xl border border-[#e8e8ed] text-sm focus:outline-none focus:border-[#0066cc] transition-all bg-[#f5f5f7] focus:bg-white disabled:opacity-60 disabled:cursor-not-allowed"
                     value={bookingHotelId}
                     onChange={(e) => setBookingHotelId(e.target.value)}
                     placeholder="e.g. 1"
@@ -2072,7 +2084,8 @@ export default function AdminDashboardPage() {
                   <input
                     type="date"
                     required
-                    className="w-full h-[44px] px-4 rounded-xl border border-[#e8e8ed] text-sm focus:outline-none focus:border-[#0066cc] transition-all bg-[#f5f5f7] focus:bg-white"
+                    disabled={!!editingBooking && editingBooking.status !== 'PENDING'}
+                    className="w-full h-[44px] px-4 rounded-xl border border-[#e8e8ed] text-sm focus:outline-none focus:border-[#0066cc] transition-all bg-[#f5f5f7] focus:bg-white disabled:opacity-60 disabled:cursor-not-allowed"
                     value={bookingCheckIn}
                     onChange={(e) => setBookingCheckIn(e.target.value)}
                   />
@@ -2083,7 +2096,8 @@ export default function AdminDashboardPage() {
                   <input
                     type="date"
                     required
-                    className="w-full h-[44px] px-4 rounded-xl border border-[#e8e8ed] text-sm focus:outline-none focus:border-[#0066cc] transition-all bg-[#f5f5f7] focus:bg-white"
+                    disabled={!!editingBooking && editingBooking.status !== 'PENDING'}
+                    className="w-full h-[44px] px-4 rounded-xl border border-[#e8e8ed] text-sm focus:outline-none focus:border-[#0066cc] transition-all bg-[#f5f5f7] focus:bg-white disabled:opacity-60 disabled:cursor-not-allowed"
                     value={bookingCheckOut}
                     onChange={(e) => setBookingCheckOut(e.target.value)}
                   />
@@ -2094,7 +2108,8 @@ export default function AdminDashboardPage() {
                   <input
                     type="text"
                     required
-                    className="w-full h-[44px] px-4 rounded-xl border border-[#e8e8ed] text-sm focus:outline-none focus:border-[#0066cc] transition-all bg-[#f5f5f7] focus:bg-white"
+                    disabled={!!editingBooking && editingBooking.status !== 'PENDING'}
+                    className="w-full h-[44px] px-4 rounded-xl border border-[#e8e8ed] text-sm focus:outline-none focus:border-[#0066cc] transition-all bg-[#f5f5f7] focus:bg-white disabled:opacity-60 disabled:cursor-not-allowed"
                     value={bookingRoomIds}
                     onChange={(e) => setBookingRoomIds(e.target.value)}
                     placeholder="e.g. 101, 102"
@@ -2104,7 +2119,8 @@ export default function AdminDashboardPage() {
                 <div>
                   <label className="block text-xs font-bold text-[#86868b] mb-1.5 uppercase tracking-wider">Payment Method</label>
                   <select
-                    className="w-full h-[44px] px-4 rounded-xl border border-[#e8e8ed] text-sm focus:outline-none focus:border-[#0066cc] bg-[#f5f5f7] focus:bg-white"
+                    disabled={!!editingBooking && editingBooking.status !== 'PENDING'}
+                    className="w-full h-[44px] px-4 rounded-xl border border-[#e8e8ed] text-sm focus:outline-none focus:border-[#0066cc] bg-[#f5f5f7] focus:bg-white disabled:opacity-60 disabled:cursor-not-allowed"
                     value={bookingPaymentMethod}
                     onChange={(e) => setBookingPaymentMethod(e.target.value)}
                   >
@@ -2118,7 +2134,8 @@ export default function AdminDashboardPage() {
                   <label className="block text-xs font-bold text-[#86868b] mb-1.5 uppercase tracking-wider">Voucher Code</label>
                   <input
                     type="text"
-                    className="w-full h-[44px] px-4 rounded-xl border border-[#e8e8ed] text-sm focus:outline-none focus:border-[#0066cc] transition-all bg-[#f5f5f7] focus:bg-white"
+                    disabled={!!editingBooking && editingBooking.status !== 'PENDING'}
+                    className="w-full h-[44px] px-4 rounded-xl border border-[#e8e8ed] text-sm focus:outline-none focus:border-[#0066cc] transition-all bg-[#f5f5f7] focus:bg-white disabled:opacity-60 disabled:cursor-not-allowed"
                     value={bookingVoucherCode}
                     onChange={(e) => setBookingVoucherCode(e.target.value)}
                     placeholder="e.g. WELCOME10"
@@ -2130,28 +2147,69 @@ export default function AdminDashboardPage() {
                     <div>
                       <label className="block text-xs font-bold text-[#86868b] mb-1.5 uppercase tracking-wider">Payment Status</label>
                       <select
-                        className="w-full h-[44px] px-4 rounded-xl border border-[#e8e8ed] text-sm focus:outline-none focus:border-[#0066cc] bg-[#f5f5f7] focus:bg-white"
+                        disabled={editingBooking.paymentStatus === 'REFUNDED' || editingBooking.status === 'CHECKED_OUT' || editingBooking.status === 'CANCELLED'}
+                        className="w-full h-[44px] px-4 rounded-xl border border-[#e8e8ed] text-sm focus:outline-none focus:border-[#0066cc] bg-[#f5f5f7] focus:bg-white disabled:opacity-60 disabled:cursor-not-allowed"
                         value={bookingPaymentStatus}
                         onChange={(e) => setBookingPaymentStatus(e.target.value)}
                       >
-                        <option value="PENDING">Pending</option>
-                        <option value="COMPLETED">Completed</option>
-                        <option value="FAILED">Failed</option>
-                        <option value="REFUNDED">Refunded</option>
+                        {editingBooking.paymentStatus === 'PENDING' && (
+                          <>
+                            <option value="PENDING">Pending (Chờ thanh toán)</option>
+                            <option value="COMPLETED">Completed (Đã thanh toán)</option>
+                            <option value="FAILED">Failed (Thất bại)</option>
+                          </>
+                        )}
+                        {editingBooking.paymentStatus === 'COMPLETED' && (
+                          <>
+                            <option value="COMPLETED">Completed (Đã thanh toán)</option>
+                            <option value="REFUNDED">Refunded (Hoàn tiền)</option>
+                          </>
+                        )}
+                        {editingBooking.paymentStatus === 'REFUNDED' && (
+                          <option value="REFUNDED">Refunded (Đã hoàn tiền)</option>
+                        )}
+                        {editingBooking.paymentStatus === 'FAILED' && (
+                          <>
+                            <option value="FAILED">Failed (Thất bại)</option>
+                            <option value="PENDING">Pending (Thử lại)</option>
+                          </>
+                        )}
                       </select>
                     </div>
 
                     <div>
                       <label className="block text-xs font-bold text-[#86868b] mb-1.5 uppercase tracking-wider">Booking Status</label>
                       <select
-                        className="w-full h-[44px] px-4 rounded-xl border border-[#e8e8ed] text-sm focus:outline-none focus:border-[#0066cc] bg-[#f5f5f7] focus:bg-white"
+                        disabled={editingBooking.status === 'CHECKED_OUT' || editingBooking.status === 'CANCELLED' || editingBooking.status === 'COMPLETED'}
+                        className="w-full h-[44px] px-4 rounded-xl border border-[#e8e8ed] text-sm focus:outline-none focus:border-[#0066cc] bg-[#f5f5f7] focus:bg-white disabled:opacity-60 disabled:cursor-not-allowed"
                         value={bookingStatusState}
                         onChange={(e) => setBookingStatusState(e.target.value)}
                       >
-                        <option value="PENDING">Pending</option>
-                        <option value="CONFIRMED">Confirmed</option>
-                        <option value="CANCELLED">Cancelled</option>
-                        <option value="COMPLETED">Completed</option>
+                        {editingBooking.status === 'PENDING' && (
+                          <>
+                            <option value="PENDING">Pending (Chờ xác nhận)</option>
+                            <option value="CONFIRMED">Confirmed (Đã xác nhận)</option>
+                            <option value="CANCELLED">Cancelled (Đã hủy)</option>
+                          </>
+                        )}
+                        {editingBooking.status === 'CONFIRMED' && (
+                          <>
+                            <option value="CONFIRMED">Confirmed (Đã xác nhận)</option>
+                            <option value="CHECKED_IN">Checked-In (Đã nhận phòng)</option>
+                            <option value="CHECKED_OUT">Checked-Out (Đã trả phòng)</option>
+                            <option value="CANCELLED">Cancelled (Đã hủy)</option>
+                          </>
+                        )}
+                        {editingBooking.status === 'CHECKED_IN' && (
+                          <>
+                            <option value="CHECKED_IN">Checked-In (Đã nhận phòng)</option>
+                            <option value="CHECKED_OUT">Checked-Out (Đã trả phòng)</option>
+                            <option value="CANCELLED">Cancelled (Đã hủy)</option>
+                          </>
+                        )}
+                        {(editingBooking.status === 'CHECKED_OUT' || editingBooking.status === 'COMPLETED' || editingBooking.status === 'CANCELLED') && (
+                          <option value={editingBooking.status}>{editingBooking.status} (Hoàn tất/Khóa)</option>
+                        )}
                       </select>
                     </div>
                   </>
