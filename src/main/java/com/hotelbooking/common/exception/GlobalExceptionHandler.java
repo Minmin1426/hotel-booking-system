@@ -75,22 +75,34 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(BadCredentialsException.class)
     public ResponseEntity<ErrorResponse> handleBadCredentials(
             BadCredentialsException ex, WebRequest request) {
-        log.warn("Auth error: {}", ex.getMessage());
-        return buildError(HttpStatus.UNAUTHORIZED, "INVALID_CREDENTIALS", request);
+        String message = ex.getMessage();
+        if (message == null || message.isBlank() || "INVALID_CREDENTIALS".equals(message)) {
+            message = "INVALID_CREDENTIALS";
+        }
+        log.warn("Auth error: {}", message);
+        return buildError(HttpStatus.UNAUTHORIZED, message, request);
     }
 
     @ExceptionHandler(LockedException.class)
     public ResponseEntity<ErrorResponse> handleLocked(
             LockedException ex, WebRequest request) {
-        log.warn("Auth error: Account locked: {}", ex.getMessage());
-        return buildError(HttpStatus.UNAUTHORIZED, "ACCOUNT_LOCKED", request);
+        String message = ex.getMessage();
+        if (message == null || message.isBlank()) {
+            message = "ACCOUNT_LOCKED";
+        }
+        log.warn("Auth error: Account locked: {}", message);
+        return buildError(HttpStatus.UNAUTHORIZED, message, request);
     }
 
     @ExceptionHandler(DisabledException.class)
     public ResponseEntity<ErrorResponse> handleDisabled(
             DisabledException ex, WebRequest request) {
-        log.warn("Auth error: Account disabled: {}", ex.getMessage());
-        return buildError(HttpStatus.UNAUTHORIZED, "ACCOUNT_DISABLED", request);
+        String message = ex.getMessage();
+        if (message == null || message.isBlank()) {
+            message = "ACCOUNT_DISABLED";
+        }
+        log.warn("Auth error: Account disabled: {}", message);
+        return buildError(HttpStatus.UNAUTHORIZED, message, request);
     }
 
     @ExceptionHandler(AuthenticationException.class)

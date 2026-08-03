@@ -22,6 +22,12 @@ export default function LoginPage() {
       const accessToken = params.get('access_token');
       const idToken = params.get('id_token');
       const state = params.get('state');
+      const errorParam = params.get('error');
+
+      if (errorParam) {
+        setError(`Google login failed: ${errorParam}. ${params.get('error_description') || ''}`);
+        return;
+      }
 
       const token = idToken || accessToken;
       if (token) {
@@ -65,7 +71,9 @@ export default function LoginPage() {
       return;
     }
     const redirectUri = encodeURIComponent(window.location.origin + '/login');
-    const url = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId}&redirect_uri=${redirectUri}&response_type=token&scope=email%20profile&state=google`;
+    // Use response_type=id_token to get a JWT (3-part) that backend can verify via oauth2.googleapis.com/tokeninfo
+    const nonce = Math.random().toString(36).substring(2);
+    const url = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId}&redirect_uri=${redirectUri}&response_type=id_token&scope=email%20profile&state=google&nonce=${nonce}`;
     window.location.href = url;
   };
 

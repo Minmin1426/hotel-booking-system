@@ -51,13 +51,9 @@ public class PasswordServiceImpl implements PasswordService {
 
     @Override
     public void resetPassword(ResetPasswordRequest request) {
-        log.info("UC4: Resetting password using token");
+        log.info("UC4: Resetting password using OTP");
 
-        if (!request.getNewPassword().equals(request.getConfirmPassword())) {
-            throw new IllegalArgumentException("Password confirmation does not match");
-        }
-
-        PasswordResetToken token = tokenRepository.findByToken(request.getToken())
+        PasswordResetToken token = tokenRepository.findByToken(request.getOtp())
                 .orElseThrow(() -> new IllegalArgumentException("Invalid or expired token"));
 
         if (token.isUsed() || token.getExpiryTime().isBefore(LocalDateTime.now())) {

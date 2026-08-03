@@ -83,19 +83,19 @@ public class AuthServiceImpl implements AuthService {
                 .orElseThrow(() -> {
                     log.warn("Login failed: User not found for email: {}", request.getEmail());
                     saveAuditLog(request.getEmail(), "FAILED_INVALID_CREDENTIALS", ipAddress, userAgent);
-                    throw new BadCredentialsException("INVALID_CREDENTIALS");
+                    throw new BadCredentialsException("Incorrect email or password.");
                 });
 
         if (!user.isAccountNonLocked()) {
             log.warn("Login failed: Account locked for email: {}", request.getEmail());
             saveAuditLog(request.getEmail(), "ACCOUNT_LOCKED", ipAddress, userAgent);
-            throw new LockedException("ACCOUNT_LOCKED");
+            throw new LockedException("Your account has been locked due to too many failed login attempts. Please contact support or use the reset password feature.");
         }
 
         if (!user.isEnabled()) {
             log.warn("Login failed: Account disabled/inactive for email: {}", request.getEmail());
             saveAuditLog(request.getEmail(), "ACCOUNT_DISABLED", ipAddress, userAgent);
-            throw new DisabledException("ACCOUNT_DISABLED");
+            throw new DisabledException("Your account is currently disabled. Please contact support to reactivate it.");
         }
 
         if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
@@ -110,11 +110,12 @@ public class AuthServiceImpl implements AuthService {
                 userRepository.save(user);
                 log.warn("Account locked: Email {} reached {} failed attempts", request.getEmail(), attempts);
                 saveAuditLog(request.getEmail(), "ACCOUNT_LOCKED", ipAddress, userAgent);
-                throw new LockedException("ACCOUNT_LOCKED");
+                throw new LockedException("Your account has been locked due to too many failed login attempts. Please use the reset password feature.");
             }
 
             userRepository.save(user);
-            throw new BadCredentialsException("INVALID_CREDENTIALS");
+            int remaining = 5 - attempts;
+            throw new BadCredentialsException("Incorrect email or password. " + remaining + " attempt(s) remaining before your account is locked.");
         }
 
         user.setFailedLoginAttempts(0);

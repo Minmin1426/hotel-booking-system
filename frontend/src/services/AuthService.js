@@ -84,7 +84,7 @@ export const AuthService = {
     }
   },
 
-  // Request password reset link/instructions
+  // Request password reset OTP
   forgotPassword: async (email) => {
     const response = await fetch(`${API_BASE_URL}/auth/forgot-password`, {
       method: "POST",
@@ -93,10 +93,15 @@ export const AuthService = {
     });
 
     if (!response.ok) {
-      const errText = await response.text();
-      throw new Error(errText || "Forgot password request failed");
+      let msg = "Forgot password request failed";
+      try {
+        const data = await response.json();
+        msg = data.message || msg;
+      } catch (e) { /* ignore parse error */ }
+      throw new Error(msg);
     }
-    return true;
+    const data = await response.json();
+    return data.message || "OTP sent if the account exists.";
   },
 
   // Reset password using OTP
@@ -108,10 +113,15 @@ export const AuthService = {
     });
 
     if (!response.ok) {
-      const errText = await response.text();
-      throw new Error(errText || "Password reset failed");
+      let msg = "Password reset failed";
+      try {
+        const data = await response.json();
+        msg = data.message || msg;
+      } catch (e) { /* ignore parse error */ }
+      throw new Error(msg);
     }
-    return true;
+    const data = await response.json();
+    return data.message || "Password reset successful.";
   },
 
   // Get current user profile info
