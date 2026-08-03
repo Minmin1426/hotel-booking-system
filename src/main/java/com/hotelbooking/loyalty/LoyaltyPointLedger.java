@@ -40,6 +40,9 @@ public class LoyaltyPointLedger {
     @Column(name = "running_balance", nullable = false)
     private Long runningBalance;
 
+    @Column(name = "reason", length = 255)
+    private String reason;
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;

@@ -31,5 +31,6 @@ public class RefundPolicyRequest {
     @NotNull(message = "Priority is required")
     private Integer priority;
 
+    @Builder.Default
     private Boolean isActive = true;
 }

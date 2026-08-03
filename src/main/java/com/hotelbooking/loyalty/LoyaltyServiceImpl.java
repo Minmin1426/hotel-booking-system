@@ -56,17 +56,28 @@ public class LoyaltyServiceImpl implements LoyaltyService {
                 .map(LoyaltyPointLedger::getRunningBalance)
                 .orElse(0L);
 
-        // Next tier info
+        // Next tier info — based on user's actual stored tier (so admin overrides are respected)
         String nextTier = null;
         BigDecimal amountToNextTier = null;
         List<TierDefinition> allTiers = tierDefinitionRepository
                 .findByAccountTypeOrderByMinAnnualSpendAsc(accountType);
 
-        for (TierDefinition tier : allTiers) {
-            if (tier.getMinAnnualSpend().compareTo(annualSpend) > 0) {
-                nextTier = tier.getName();
-                amountToNextTier = tier.getMinAnnualSpend().subtract(annualSpend);
+        // Use the user's stored tier, find its index, and look at the tier above
+        int currentIdx = -1;
+        for (int i = 0; i < allTiers.size(); i++) {
+            if (allTiers.get(i).getName().equalsIgnoreCase(user.getCurrentTier())) {
+                currentIdx = i;
                 break;
+            }
+        }
+
+        if (currentIdx >= 0 && currentIdx < allTiers.size() - 1) {
+            TierDefinition above = allTiers.get(currentIdx + 1);
+            if (above.getMinAnnualSpend() != null
+                && above.getMinAnnualSpend().compareTo(allTiers.get(currentIdx).getMinAnnualSpend()) > 0) {
+                nextTier = above.getName();
+                amountToNextTier = above.getMinAnnualSpend().subtract(annualSpend);
+                if (amountToNextTier.signum() < 0) amountToNextTier = BigDecimal.ZERO;
             }
         }
 
@@ -330,6 +341,68 @@ public class LoyaltyServiceImpl implements LoyaltyService {
                 .multiplierUsed(l.getMultiplierUsed())
                 .runningBalance(l.getRunningBalance())
                 .createdAt(l.getCreatedAt())
+                .reason(l.getReason())
                 .build();
+    }
+
+    // ── Admin: Manually add points to a user ──────────────────────────────────
+
+    @Override
+    @Transactional
+    public PointsLedgerResponse addPointsManually(Long adminId, Long userId, Integer points, String reason) {
+        User admin = userRepository.findById(adminId)
+                .orElseThrow(() -> new ResourceNotFoundException("User", "admin", adminId.toString()));
+
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User", userId));
+
+        Long previousBalance = ledgerRepository.findFirstByUserUserIdOrderByCreatedAtDesc(userId)
+                .map(LoyaltyPointLedger::getRunningBalance)
+                .orElse(0L);
+        long newBalance = previousBalance + points;
+
+        LoyaltyPointLedger entry = LoyaltyPointLedger.builder()
+                .user(user)
+                .pointsEarned(points)
+                .multiplierUsed(BigDecimal.ONE)
+                .runningBalance(newBalance)
+                .reason(reason)
+                .build();
+        LoyaltyPointLedger saved = ledgerRepository.save(entry);
+
+        log.info("Loyalty: Admin {} manually added {} points to user {}: {}", adminId, points, userId, reason);
+
+        return toLedgerResponse(saved);
+    }
+
+    // ── Points deduction (voucher shop) ─────────────────────────────────────────
+
+    @Override
+    @Transactional
+    public void deductPoints(Long userId, Integer points, String reason, Long bookingId, Long voucherId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User", userId));
+
+        Long previousBalance = ledgerRepository.findFirstByUserUserIdOrderByCreatedAtDesc(userId)
+                .map(LoyaltyPointLedger::getRunningBalance)
+                .orElse(0L);
+
+        if (previousBalance < points) {
+            throw new BusinessException("INSUFFICIENT_POINTS: Not enough loyalty points to redeem this voucher");
+        }
+
+        long newBalance = previousBalance - points;
+
+        // Points earned is stored as positive, so deduction uses a negative value
+        LoyaltyPointLedger entry = LoyaltyPointLedger.builder()
+                .user(user)
+                .pointsEarned(-points) // negative = deduction
+                .multiplierUsed(BigDecimal.ONE)
+                .runningBalance(newBalance)
+                .reason(reason)
+                .build();
+
+        ledgerRepository.save(entry);
+        log.info("Loyalty: Deducted {} points from user {}. Reason: {}. New balance: {}", points, userId, reason, newBalance);
     }
 }

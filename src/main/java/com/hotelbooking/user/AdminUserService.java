@@ -13,6 +13,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -28,9 +29,34 @@ public class AdminUserService {
     private final ReviewRepository reviewRepository;
 
     @Transactional(readOnly = true)
-    public Page<UserResponse> getAllUsers(Pageable pageable) {
-        log.info("Fetching all users with pagination");
-        return userRepository.findAll(pageable)
+    public Page<UserResponse> getAllUsers(String search, String role, String status, Pageable pageable) {
+        log.info("Fetching users - search: {}, role: {}, status: {}", search, role, status);
+
+        Specification<User> spec = Specification.where(null);
+
+        if (search != null && !search.isBlank()) {
+            String term = "%" + search.toLowerCase() + "%";
+            spec = spec.and((root, query, cb) ->
+                cb.or(
+                    cb.like(cb.lower(root.get("fullName")), term),
+                    cb.like(cb.lower(root.get("email")), term)
+                )
+            );
+        }
+
+        if (role != null && !role.isBlank() && !"ALL".equalsIgnoreCase(role)) {
+            spec = spec.and((root, query, cb) ->
+                cb.equal(cb.upper(root.get("role")), role.toUpperCase())
+            );
+        }
+
+        if (status != null && !status.isBlank() && !"ALL".equalsIgnoreCase(status)) {
+            spec = spec.and((root, query, cb) ->
+                cb.equal(cb.upper(root.get("status")), status.toUpperCase())
+            );
+        }
+
+        return userRepository.findAll(spec, pageable)
                 .map(this::mapToResponse);
     }
 
@@ -144,6 +170,7 @@ public class AdminUserService {
                 user.getFullName(),
                 user.getRole(),
                 user.getStatus(),
+                user.getCurrentTier(),
                 user.getCreatedAt()
         );
     }

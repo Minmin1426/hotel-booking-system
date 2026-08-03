@@ -4,6 +4,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { AuthService } from '../services/AuthService';
 import { BookingService } from '../services/BookingService';
 import { ReviewService } from '../services/ReviewService';
+import { LoyaltyService } from '../services/LoyaltyService';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
 
@@ -53,6 +54,21 @@ export default function ProfilePage() {
   const [selectedTicketForQr, setSelectedTicketForQr] = useState(null);
   const [qrLoading, setQrLoading] = useState(false);
   const [qrUrl, setQrUrl] = useState(null);
+
+  // Voucher shop state
+  const [shopVouchers, setShopVouchers] = useState([]);
+  const [shopLoading, setShopLoading] = useState(false);
+  const [shopSpinning, setShopSpinning] = useState(false);
+  const [shopResult, setShopResult] = useState(null);
+  const [shopError, setShopError] = useState(null);
+
+  // Loyalty tier state
+  const [tierInfo, setTierInfo] = useState(null);
+  const [tierHistory, setTierHistory] = useState([]);
+  const [tierHistoryPage, setTierHistoryPage] = useState(0);
+  const [tierHistoryTotalPages, setTierHistoryTotalPages] = useState(0);
+  const [tierLoading, setTierLoading] = useState(false);
+  const [tierError, setTierError] = useState(null);
 
   const isAdmin = profile.role === 'ADMIN';
 
@@ -121,6 +137,71 @@ export default function ProfilePage() {
     }
   };
 
+  // ── Loyalty tier loading ────────────────────────────────────────────────
+
+  const loadTierInfo = async () => {
+    setTierLoading(true);
+    setTierError(null);
+    try {
+      const data = await LoyaltyService.getMyTier();
+      setTierInfo(data);
+    } catch (err) {
+      setTierError(err.message || "Failed to load tier information");
+      console.error("Failed to load tier info:", err);
+    } finally {
+      setTierLoading(false);
+    }
+  };
+
+  const loadTierHistory = async (page = 0) => {
+    setTierLoading(true);
+    setTierError(null);
+    try {
+      const data = await LoyaltyService.getMyTierHistory(page, 20);
+      setTierHistory(data.content || []);
+      setTierHistoryPage(data.number || 0);
+      setTierHistoryTotalPages(data.totalPages || 0);
+    } catch (err) {
+      setTierError(err.message || "Failed to load tier history");
+      console.error("Failed to load tier history:", err);
+    } finally {
+      setTierLoading(false);
+    }
+  };
+
+  // ── Voucher Shop loading ────────────────────────────────────────────────
+
+  const loadShopVouchers = async () => {
+    setShopLoading(true);
+    setShopError(null);
+    try {
+      const data = await LoyaltyService.getShopVouchers(0, 20);
+      setShopVouchers(data.content || []);
+    } catch (err) {
+      setShopError(err.message || "Failed to load shop vouchers");
+      console.error("Failed to load shop vouchers:", err);
+    } finally {
+      setShopLoading(false);
+    }
+  };
+
+  const handleSpinShop = async (pointsCost) => {
+    setShopSpinning(true);
+    setShopError(null);
+    setShopResult(null);
+    try {
+      const result = await LoyaltyService.spendPointsForVoucher(pointsCost);
+      setShopResult(result);
+      loadTierInfo();
+    } catch (err) {
+      setShopError(err.message || "Failed to claim voucher");
+    } finally {
+      setShopSpinning(false);
+    }
+  };
+
+  // ── Loyalty tier loading ────────────────────────────────────────────────
+
   const loadTickets = async () => {
     setTicketsLoading(true);
     setError(null);
@@ -186,6 +267,14 @@ export default function ProfilePage() {
     }
     if (activeTab === 'tickets' && profile.role !== 'ADMIN' && profile.role) {
       loadTickets();
+    }
+    if (activeTab === 'tier' && profile.role !== 'ADMIN' && profile.role) {
+      loadTierInfo();
+      loadTierHistory(0);
+    }
+    if (activeTab === 'shop' && profile.role !== 'ADMIN' && profile.role) {
+      loadShopVouchers();
+      loadTierInfo();
     }
   }, [activeTab, profile.role]);
 
@@ -303,10 +392,78 @@ export default function ProfilePage() {
       <Header fullName={profile.fullName} role={profile.role} />
       
       <main className="w-full max-w-[1200px] mx-auto px-6 py-10 flex-1 flex flex-col justify-start">
-        
+
+        {/* Tab Navigation */}
+        {!isAdmin && profile.role && (
+          <div className="w-full max-w-[800px] mx-auto mb-6">
+            <div className="flex gap-1 bg-white rounded-2xl p-1 border border-[#e3e3e8]/50 shadow-sm overflow-x-auto">
+              <a
+                href="?tab=profile"
+                className={`flex-1 min-w-fit px-4 py-2.5 rounded-xl text-xs font-semibold text-center transition-all whitespace-nowrap ${
+                  activeTab === 'profile'
+                    ? 'bg-[#0066cc] text-white shadow-sm'
+                    : 'text-[#86868b] hover:text-[#1d1d1f] hover:bg-[#f5f5f7]'
+                }`}
+              >
+                Profile
+              </a>
+              <a
+                href="?tab=tier"
+                className={`flex-1 min-w-fit px-4 py-2.5 rounded-xl text-xs font-semibold text-center transition-all whitespace-nowrap flex items-center justify-center gap-1.5 ${
+                  activeTab === 'tier'
+                    ? 'bg-[#0066cc] text-white shadow-sm'
+                    : 'text-[#86868b] hover:text-[#1d1d1f] hover:bg-[#f5f5f7]'
+                }`}
+              >
+                <span>🏆</span> My Tier
+              </a>
+              <a
+                href="?tab=bookings"
+                className={`flex-1 min-w-fit px-4 py-2.5 rounded-xl text-xs font-semibold text-center transition-all whitespace-nowrap ${
+                  activeTab === 'bookings'
+                    ? 'bg-[#0066cc] text-white shadow-sm'
+                    : 'text-[#86868b] hover:text-[#1d1d1f] hover:bg-[#f5f5f7]'
+                }`}
+              >
+                Bookings
+              </a>
+              <a
+                href="?tab=vouchers"
+                className={`flex-1 min-w-fit px-4 py-2.5 rounded-xl text-xs font-semibold text-center transition-all whitespace-nowrap ${
+                  activeTab === 'vouchers'
+                    ? 'bg-[#0066cc] text-white shadow-sm'
+                    : 'text-[#86868b] hover:text-[#1d1d1f] hover:bg-[#f5f5f7]'
+                }`}
+              >
+                Vouchers
+              </a>
+              <a
+                href="?tab=tickets"
+                className={`flex-1 min-w-fit px-4 py-2.5 rounded-xl text-xs font-semibold text-center transition-all whitespace-nowrap ${
+                  activeTab === 'tickets'
+                    ? 'bg-[#0066cc] text-white shadow-sm'
+                    : 'text-[#86868b] hover:text-[#1d1d1f] hover:bg-[#f5f5f7]'
+                }`}
+              >
+                Meal Tickets
+              </a>
+              <a
+                href="?tab=shop"
+                className={`flex-1 min-w-fit px-4 py-2.5 rounded-xl text-xs font-semibold text-center transition-all whitespace-nowrap ${
+                  activeTab === 'shop'
+                    ? 'bg-[#0066cc] text-white shadow-sm'
+                    : 'text-[#86868b] hover:text-[#1d1d1f] hover:bg-[#f5f5f7]'
+                }`}
+              >
+                Voucher Shop
+              </a>
+            </div>
+          </div>
+        )}
+
         {/* Conditional rendering based on tab and admin status */}
         <div className="w-full max-w-[800px] mx-auto">
-          
+
           {/* Profile Details Tab */}
           {(activeTab === 'profile' || isAdmin) && (
             <div className="max-w-[500px] mx-auto w-full bg-white p-[32px] md:p-[40px] rounded-[24px] border border-[#e3e3e8]/50 shadow-[0_10px_40px_rgba(0,0,0,0.02)]">
@@ -363,11 +520,23 @@ export default function ProfilePage() {
                         </>
                       )}
 
-                      <div className="border-b border-[#f5f5f7] pb-3 flex justify-between items-center">
+                      <div className="border-b border-[#f5f5f7] pb-3 flex justify-between items-center flex-wrap gap-2">
                         <div>
                           <span className="text-[10px] uppercase tracking-wider text-[#86868b] font-semibold block mb-0.5">Account Role</span>
                           <span className="text-[#1d1d1f] text-xs uppercase font-bold inline-block px-2.5 py-0.5 bg-[#f5f5f7] rounded-full text-[#86868b] mt-0.5">
                             {profile.role}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="text-[10px] uppercase tracking-wider text-[#86868b] font-semibold block mb-0.5">Loyalty Tier</span>
+                          <span className="text-xs uppercase font-bold inline-block px-2.5 py-0.5 rounded-full mt-0.5"
+                            style={{
+                              background: profile.currentTier === 'PLATINUM' ? '#1e293b' : profile.currentTier === 'GOLD' ? '#fef3c7' : profile.currentTier === 'SILVER' ? '#f1f5f9' : '#fff7ed',
+                              color: profile.currentTier === 'PLATINUM' ? '#fbbf24' : profile.currentTier === 'GOLD' ? '#b45309' : profile.currentTier === 'SILVER' ? '#64748b' : '#c2410c',
+                              border: `1px solid ${profile.currentTier === 'PLATINUM' ? '#d97706' : profile.currentTier === 'GOLD' ? '#fcd34d' : profile.currentTier === 'SILVER' ? '#94a3b8' : '#fdba74'}`
+                            }}
+                          >
+                            {profile.currentTier || 'BRONZE'}
                           </span>
                         </div>
                         <div>
@@ -662,12 +831,12 @@ export default function ProfilePage() {
                     const minSpendStr = v.minBookingValue > 0 ? `Min spend $${v.minBookingValue}` : 'No minimum spend';
                     const expiryDate = v.endDate ? new Date(v.endDate).toLocaleDateString('vi-VN') : 'No expiry';
                     const isExpired = v.endDate && new Date(v.endDate) < new Date();
-                    const isFullyUsed = v.maxUsage !== null && v.currentUsage >= v.maxUsage;
-                    const isInvalid = isExpired || isFullyUsed;
-                    
+                    const isUsed = v.isUsed === true;
+                    const isInvalid = isExpired || isUsed;
+
                     return (
-                      <div 
-                        key={v.voucherId} 
+                      <div
+                        key={v.id}
                         className={`bg-gradient-to-tr from-[#f9fafb] to-white border border-[#e8e8ed] rounded-3xl p-6 transition-all flex flex-col justify-between relative overflow-hidden ${
                           isInvalid ? 'opacity-50 grayscale' : 'hover:border-[#0066cc]/30 shadow-sm hover:shadow-md'
                         }`}
@@ -696,10 +865,10 @@ export default function ProfilePage() {
 
                         <div className="mt-6 pt-4 border-t border-[#f5f5f7] flex justify-between items-center gap-3">
                           <div className="font-mono text-sm font-bold text-[#1d1d1f] bg-slate-100 px-3 py-1.5 rounded-xl select-all border border-slate-200">
-                            {v.code}
+                            {v.voucherCode}
                           </div>
                           <button
-                            onClick={() => !isInvalid && handleCopyCode(v.code)}
+                            onClick={() => !isInvalid && handleCopyCode(v.voucherCode)}
                             disabled={isInvalid}
                             className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
                               isInvalid 
@@ -709,7 +878,7 @@ export default function ProfilePage() {
                                   : 'bg-[#0066cc] hover:bg-[#0055b3] text-white shadow-sm active:scale-95 cursor-pointer'
                             }`}
                           >
-                            {isExpired ? 'Expired' : isFullyUsed ? 'Fully Used' : copiedCode === v.code ? '✓ Copied' : 'Copy Code'}
+                            {isExpired ? 'Expired' : isUsed ? 'Used' : copiedCode === v.code ? '✓ Copied' : 'Copy Code'}
                           </button>
                         </div>
                       </div>
@@ -803,11 +972,296 @@ export default function ProfilePage() {
             </div>
           )}
 
+          {/* My Loyalty Tier Tab */}
+          {activeTab === 'tier' && !isAdmin && (
+            <div className="w-full bg-white p-[32px] md:p-[40px] rounded-[24px] border border-[#e3e3e8]/50 shadow-[0_10px_40px_rgba(0,0,0,0.02)] text-left animate-fade-in">
+              <div className="mb-6 flex justify-between items-center">
+                <div>
+                  <h2 className="text-2xl font-bold tracking-tight text-[#1d1d1f]">My Loyalty Tier</h2>
+                  <p className="text-xs text-[#86868b] mt-1">Track your rewards progress and tier benefits</p>
+                </div>
+                <button
+                  onClick={() => { loadTierInfo(); loadTierHistory(0); }}
+                  disabled={tierLoading}
+                  className="px-3 py-1.5 rounded-full border border-slate-200 text-xs font-bold text-slate-650 hover:bg-slate-50 transition-all cursor-pointer"
+                >
+                  {tierLoading ? 'Loading...' : '🔄 Refresh'}
+                </button>
+              </div>
+
+              {tierError && (
+                <div className="text-red-500 text-center bg-red-50 py-2 rounded-lg mb-4 text-xs font-medium">
+                  {tierError}
+                </div>
+              )}
+
+              {tierLoading && !tierInfo && (
+                <div className="text-center py-10 text-[#86868b] text-xs font-medium">
+                  Loading tier information...
+                </div>
+              )}
+
+              {tierInfo && (
+                <div>
+                  <div className={`rounded-3xl p-6 mb-6 border-2 ${
+                    tierInfo.currentTier === 'PLATINUM' ? 'bg-gradient-to-br from-slate-800 to-slate-900 text-white border-slate-600' :
+                    tierInfo.currentTier === 'GOLD' ? 'bg-gradient-to-br from-amber-50 to-amber-100 border-amber-300 text-slate-900' :
+                    tierInfo.currentTier === 'SILVER' ? 'bg-gradient-to-br from-slate-100 to-slate-200 border-slate-300 text-slate-900' :
+                    'bg-gradient-to-br from-orange-50 to-orange-100 border-orange-300 text-slate-900'
+                  }`}>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <div className={`text-[10px] uppercase tracking-widest font-bold mb-1 ${
+                          tierInfo.currentTier === 'PLATINUM' ? 'text-amber-400' :
+                          tierInfo.currentTier === 'GOLD' ? 'text-amber-600' :
+                          tierInfo.currentTier === 'SILVER' ? 'text-slate-500' :
+                          'text-orange-600'
+                        }`}>Current Tier</div>
+                        <div className="text-4xl font-extrabold tracking-tight">
+                          {tierInfo.currentTier === 'PLATINUM' ? '💎 ' : ''}
+                          {tierInfo.currentTier === 'GOLD' ? '🥇 ' : ''}
+                          {tierInfo.currentTier === 'SILVER' ? '🥈 ' : ''}
+                          {tierInfo.currentTier === 'BRONZE' ? '🥉 ' : ''}
+                          {tierInfo.currentTier}
+                        </div>
+                        {tierInfo.benefits && tierInfo.benefits.length > 0 && (
+                          <div className="mt-3 flex flex-wrap gap-1.5">
+                            {tierInfo.benefits.map((benefit, i) => (
+                              <span key={i} className={`text-[10px] font-bold px-2.5 py-1 rounded-full border ${
+                                tierInfo.currentTier === 'PLATINUM'
+                                  ? 'bg-amber-500/20 text-amber-300 border-amber-500/30'
+                                  : 'bg-white/40 text-slate-700 border-white/30'
+                              }`}>
+                                {benefit === 'PRIORITY_SUPPORT' ? '⚡ Priority Support' :
+                                 benefit === 'EXCLUSIVE_VOUCHER_ACCESS' ? '🎁 Exclusive Vouchers' :
+                                 benefit}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                      <div className="text-right">
+                        <div className={`text-[10px] uppercase tracking-widest font-bold mb-1 ${
+                          tierInfo.currentTier === 'PLATINUM' ? 'text-amber-400/70' :
+                          'text-slate-500'
+                        }`}>Lifetime Points</div>
+                        <div className={`text-3xl font-extrabold ${
+                          tierInfo.currentTier === 'PLATINUM' ? 'text-white' : 'text-slate-900'
+                        }`}>
+                          {tierInfo.lifetimePoints ? tierInfo.lifetimePoints.toLocaleString() : '0'}
+                        </div>
+                        <div className={`text-[10px] font-semibold mt-0.5 ${
+                          tierInfo.currentTier === 'PLATINUM' ? 'text-amber-400/70' :
+                          'text-slate-500'
+                        }`}>
+                          {tierInfo.annualSpend
+                            ? `$${Number(tierInfo.annualSpend).toLocaleString()} spent`
+                            : 'No spending yet'}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Progress to Next Tier */}
+                  {tierInfo.nextTier && tierInfo.amountToNextTier && (
+                    <div className="bg-[#f5f5f7] rounded-2xl p-5 mb-6 border border-[#e8e8ed]">
+                      <div className="flex justify-between items-center mb-3">
+                        <div>
+                          <div className="text-[10px] uppercase tracking-wider text-[#86868b] font-bold">Next Tier</div>
+                          <div className="text-base font-bold text-[#1d1d1f] mt-0.5">{tierInfo.nextTier}</div>
+                        </div>
+                        <div className="text-right">
+                          <div className="text-[10px] uppercase tracking-wider text-[#86868b] font-bold">Spend More</div>
+                          <div className="text-base font-bold text-emerald-600 mt-0.5">
+                            ${Number(tierInfo.amountToNextTier).toLocaleString()}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="w-full bg-[#e3e3e8] rounded-full h-2.5 overflow-hidden">
+                        <div
+                          className="h-full rounded-full transition-all"
+                          style={{
+                            width: tierInfo.amountToNextTier && tierInfo.annualSpend
+                              ? Math.min(100, (Number(tierInfo.annualSpend) / (Number(tierInfo.annualSpend) + Number(tierInfo.amountToNextTier))) * 100)
+                              : 0,
+                            background: tierInfo.currentTier === 'PLATINUM' ? 'linear-gradient(90deg, #f59e0b, #fbbf24)'
+                              : tierInfo.currentTier === 'GOLD' ? 'linear-gradient(90deg, #a1a1aa, #d4d4d8)'
+                              : 'linear-gradient(90deg, #d97706, #f59e0b)',
+                          }}
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Already at max tier */}
+                  {!tierInfo.nextTier && (
+                    <div className="bg-gradient-to-r from-amber-50 to-amber-100 rounded-2xl p-5 mb-6 border border-amber-200 text-center">
+                      <div className="text-2xl mb-1">🎉</div>
+                      <div className="text-sm font-bold text-amber-800">You're at the highest tier!</div>
+                      <div className="text-xs text-amber-600 mt-1">Enjoy all exclusive Platinum benefits.</div>
+                    </div>
+                  )}
+
+                  {/* Tier History */}
+                  <div className="border-t border-[#f0f0f5] pt-5">
+                    <h3 className="text-base font-bold text-[#1d1d1f] mb-4">Tier History</h3>
+                    {tierHistory.length === 0 && !tierLoading ? (
+                      <p className="text-xs text-[#86868b] text-center py-6 italic">
+                        No tier changes yet. Keep booking to earn rewards!
+                      </p>
+                    ) : (
+                      <div className="space-y-3">
+                        {tierHistory.map((entry) => (
+                          <div key={entry.historyId} className="flex items-center gap-3 p-3 bg-[#f5f5f7] rounded-xl border border-[#e8e8ed]">
+                            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${
+                              entry.newTier === 'PLATINUM' ? 'bg-slate-800 text-white' :
+                              entry.newTier === 'GOLD' ? 'bg-amber-400 text-white' :
+                              entry.newTier === 'SILVER' ? 'bg-slate-300 text-slate-700' :
+                              'bg-orange-300 text-white'
+                            }`}>
+                              {entry.newTier === 'PLATINUM' ? '💎' :
+                               entry.newTier === 'GOLD' ? '🥇' :
+                               entry.newTier === 'SILVER' ? '🥈' : '🥉'}
+                            </div>
+                            <div className="flex-1">
+                              <div className="text-xs font-semibold text-[#1d1d1f]">
+                                {entry.previousTier || 'NONE'} <span className="text-[#86868b]">→</span> {entry.newTier}
+                              </div>
+                              <div className="text-[10px] text-[#86868b] mt-0.5">
+                                {entry.reason?.replace(/_/g, ' ')} • {entry.changedAt ? new Date(entry.changedAt).toLocaleDateString('vi-VN') : ''}
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Pagination */}
+                    {tierHistoryTotalPages > 1 && (
+                      <div className="flex justify-center gap-2 mt-4">
+                        <button
+                          onClick={() => loadTierHistory(tierHistoryPage - 1)}
+                          disabled={tierHistoryPage === 0 || tierLoading}
+                          className="px-3 py-1 rounded-full border border-slate-200 text-xs font-bold disabled:opacity-40 cursor-pointer hover:bg-slate-50 transition-all"
+                        >
+                          ← Prev
+                        </button>
+                        <span className="px-3 py-1 text-xs text-[#86868b] font-semibold">
+                          {tierHistoryPage + 1} / {tierHistoryTotalPages}
+                        </span>
+                        <button
+                          onClick={() => loadTierHistory(tierHistoryPage + 1)}
+                          disabled={tierHistoryPage >= tierHistoryTotalPages - 1 || tierLoading}
+                          className="px-3 py-1 rounded-full border border-slate-200 text-xs font-bold disabled:opacity-40 cursor-pointer hover:bg-slate-50 transition-all"
+                        >
+                          Next →
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {activeTab === 'shop' && !isAdmin && (
+            <div className="w-full bg-white p-[32px] md:p-[40px] rounded-[24px] border border-[#e3e3e8]/50 shadow-[0_10px_40px_rgba(0,0,0,0.02)] text-left animate-fade-in">
+              <div className="mb-8 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-[#f5f5f7] pb-6">
+                <div>
+                  <h2 className="text-2xl font-bold tracking-tight text-[#1d1d1f]">Voucher Shop</h2>
+                  <p className="text-xs text-[#86868b] mt-1">Spin to win a random voucher — spend your loyalty points!</p>
+                </div>
+                <button
+                  onClick={loadShopVouchers}
+                  disabled={shopLoading}
+                  className="px-4 py-2 rounded-full border border-[#d2d2d7] text-xs font-bold hover:bg-[#f5f5f7] active:scale-95 transition-all cursor-pointer bg-white"
+                >
+                  {shopLoading ? 'Loading...' : 'Refresh'}
+                </button>
+              </div>
+
+              {shopError && (
+                <div className="text-red-500 text-center bg-red-50 py-2.5 rounded-xl mb-6 text-xs font-semibold">
+                  {shopError}
+                </div>
+              )}
+
+              {/* Success Result */}
+              {shopResult && (
+                <div className="mb-6 p-6 bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-3xl text-center animate-fade-in">
+                  <div className="text-5xl mb-3">🎉</div>
+                  <h3 className="text-lg font-bold text-green-700 mb-1">You Won a Voucher!</h3>
+                  <div className="inline-block bg-white border-2 border-dashed border-green-400 rounded-2xl px-6 py-3 mt-2 mb-3">
+                    <p className="text-sm font-bold text-[#1d1d1f]">{shopResult.name}</p>
+                    <p className="text-2xl font-extrabold text-[#0066cc] mt-1">
+                      {shopResult.discountType === 'PERCENTAGE' ? `${shopResult.discountValue}%` : `$${shopResult.discountValue}`} OFF
+                    </p>
+                    <p className="text-xs font-mono font-bold text-[#86868b] mt-1">{shopResult.code}</p>
+                  </div>
+                  <p className="text-xs text-green-600 font-semibold">Check "My Vouchers" to use it on your next booking!</p>
+                  <button
+                    onClick={() => { setShopResult(null); loadShopVouchers(); }}
+                    className="mt-3 px-4 py-2 rounded-full bg-green-600 hover:bg-green-700 text-white text-xs font-bold cursor-pointer transition-all"
+                  >
+                    Claim Another
+                  </button>
+                </div>
+              )}
+
+              {/* Shop Items */}
+              {shopLoading && shopVouchers.length === 0 ? (
+                <div className="text-center py-16 text-[#86868b] text-xs font-medium">
+                  Loading available vouchers...
+                </div>
+              ) : shopVouchers.length === 0 && !shopLoading ? (
+                <div className="text-center py-16 text-[#86868b] text-xs italic bg-slate-50 border border-dashed border-slate-200 rounded-[20px] p-10">
+                  No vouchers available in the shop right now. Check back later!
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {shopVouchers.map((v) => (
+                    <div
+                      key={v.voucherId}
+                      className="border border-[#e8e8ed] rounded-3xl p-5 bg-gradient-to-b from-[#fafafa] to-white hover:border-[#0066cc]/30 hover:shadow-md transition-all flex flex-col"
+                    >
+                      <div className="text-center mb-4">
+                        <div className="inline-flex items-center justify-center w-14 h-14 rounded-full bg-indigo-50 mb-2">
+                          <span className="text-2xl">🎰</span>
+                        </div>
+                        <p className="text-xs font-bold text-[#86868b] uppercase tracking-wider">Spin for</p>
+                        <p className="text-xl font-extrabold text-[#1d1d1f]">{v.pointsCost} pts</p>
+                      </div>
+
+                      <div className="flex-1 text-center bg-white border border-dashed border-[#e8e8ed] rounded-2xl p-3 mb-4">
+                        <p className="text-xs font-semibold text-[#1d1d1f] truncate">{v.name}</p>
+                        <p className="text-xs text-[#86868b] mt-0.5 truncate">{v.description}</p>
+                        <p className="text-sm font-bold text-[#0066cc] mt-1">
+                          {v.discountType === 'PERCENTAGE' ? `${v.discountValue}%` : `$${v.discountValue}`} OFF
+                        </p>
+                        <p className="text-[10px] text-[#86868b] mt-1">
+                          {v.remainingUsage != null && v.remainingUsage < 9999999 ? `${v.remainingUsage} left` : 'Unlimited'}
+                        </p>
+                      </div>
+
+                      <button
+                        onClick={() => handleSpinShop(v.pointsCost)}
+                        disabled={shopSpinning}
+                        className="w-full py-2.5 rounded-2xl bg-[#0066cc] hover:bg-[#0055b3] text-white text-xs font-bold shadow-sm active:scale-95 transition-all cursor-pointer disabled:opacity-50"
+                      >
+                        {shopSpinning ? 'Spinning...' : `Spin (${v.pointsCost} pts)`}
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
           {/* QR Code Viewer Modal */}
           {selectedTicketForQr && (
             <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm animate-fade-in">
               <div className="bg-white rounded-3xl p-8 w-full max-w-[380px] shadow-2xl mx-4 border border-[#e8e8ed] text-center relative animate-scale-up">
-                <button 
+                <button
                   onClick={() => {
                     if (qrUrl) URL.revokeObjectURL(qrUrl);
                     setSelectedTicketForQr(null);
@@ -817,11 +1271,11 @@ export default function ProfilePage() {
                 >
                   ✕
                 </button>
-                
+
                 <span className="text-[10px] font-extrabold uppercase tracking-wider text-indigo-600 bg-indigo-50 border border-indigo-100 px-3 py-1 rounded-full">
                   {selectedTicketForQr.ticketTypeName || selectedTicketForQr.ticketType}
                 </span>
-                
+
                 <h3 className="text-lg font-bold text-[#1d1d1f] mt-4">
                   Meal Buffet QR Code
                 </h3>
@@ -881,14 +1335,14 @@ export default function ProfilePage() {
           <div className="bg-white rounded-2xl p-6 w-full max-w-[450px] shadow-2xl mx-4 border border-[#e8e8ed] animate-scale-up">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-lg font-bold text-[#1d1d1f]">Write Stay Review</h3>
-              <button 
+              <button
                 onClick={() => setReviewModalOpen(false)}
                 className="text-[#86868b] hover:text-[#1d1d1f] transition-colors font-medium text-sm p-1 cursor-pointer"
               >
                 ✕ Close
               </button>
             </div>
-            
+
             <form onSubmit={handleReviewSubmit}>
               <div className="mb-4">
                 <span className="text-xs text-[#86868b] block mb-1">Hotel Name</span>

@@ -8,5 +8,6 @@ public record UserResponse(
     String fullName,
     String role,
     String status,
+    String currentTier,
     LocalDateTime createdAt
 ) {}

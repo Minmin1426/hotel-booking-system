@@ -9,4 +9,6 @@ public interface VoucherStoreService {
     ClaimVoucherResponse claimVoucher(Long userId, String voucherCode);
     Page<UserVoucherResponse> getMyVouchers(Long userId, Pageable pageable);
     void applyVoucherUsage(Long userId, Long voucherId, Long bookingId);
+    Page<VoucherStoreResponse> getShopVouchers(Long userId, Pageable pageable);
+    ClaimVoucherResponse spendPointsForRandomVoucher(Long userId, Integer pointsCost);
 }

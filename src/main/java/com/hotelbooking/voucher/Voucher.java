@@ -72,6 +72,10 @@ public class Voucher {
     @Builder.Default
     private Boolean isActive = true;
 
+    // Points required to claim this voucher from the shop (null = not available in shop)
+    @Column(name = "points_cost")
+    private Integer pointsCost;
+
 
 
     @ManyToOne(fetch = FetchType.LAZY)

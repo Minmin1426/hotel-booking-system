@@ -62,6 +62,17 @@ public class AdminLoyaltyController {
         return ResponseEntity.ok(ApiResponse.success("Points ledger retrieved", ledger));
     }
 
+    // POST /api/v1/admin/users/{userId}/points
+    @PostMapping("/users/{userId}/points")
+    public ResponseEntity<ApiResponse<PointsLedgerResponse>> addUserPoints(
+            @PathVariable Long userId,
+            @RequestHeader("Authorization") String authorizationHeader,
+            @Valid @RequestBody AddPointsRequest request) {
+        Long adminId = extractUserId(authorizationHeader);
+        PointsLedgerResponse response = loyaltyService.addPointsManually(adminId, userId, request.getPoints(), request.getReason());
+        return ResponseEntity.ok(ApiResponse.success("Points added successfully", response));
+    }
+
     private Long extractUserId(String authorizationHeader) {
         String token = authorizationHeader.substring(7);
         return jwtService.extractUserId(token);

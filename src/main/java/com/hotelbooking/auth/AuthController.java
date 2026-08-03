@@ -6,6 +6,7 @@ import com.hotelbooking.auth.dto.LogoutResponse;
 import com.hotelbooking.auth.dto.RegisterRequest;
 import com.hotelbooking.auth.dto.RegisterResponse;
 import com.hotelbooking.auth.dto.SocialLoginRequest;
+import com.hotelbooking.common.dto.ApiResponse;
 import com.hotelbooking.user.User;
 
 import jakarta.servlet.http.HttpServletRequest;

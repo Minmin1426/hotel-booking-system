@@ -17,6 +17,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -28,6 +29,7 @@ public class VoucherStoreServiceImpl implements VoucherStoreService {
     private final UserRepository userRepository;
     private final EntityManager entityManager;
     private final com.hotelbooking.admin.CustomerActivityRecorder activityRecorder;
+    private final com.hotelbooking.loyalty.LoyaltyService loyaltyService;
 
     // ── AC-030: Browse available vouchers ──────────────────────────────────────
 
@@ -148,6 +150,81 @@ public class VoucherStoreServiceImpl implements VoucherStoreService {
         log.info("Voucher {} used by user {} for booking {}", voucherId, userId, bookingId);
     }
 
+    // ── Voucher Shop: Browse available shop vouchers ─────────────────────────────
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<VoucherStoreResponse> getShopVouchers(Long userId, Pageable pageable) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new com.hotelbooking.common.exception.ResourceNotFoundException("User", "id", userId.toString()));
+
+        String accountType = user.getAccountType() != null ? user.getAccountType() : "CUSTOMER";
+        return voucherRepository.findShopVouchers(accountType, LocalDateTime.now(), pageable)
+                .map(this::toStoreResponse);
+    }
+
+    // ── Voucher Shop: Spend points to claim a random voucher ─────────────────────
+
+    @Override
+    @Transactional
+    public ClaimVoucherResponse spendPointsForRandomVoucher(Long userId, Integer pointsCost) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new com.hotelbooking.common.exception.ResourceNotFoundException("User", "id", userId.toString()));
+
+        String accountType = user.getAccountType() != null ? user.getAccountType() : "CUSTOMER";
+
+        // Find all available shop vouchers matching the points cost
+        List<Voucher> candidates = voucherRepository.findShopVouchers(accountType, LocalDateTime.now(), Pageable.unpaged())
+                .getContent()
+                .stream()
+                .filter(v -> v.getPointsCost() != null && v.getPointsCost().equals(pointsCost))
+                .toList();
+
+        if (candidates.isEmpty()) {
+            throw new VoucherNotAvailableException("No vouchers available for " + pointsCost + " points");
+        }
+
+        // Pick a random one
+        Voucher voucher = candidates.get(new java.util.Random().nextInt(candidates.size()));
+
+        // Check not already claimed
+        if (userVoucherRepository.findByUserUserIdAndVoucherVoucherId(userId, voucher.getVoucherId()).isPresent()) {
+            throw new VoucherAlreadyClaimedException("You have already claimed this voucher");
+        }
+
+        // Deduct points
+        loyaltyService.deductPoints(userId, pointsCost,
+                "Spent " + pointsCost + " points to claim voucher: " + voucher.getCode(),
+                null, voucher.getVoucherId());
+
+        // Claim the voucher
+        UserVoucher userVoucher = UserVoucher.builder()
+                .user(user)
+                .voucher(voucher)
+                .isUsed(false)
+                .build();
+
+        try {
+            userVoucherRepository.save(userVoucher);
+        } catch (DataIntegrityViolationException e) {
+            throw new VoucherAlreadyClaimedException("You have already claimed this voucher");
+        }
+
+        activityRecorder.recordVoucherClaimed(userId, voucher.getCode());
+
+        log.info("User {} spent {} points to claim voucher {} ({})", userId, pointsCost, voucher.getCode(), voucher.getName());
+
+        return ClaimVoucherResponse.builder()
+                .voucherId(voucher.getVoucherId())
+                .code(voucher.getCode())
+                .name(voucher.getName())
+                .discountType(voucher.getDiscountType())
+                .discountValue(voucher.getDiscountValue())
+                .claimedAt(userVoucher.getClaimedAt())
+                .message("You spent " + pointsCost + " points and won a voucher!")
+                .build();
+    }
+
     // ── Helpers ───────────────────────────────────────────────────────────────
 
     private VoucherStoreResponse toStoreResponse(Voucher v) {
@@ -168,6 +245,7 @@ public class VoucherStoreServiceImpl implements VoucherStoreService {
                 .startDate(v.getStartDate())
                 .endDate(v.getEndDate())
                 .forAccountType(v.getForAccountType())
+                .pointsCost(v.getPointsCost())
                 .build();
     }
 

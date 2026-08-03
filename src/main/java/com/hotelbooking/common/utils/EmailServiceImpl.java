@@ -170,4 +170,46 @@ public class EmailServiceImpl implements EmailService {
     public void sendEmail(String to, String subject, String body) {
         sendEmailAsync(to, subject, body);
     }
+
+    @Override
+    public void sendOtpEmail(String email, String fullName, String otpCode) {
+        log.info("Sending OTP email to: {}", email);
+        String htmlContent = String.format(
+            "<!DOCTYPE html>\n" +
+            "<html>\n" +
+            "<head>\n" +
+            "    <meta charset=\"UTF-8\">\n" +
+            "    <title>Mã xác minh OTP - Luxury Stay</title>\n" +
+            "</head>\n" +
+            "<body style=\"font-family: Arial, sans-serif; background-color: #f4f5f7; margin: 0; padding: 20px;\">\n" +
+            "    <div style=\"max-width: 600px; margin: 0 auto; background-color: #ffffff; padding: 40px; border-radius: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); border: 1px solid #e3e3e8;\">\n" +
+            "        <div style=\"text-align: center; margin-bottom: 30px;\">\n" +
+            "            <h2 style=\"color: #0066cc; margin: 0; font-family: 'Georgia', serif;\">LUXURY STAY</h2>\n" +
+            "            <p style=\"font-size: 10px; text-transform: uppercase; letter-spacing: 2px; color: #a1a1a6; margin: 5px 0 0 0;\">Exquisite Travel Experiences</p>\n" +
+            "        </div>\n" +
+            "        <div style=\"border-top: 1px solid #e3e3e8; padding-top: 30px; color: #1d1d1f;\">\n" +
+            "            <p>Xin chào <strong>%s</strong>,</p>\n" +
+            "            <p>Chúng tôi đã nhận được yêu cầu khôi phục mật khẩu cho tài khoản của bạn tại <strong>Luxury Stay</strong>.</p>\n" +
+            "            <p>Đây là mã xác minh (OTP) của bạn:</p>\n" +
+            "            <div style=\"text-align: center; margin: 35px 0;\">\n" +
+            "                <div style=\"display: inline-block; background-color: #f5f5f7; border: 2px dashed #0066cc; padding: 20px 40px; border-radius: 12px;\">\n" +
+            "                    <p style=\"margin: 0; font-size: 32px; font-weight: bold; color: #0066cc; letter-spacing: 8px; font-family: 'Courier New', monospace;\">%s</p>\n" +
+            "                </div>\n" +
+            "            </div>\n" +
+            "            <p style=\"font-size: 12px; color: #86868b;\">Mã này có hiệu lực trong <strong>15 phút</strong>. Vui lòng không chia sẻ mã này với bất kỳ ai.</p>\n" +
+            "            <p style=\"margin-top: 30px;\">Nếu bạn không yêu cầu khôi phục mật khẩu, vui lòng bỏ qua email này.</p>\n" +
+            "            <p>Trân trọng,<br><strong>Đội ngũ Luxury Stay Support</strong></p>\n" +
+            "        </div>\n" +
+            "        <div style=\"margin-top: 40px; border-top: 1px solid #e3e3e8; padding-top: 20px; text-align: center; font-size: 11px; color: #86868b;\">\n" +
+            "            <p>Đây là email tự động từ hệ thống. Vui lòng không trả lời email này.</p>\n" +
+            "            <p>&copy; 2026 Luxury Stay. All rights reserved.</p>\n" +
+            "        </div>\n" +
+            "    </div>\n" +
+            "</body>\n" +
+            "</html>",
+            fullName != null ? fullName : "Quý khách",
+            otpCode
+        );
+        sendEmailAsync(email, "Mã xác minh khôi phục mật khẩu - Luxury Stay", htmlContent);
+    }
 }

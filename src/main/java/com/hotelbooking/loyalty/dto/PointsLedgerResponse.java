@@ -17,4 +17,5 @@ public class PointsLedgerResponse {
     private BigDecimal multiplierUsed;
     private Long runningBalance;
     private LocalDateTime createdAt;
+    private String reason;
 }

@@ -6,6 +6,8 @@ import { BookingService } from '../services/BookingService';
 import { ReportService } from '../services/ReportService';
 import { HotelService } from '../services/HotelService';
 import { PaymentService } from '../services/PaymentService';
+import { LoyaltyService } from '../services/LoyaltyService';
+import { Validators } from '../utils/validators';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
 
@@ -84,6 +86,17 @@ export default function AdminDashboardPage() {
   const [userStatusState, setUserStatusState] = useState('ACTIVE');
   const [userPhone, setUserPhone] = useState('');
   const [userIdent, setUserIdent] = useState('');
+  const [userTierState, setUserTierState] = useState('BRONZE');
+  const [tierDefinitions, setTierDefinitions] = useState([]);
+
+  // Admin add points
+  const [addPointsAmount, setAddPointsAmount] = useState('');
+  const [addPointsReason, setAddPointsReason] = useState('');
+  const [addPointsLoading, setAddPointsLoading] = useState(false);
+
+  // Field-level validation errors
+  const [fieldErrors, setFieldErrors] = useState({});
+  const [adjustTierReason, setAdjustTierReason] = useState('');
 
   // Booking CUD Modal States
   const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
@@ -124,6 +137,18 @@ export default function AdminDashboardPage() {
       loadUsers();
     }
   }, [activeTab, usersPage]);
+
+  // 1b. Reset to page 0 when search/role/status filters change
+  useEffect(() => {
+    setUsersPage(0);
+  }, [searchQuery, roleFilter, statusFilter]);
+
+  // 1c. Reload users when filters change (triggers after reset above)
+  useEffect(() => {
+    if (activeTab === 'users') {
+      loadUsers(0);
+    }
+  }, [searchQuery, roleFilter, statusFilter]);
 
   // 2. Fetch Bookings when page, search query, status filter, or payment filter changes
   useEffect(() => {
@@ -194,14 +219,15 @@ export default function AdminDashboardPage() {
     loadAdminProfile();
   }, []);
 
-  const loadUsers = async () => {
+  const loadUsers = async (page = usersPage) => {
     setIsLoading(true);
     setError(null);
     try {
-      const data = await AuthService.getAllUsers(usersPage, 10);
+      const data = await AuthService.getAllUsers(page, 10, searchQuery, roleFilter, statusFilter);
       setUsers(data.content || []);
       setUsersTotalPages(data.totalPages || 0);
       setUsersTotalElements(data.totalElements || 0);
+      setUsersPage(page);
     } catch (err) {
       setError("Failed to load user list: " + err.message);
       if (err.message.includes("401") || err.message.includes("unauthorized") || err.message.includes("token")) {
@@ -347,20 +373,35 @@ export default function AdminDashboardPage() {
     setUserStatusState('ACTIVE');
     setUserPhone('');
     setUserIdent('');
+    setAddPointsAmount('');
+    setAddPointsReason('');
+    setFieldErrors({});
     setError(null);
     setIsUserModalOpen(true);
   };
 
-  const handleEditUserClick = (user) => {
+  const handleEditUserClick = async (user) => {
     setEditingUser(user);
     setUserEmail(user.email || '');
     setUserFullName(user.fullName || '');
-    setUserPassword(''); 
+    setUserPassword('');
     setUserRoleState(user.role || 'CUSTOMER');
     setUserStatusState(user.status || 'ACTIVE');
     setUserPhone(user.phoneNumber || '');
     setUserIdent(user.identificationNumber || '');
+    setUserTierState(user.currentTier || 'BRONZE');
+    setAdjustTierReason('');
+    setAddPointsAmount('');
+    setAddPointsReason('');
+    setFieldErrors({});
     setError(null);
+    // Load tier definitions for the dropdown
+    try {
+      const tiers = await LoyaltyService.getTierDefinitions('CUSTOMER');
+      setTierDefinitions(tiers);
+    } catch (err) {
+      console.error("Failed to load tier definitions:", err);
+    }
     setIsUserModalOpen(true);
   };
 
@@ -368,6 +409,31 @@ export default function AdminDashboardPage() {
     e.preventDefault();
     setIsLoading(true);
     setError(null);
+
+    // Validate fields using Vietnamese validators
+    const newErrors = {};
+    if (!editingUser) {
+      const nameErr = Validators.fullName(userFullName);
+      if (nameErr) newErrors.fullName = nameErr;
+      const emailErr = Validators.email(userEmail);
+      if (emailErr) newErrors.email = emailErr;
+      const phoneErr = Validators.phoneVN(userPhone);
+      if (phoneErr) newErrors.phone = phoneErr;
+      const idErr = Validators.identificationNumber(userIdent);
+      if (idErr) newErrors.ident = idErr;
+      if (!userPassword) {
+        newErrors.password = 'Mật khẩu là bắt buộc';
+      } else {
+        const pwErr = Validators.password(userPassword);
+        if (pwErr) newErrors.password = pwErr;
+      }
+      if (Object.keys(newErrors).length > 0) {
+        setFieldErrors(newErrors);
+        setError('Vui lòng kiểm tra các trường được đánh dấu bên dưới');
+        setIsLoading(false);
+        return;
+      }
+    }
 
     const userData = {
       email: userEmail,
@@ -379,11 +445,6 @@ export default function AdminDashboardPage() {
     };
 
     if (!editingUser) {
-      if (!userPassword) {
-        setError("Password is required for new users.");
-        setIsLoading(false);
-        return;
-      }
       userData.password = userPassword;
     } else {
       if (userPassword) {
@@ -396,6 +457,13 @@ export default function AdminDashboardPage() {
         await AuthService.adminCreateUser(userData);
       } else {
         await AuthService.adminUpdateUser(editingUser.userId, userData);
+        if (userTierState && userTierState !== editingUser.currentTier) {
+          await LoyaltyService.adjustUserTier(
+            editingUser.userId,
+            userTierState,
+            adjustTierReason || 'Manual admin adjustment'
+          );
+        }
       }
       setIsUserModalOpen(false);
       loadUsers();
@@ -403,6 +471,21 @@ export default function AdminDashboardPage() {
       setError(err.message || "Failed to save user");
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleAddPoints = async () => {
+    if (!addPointsAmount || parseInt(addPointsAmount) <= 0) return;
+    setAddPointsLoading(true);
+    try {
+      await LoyaltyService.addPoints(editingUser.userId, parseInt(addPointsAmount), addPointsReason || 'Admin bonus points');
+      setAddPointsAmount('');
+      setAddPointsReason('');
+      alert(`Added ${addPointsAmount} loyalty points to user.`);
+    } catch (err) {
+      alert('Failed to add points: ' + (err.message || err));
+    } finally {
+      setAddPointsLoading(false);
     }
   };
 
@@ -768,18 +851,6 @@ export default function AdminDashboardPage() {
     }
   };
 
-  // Client-side users filter
-  const filteredUsers = users.filter(user => {
-    const fullNameMatches = (user.fullName || '').toLowerCase().includes(searchQuery.toLowerCase());
-    const emailMatches = (user.email || '').toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesSearch = fullNameMatches || emailMatches;
-    
-    const matchesRole = roleFilter === 'ALL' || user.role === roleFilter;
-    const matchesStatus = statusFilter === 'ALL' || user.status === statusFilter;
-    
-    return matchesSearch && matchesRole && matchesStatus;
-  });
-
   return (
     <div className="min-h-screen bg-gradient-to-tr from-[#f4f3f0] via-[#f5f7fa] to-[#eef1f6] flex flex-col">
       <Header fullName={adminName} role={userRole} />
@@ -928,6 +999,7 @@ export default function AdminDashboardPage() {
                     <option value="RECEPTIONIST">Receptionist</option>
                     <option value="HOUSEKEEPER">Housekeeper</option>
                     <option value="ADMIN">Admin</option>
+                    <option value="DIRECTOR">Director</option>
                   </select>
                   <select
                     className="h-[40px] px-4 py-2 rounded-xl border border-[#e8e8ed] text-xs font-semibold bg-white focus:outline-none focus:border-[#0066cc]"
@@ -953,7 +1025,7 @@ export default function AdminDashboardPage() {
                   <div className="text-center py-20 text-[#86868b] apple-body">
                     Loading registered users...
                   </div>
-                ) : filteredUsers.length === 0 ? (
+                ) : users.length === 0 ? (
                   <div className="text-center py-20 text-[#86868b] apple-body">
                     No users found matching current filters.
                   </div>
@@ -965,12 +1037,13 @@ export default function AdminDashboardPage() {
                         <th className="p-4 text-xs font-semibold uppercase text-[#86868b] tracking-wider">Full Name</th>
                         <th className="p-4 text-xs font-semibold uppercase text-[#86868b] tracking-wider">Email</th>
                         <th className="p-4 text-xs font-semibold uppercase text-[#86868b] tracking-wider w-[120px]">Role</th>
+                        <th className="p-4 text-xs font-semibold uppercase text-[#86868b] tracking-wider w-[120px]">Tier</th>
                         <th className="p-4 text-xs font-semibold uppercase text-[#86868b] tracking-wider w-[120px]">Status</th>
                         <th className="p-4 text-xs font-semibold uppercase text-[#86868b] tracking-wider text-right w-[150px]">Actions</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-[#e8e8ed]">
-                      {filteredUsers.map((user) => (
+                      {users.map((user) => (
                         <tr key={user.userId} className="hover:bg-[#fafafc] transition-colors">
                           <td className="p-4 text-sm font-semibold text-[#1d1d1f]">#{user.userId}</td>
                           <td className="p-4 text-sm font-medium text-[#1d1d1f]">{user.fullName}</td>
@@ -984,6 +1057,18 @@ export default function AdminDashboardPage() {
                               user.role === 'STAFF' ? 'bg-blue-50 text-blue-600' : 'bg-gray-50 text-gray-600'
                             }`}>
                               {user.role}
+                            </span>
+                          </td>
+                          <td className="p-4">
+                            <span
+                              className="text-xs font-semibold inline-block px-2.5 py-0.5 rounded-full"
+                              style={{
+                                background: user.currentTier === 'PLATINUM' ? '#1e293b' : user.currentTier === 'GOLD' ? '#fef3c7' : user.currentTier === 'SILVER' ? '#f1f5f9' : '#fff7ed',
+                                color: user.currentTier === 'PLATINUM' ? '#fbbf24' : user.currentTier === 'GOLD' ? '#b45309' : user.currentTier === 'SILVER' ? '#64748b' : '#c2410c',
+                                border: `1px solid ${user.currentTier === 'PLATINUM' ? '#d97706' : user.currentTier === 'GOLD' ? '#fcd34d' : user.currentTier === 'SILVER' ? '#94a3b8' : '#fdba74'}`
+                              }}
+                            >
+                              {user.currentTier || 'BRONZE'}
                             </span>
                           </td>
                           <td className="p-4">
@@ -1004,23 +1089,8 @@ export default function AdminDashboardPage() {
                                 onClick={() => handleEditUserClick(user)}
                                 className="px-3 py-1.5 rounded-full text-xs font-semibold bg-blue-50 text-blue-600 hover:bg-blue-100 active:scale-95 transition-all cursor-pointer"
                               >
-                                Edit
+                                View
                               </button>
-                              {user.role !== 'ADMIN' ? (
-                                <button
-                                  onClick={() => handleDeleteUser(user.userId)}
-                                  className="px-3 py-1.5 rounded-full text-xs font-semibold bg-rose-50 text-rose-600 hover:bg-rose-100 active:scale-95 transition-all cursor-pointer"
-                                >
-                                  Delete
-                                </button>
-                              ) : (
-                                <button
-                                  disabled
-                                  className="px-3 py-1.5 rounded-full text-xs font-semibold bg-[#f5f5f7] text-[#86868b] border border-[#e8e8ed] cursor-not-allowed opacity-60"
-                                >
-                                  Protected
-                                </button>
-                              )}
                               <button
                                 onClick={() => handleToggleStatus(user.userId, user.status)}
                                 disabled={actionLoadingId === user.userId}
@@ -1030,8 +1100,8 @@ export default function AdminDashboardPage() {
                                     : 'bg-green-50 text-green-600 hover:bg-green-100'
                                   }`}
                               >
-                                {actionLoadingId === user.userId 
-                                  ? '...' 
+                                {actionLoadingId === user.userId
+                                  ? '...'
                                   : user.status === 'ACTIVE' ? 'Lock' : 'Unlock'}
                               </button>
                             </div>
@@ -1891,7 +1961,7 @@ export default function AdminDashboardPage() {
           <div className="bg-white rounded-3xl w-full max-w-lg overflow-hidden shadow-2xl border border-[#e8e8ed] animate-fadeIn text-left">
             <div className="px-8 py-6 border-b border-[#f5f5f7] flex justify-between items-center bg-[#f5f5f7]/50">
               <h2 className="text-xl font-bold text-[#1d1d1f]">
-                {editingUser ? "Edit User Profile" : "Create New User"}
+                {editingUser ? "View User" : "Create New User"}
               </h2>
               <button 
                 onClick={() => setIsUserModalOpen(false)}
@@ -1911,11 +1981,15 @@ export default function AdminDashboardPage() {
                     type="email"
                     required
                     disabled={!!editingUser}
-                    className="w-full h-[44px] px-4 rounded-xl border border-[#e8e8ed] text-sm focus:outline-none focus:border-[#0066cc] transition-all bg-[#f5f5f7] focus:bg-white disabled:opacity-60"
+                    className={`w-full h-[44px] px-4 rounded-xl border text-sm focus:outline-none transition-all bg-[#f5f5f7] focus:bg-white disabled:opacity-60 disabled:cursor-not-allowed ${
+                      fieldErrors.email ? 'border-red-400 focus:border-red-500' : 'border-[#e8e8ed] focus:border-[#0066cc]'
+                    }`}
                     value={userEmail}
-                    onChange={(e) => setUserEmail(e.target.value)}
+                    disabled={!!editingUser}
+                    onChange={(e) => { if (!editingUser) { setUserEmail(e.target.value); setFieldErrors(prev => ({ ...prev, email: '' })); } }}
                     placeholder="e.g. customer@example.com"
                   />
+                  {fieldErrors.email && <p className="text-[11px] text-red-500 mt-1 ml-1 font-medium">{fieldErrors.email}</p>}
                 </div>
 
                 <div className="col-span-2">
@@ -1923,11 +1997,15 @@ export default function AdminDashboardPage() {
                   <input
                     type="text"
                     required
-                    className="w-full h-[44px] px-4 rounded-xl border border-[#e8e8ed] text-sm focus:outline-none focus:border-[#0066cc] transition-all bg-[#f5f5f7] focus:bg-white"
+                    className={`w-full h-[44px] px-4 rounded-xl border text-sm focus:outline-none transition-all bg-[#f5f5f7] focus:bg-white disabled:opacity-60 disabled:cursor-not-allowed ${
+                      fieldErrors.fullName ? 'border-red-400 focus:border-red-500' : 'border-[#e8e8ed] focus:border-[#0066cc]'
+                    }`}
                     value={userFullName}
-                    onChange={(e) => setUserFullName(e.target.value)}
+                    disabled={!!editingUser}
+                    onChange={(e) => { if (!editingUser) { setUserFullName(e.target.value); setFieldErrors(prev => ({ ...prev, fullName: '' })); } }}
                     placeholder="e.g. Nguyen Van A"
                   />
+                  {fieldErrors.fullName && <p className="text-[11px] text-red-500 mt-1 ml-1 font-medium">{fieldErrors.fullName}</p>}
                 </div>
 
                 <div className="col-span-2">
@@ -1937,34 +2015,41 @@ export default function AdminDashboardPage() {
                   <input
                     type="password"
                     required={!editingUser}
-                    className="w-full h-[44px] px-4 rounded-xl border border-[#e8e8ed] text-sm focus:outline-none focus:border-[#0066cc] transition-all bg-[#f5f5f7] focus:bg-white"
+                    className={`w-full h-[44px] px-4 rounded-xl border text-sm focus:outline-none transition-all bg-[#f5f5f7] focus:bg-white disabled:opacity-60 disabled:cursor-not-allowed ${
+                      fieldErrors.password ? 'border-red-400 focus:border-red-500' : 'border-[#e8e8ed] focus:border-[#0066cc]'
+                    }`}
                     value={userPassword}
-                    onChange={(e) => setUserPassword(e.target.value)}
+                    disabled={!!editingUser}
+                    onChange={(e) => { if (!editingUser) { setUserPassword(e.target.value); setFieldErrors(prev => ({ ...prev, password: '' })); } }}
                     placeholder={editingUser ? "••••••••" : "Min 8 characters"}
                   />
+                  {fieldErrors.password && <p className="text-[11px] text-red-500 mt-1 ml-1 font-medium">{fieldErrors.password}</p>}
                 </div>
 
                 <div>
                   <label className="block text-xs font-bold text-[#86868b] mb-1.5 uppercase tracking-wider">Role</label>
                   <select
-                    className="w-full h-[44px] px-4 rounded-xl border border-[#e8e8ed] text-sm focus:outline-none focus:border-[#0066cc] bg-[#f5f5f7] focus:bg-white"
+                    disabled={!!editingUser}
+                    className="w-full h-[44px] px-4 rounded-xl border border-[#e8e8ed] text-sm focus:outline-none focus:border-[#0066cc] bg-[#f5f5f7] focus:bg-white disabled:opacity-60"
                     value={userRoleState}
-                    onChange={(e) => setUserRoleState(e.target.value)}
+                    onChange={(e) => !editingUser && setUserRoleState(e.target.value)}
                   >
                     <option value="CUSTOMER">Customer</option>
                     <option value="STAFF">Staff (Legacy)</option>
                     <option value="RECEPTIONIST">Receptionist</option>
                     <option value="HOUSEKEEPER">Housekeeper</option>
                     <option value="ADMIN">Admin</option>
+                    <option value="DIRECTOR">Director</option>
                   </select>
                 </div>
 
                 <div>
                   <label className="block text-xs font-bold text-[#86868b] mb-1.5 uppercase tracking-wider">Status</label>
                   <select
-                    className="w-full h-[44px] px-4 rounded-xl border border-[#e8e8ed] text-sm focus:outline-none focus:border-[#0066cc] bg-[#f5f5f7] focus:bg-white"
+                    disabled={!!editingUser}
+                    className="w-full h-[44px] px-4 rounded-xl border border-[#e8e8ed] text-sm focus:outline-none focus:border-[#0066cc] bg-[#f5f5f7] focus:bg-white disabled:opacity-60"
                     value={userStatusState}
-                    onChange={(e) => setUserStatusState(e.target.value)}
+                    onChange={(e) => !editingUser && setUserStatusState(e.target.value)}
                   >
                     <option value="ACTIVE">Active</option>
                     <option value="LOCKED">Locked</option>
@@ -1975,23 +2060,85 @@ export default function AdminDashboardPage() {
                   <label className="block text-xs font-bold text-[#86868b] mb-1.5 uppercase tracking-wider">Phone Number</label>
                   <input
                     type="text"
-                    className="w-full h-[44px] px-4 rounded-xl border border-[#e8e8ed] text-sm focus:outline-none focus:border-[#0066cc] transition-all bg-[#f5f5f7] focus:bg-white"
+                    className={`w-full h-[44px] px-4 rounded-xl border text-sm focus:outline-none transition-all bg-[#f5f5f7] focus:bg-white ${
+                      fieldErrors.phone ? 'border-red-400 focus:border-red-500' : 'border-[#e8e8ed] focus:border-[#0066cc]'
+                    }`}
                     value={userPhone}
-                    onChange={(e) => setUserPhone(e.target.value)}
+                    disabled={!!editingUser}
+                    onChange={(e) => { if (!editingUser) { setUserPhone(e.target.value); setFieldErrors(prev => ({ ...prev, phone: '' })); } }}
                     placeholder="e.g. 0912345678"
                   />
+                  {fieldErrors.phone && <p className="text-[11px] text-red-500 mt-1 ml-1 font-medium">{fieldErrors.phone}</p>}
                 </div>
 
                 <div>
                   <label className="block text-xs font-bold text-[#86868b] mb-1.5 uppercase tracking-wider">National ID</label>
                   <input
                     type="text"
-                    className="w-full h-[44px] px-4 rounded-xl border border-[#e8e8ed] text-sm focus:outline-none focus:border-[#0066cc] transition-all bg-[#f5f5f7] focus:bg-white"
+                    className={`w-full h-[44px] px-4 rounded-xl border text-sm focus:outline-none transition-all bg-[#f5f5f7] focus:bg-white ${
+                      fieldErrors.ident ? 'border-red-400 focus:border-red-500' : 'border-[#e8e8ed] focus:border-[#0066cc]'
+                    }`}
                     value={userIdent}
-                    onChange={(e) => setUserIdent(e.target.value)}
+                    disabled={!!editingUser}
+                    onChange={(e) => { if (!editingUser) { setUserIdent(e.target.value); setFieldErrors(prev => ({ ...prev, ident: '' })); } }}
                     placeholder="e.g. 034123456789"
                   />
                 </div>
+
+                {editingUser && (
+                  <>
+                    <div>
+                      <label className="block text-xs font-bold text-[#86868b] mb-1.5 uppercase tracking-wider">Loyalty Tier</label>
+                      <select
+                        disabled
+                        className="w-full h-[44px] px-4 rounded-xl border border-[#e8e8ed] text-sm focus:outline-none bg-[#f5f5f7] text-[#86868b] cursor-not-allowed disabled:opacity-60"
+                        value={userTierState}
+                      >
+                        {tierDefinitions.length > 0 ? (
+                          tierDefinitions.map((tier) => (
+                            <option key={tier.name} value={tier.name}>{tier.name}</option>
+                          ))
+                        ) : (
+                          <>
+                            <option value="BRONZE">Bronze</option>
+                            <option value="SILVER">Silver</option>
+                            <option value="GOLD">Gold</option>
+                            <option value="PLATINUM">Platinum</option>
+                          </>
+                        )}
+                      </select>
+                    </div>
+
+                    {/* Add Points Section */}
+                    <div className="mt-4 p-4 bg-indigo-50 rounded-xl border border-indigo-100">
+                      <label className="block text-xs font-bold text-indigo-700 mb-1.5 uppercase tracking-wider">Add Loyalty Points</label>
+                      <div className="flex gap-3">
+                        <input
+                          type="number"
+                          min="1"
+                          className="flex-1 h-[44px] px-4 rounded-xl border border-[#e8e8ed] text-sm focus:outline-none focus:border-[#0066cc] bg-white"
+                          value={addPointsAmount}
+                          onChange={(e) => setAddPointsAmount(e.target.value)}
+                          placeholder="Points to add (e.g. 5000)"
+                        />
+                        <input
+                          type="text"
+                          className="flex-1 h-[44px] px-4 rounded-xl border border-[#e8e8ed] text-sm focus:outline-none focus:border-[#0066cc] bg-white"
+                          value={addPointsReason}
+                          onChange={(e) => setAddPointsReason(e.target.value)}
+                          placeholder="Reason (optional)"
+                        />
+                        <button
+                          onClick={handleAddPoints}
+                          disabled={addPointsLoading || !addPointsAmount}
+                          className="h-[44px] px-5 rounded-xl bg-indigo-600 text-white text-xs font-bold hover:brightness-105 active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                        >
+                          {addPointsLoading ? '...' : '+ Add'}
+                        </button>
+                      </div>
+                    </div>
+                  </>
+                )}
               </div>
 
               {error && (
@@ -2008,13 +2155,15 @@ export default function AdminDashboardPage() {
                 >
                   Cancel
                 </button>
-                <button
-                  type="submit"
-                  disabled={isLoading}
-                  className="h-[44px] px-6 rounded-xl bg-[#0066cc] hover:bg-[#0055b3] text-sm font-semibold text-white transition-all disabled:opacity-50 flex items-center justify-center min-w-[100px]"
-                >
-                  {isLoading ? "Saving..." : "Save User"}
-                </button>
+                {!editingUser && (
+                  <button
+                    type="submit"
+                    disabled={isLoading}
+                    className="h-[44px] px-6 rounded-xl bg-[#0066cc] hover:bg-[#0055b3] text-sm font-semibold text-white transition-all disabled:opacity-50 flex items-center justify-center min-w-[100px]"
+                  >
+                    {isLoading ? "Saving..." : "Create User"}
+                  </button>
+                )}
               </div>
             </form>
           </div>

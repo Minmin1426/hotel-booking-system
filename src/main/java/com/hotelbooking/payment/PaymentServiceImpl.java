@@ -4,6 +4,7 @@ import com.hotelbooking.booking.BookingRepository;
 import com.hotelbooking.common.exception.BusinessException;
 import com.hotelbooking.common.exception.ResourceNotFoundException;
 import com.hotelbooking.common.utils.EmailService;
+import com.hotelbooking.loyalty.LoyaltyService;
 import com.hotelbooking.payment.dto.PaymentRequestDTO;
 import com.hotelbooking.payment.dto.PaymentResponseDTO;
 import com.hotelbooking.voucher.Voucher;
@@ -48,6 +49,7 @@ public class PaymentServiceImpl implements PaymentService {
     private final VnpayService vnpayService;
     private final PayoutRepository payoutRepository;
     private final com.hotelbooking.mealticket.MealTicketService mealTicketService;
+    private final LoyaltyService loyaltyService;
 
 
     @Value("${stripe.api.key}")
@@ -329,6 +331,16 @@ public class PaymentServiceImpl implements PaymentService {
         bookingRepository.save(booking);
         if (mealTicketService != null) {
             mealTicketService.autoIssueMealTicketsForBooking(booking);
+        }
+
+        // 011-loyalty-membership-tiers: award points and evaluate tier
+        if (loyaltyService != null && payment.getAmount() != null) {
+            try {
+                loyaltyService.awardPoints(booking.getUser().getUserId(), booking.getBookingId(), payment.getAmount());
+                loyaltyService.evaluateTier(booking.getUser().getUserId());
+            } catch (Exception e) {
+                log.error("Failed to award loyalty points for booking {}: {}", booking.getBookingId(), e.getMessage());
+            }
         }
 
         emailService.sendBookingConfirmationEmail(booking.getUser().getEmail(), booking.getBookingCode());

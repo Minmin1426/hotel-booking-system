@@ -7,6 +7,7 @@ import com.hotelbooking.auth.dto.RegisterResponse;
 import com.hotelbooking.auth.dto.SocialLoginRequest;
 import com.hotelbooking.common.exception.EmailAlreadyExistsException;
 import com.hotelbooking.common.security.JwtService;
+import com.hotelbooking.common.utils.EmailService;
 import com.hotelbooking.common.security.TokenBlacklistService;
 import com.hotelbooking.user.LoginAuditLog;
 import com.hotelbooking.user.LoginAuditLogRepository;
@@ -33,6 +34,7 @@ import java.time.LocalDateTime;
 @Service
 @RequiredArgsConstructor
 @Slf4j
+@SuppressWarnings("unchecked")
 public class AuthServiceImpl implements AuthService {
 
     private final UserRepository userRepository;
@@ -40,6 +42,7 @@ public class AuthServiceImpl implements AuthService {
     private final JwtService jwtService;
     private final LoginAuditLogRepository auditLogRepository;
     private final TokenBlacklistService tokenBlacklistService;
+    private final EmailService emailService;
 
     @Override
     @Transactional
@@ -54,8 +57,8 @@ public class AuthServiceImpl implements AuthService {
                 .email(request.getEmail())
                 .passwordHash(passwordEncoder.encode(request.getPassword()))
                 .fullName(request.getFullName())
-                .role("CUSTOMER") // Business Rule: Default to CUSTOMER
-                .status("ACTIVE")  // Default to ACTIVE
+                .role("CUSTOMER")
+                .status("ACTIVE")
                 .failedLoginAttempts(0)
                 .phoneNumber(request.getPhoneNumber())
                 .identificationNumber(request.getIdentificationNumber())
@@ -76,7 +79,6 @@ public class AuthServiceImpl implements AuthService {
     public LoginResponse authenticate(LoginRequest request, String ipAddress, String userAgent) {
         log.info("UC2: Attempting login for email: {}", request.getEmail());
 
-        // 1. Find user by email
         User user = userRepository.findByEmail(request.getEmail())
                 .orElseThrow(() -> {
                     log.warn("Login failed: User not found for email: {}", request.getEmail());
@@ -84,7 +86,6 @@ public class AuthServiceImpl implements AuthService {
                     throw new BadCredentialsException("INVALID_CREDENTIALS");
                 });
 
-        // 2. Verify account status
         if (!user.isAccountNonLocked()) {
             log.warn("Login failed: Account locked for email: {}", request.getEmail());
             saveAuditLog(request.getEmail(), "ACCOUNT_LOCKED", ipAddress, userAgent);
@@ -97,17 +98,13 @@ public class AuthServiceImpl implements AuthService {
             throw new DisabledException("ACCOUNT_DISABLED");
         }
 
-        // 3. Verify password
         if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
             log.warn("Login failed: Invalid password for email: {}", request.getEmail());
-            
-            // Increment failed attempts
+
             int attempts = user.getFailedLoginAttempts() + 1;
             user.setFailedLoginAttempts(attempts);
-            
             saveAuditLog(request.getEmail(), "FAILED_INVALID_CREDENTIALS", ipAddress, userAgent);
 
-            // Check lock rule: >= 5 attempts
             if (attempts >= 5) {
                 user.setStatus("LOCKED");
                 userRepository.save(user);
@@ -115,12 +112,11 @@ public class AuthServiceImpl implements AuthService {
                 saveAuditLog(request.getEmail(), "ACCOUNT_LOCKED", ipAddress, userAgent);
                 throw new LockedException("ACCOUNT_LOCKED");
             }
-            
+
             userRepository.save(user);
             throw new BadCredentialsException("INVALID_CREDENTIALS");
         }
 
-        // 4. Successful Login
         user.setFailedLoginAttempts(0);
         user.setLastLoginAt(LocalDateTime.now());
         userRepository.save(user);
@@ -128,7 +124,6 @@ public class AuthServiceImpl implements AuthService {
         log.info("Login successful for email: {}", request.getEmail());
         saveAuditLog(request.getEmail(), "SUCCESS", ipAddress, userAgent);
 
-        // Generate access/refresh tokens
         String accessToken = jwtService.generateAccessToken(user.getEmail(), user.getUserId(), user.getRole());
         String refreshToken = jwtService.generateRefreshToken(user.getEmail());
 
@@ -145,7 +140,6 @@ public class AuthServiceImpl implements AuthService {
     public void logout(String authHeader, LogoutRequest request, String ipAddress, String userAgent) {
         log.info("UC3: Processing logout request");
 
-        // 1. Validate Access Token existence and prefix
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
             log.warn("Logout failed: Missing or invalid Authorization header");
             saveAuditLog("ANONYMOUS", "LOGOUT_FAILED_INVALID", ipAddress, userAgent);
@@ -155,7 +149,6 @@ public class AuthServiceImpl implements AuthService {
         String accessToken = authHeader.substring(7);
         String email;
 
-        // 2. Validate Access Token Signature and Expiration
         try {
             if (jwtService.isTokenExpired(accessToken)) {
                 log.warn("Logout failed: Access token is expired");
@@ -175,14 +168,12 @@ public class AuthServiceImpl implements AuthService {
             throw new JwtException("UNAUTHORIZED");
         }
 
-        // 3. Check if Access Token is already blacklisted
         if (tokenBlacklistService.isTokenRevoked(accessToken)) {
             log.warn("Logout failed: Access token is already revoked for user: {}", email);
             saveAuditLog(email, "LOGOUT_FAILED_INVALID", ipAddress, userAgent);
             throw new JwtException("UNAUTHORIZED");
         }
 
-        // 4. Validate Refresh Token from Request Body
         String refreshToken = request.getRefreshToken();
         if (refreshToken == null || refreshToken.isEmpty()) {
             log.warn("Logout failed: Refresh token is missing for user: {}", email);
@@ -208,18 +199,15 @@ public class AuthServiceImpl implements AuthService {
             throw new JwtException("UNAUTHORIZED");
         }
 
-        // Check if Refresh Token is already blacklisted
         if (tokenBlacklistService.isTokenRevoked(refreshToken)) {
             log.warn("Logout failed: Refresh token is already revoked for user: {}", email);
             saveAuditLog(email, "LOGOUT_FAILED_INVALID", ipAddress, userAgent);
             throw new JwtException("UNAUTHORIZED");
         }
 
-        // 5. Invalidate tokens
         tokenBlacklistService.blacklistToken(accessToken, "ACCESS", email);
         tokenBlacklistService.blacklistToken(refreshToken, "REFRESH", email);
 
-        // 6. Update user logout timestamp
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> {
                     log.error("User not found during logout update: {}", email);
@@ -228,7 +216,6 @@ public class AuthServiceImpl implements AuthService {
         user.setLastLogoutAt(LocalDateTime.now());
         userRepository.save(user);
 
-        // 7. Record success audit log
         log.info("Logout successful for user: {}", email);
         saveAuditLog(email, "LOGOUT_SUCCESS", ipAddress, userAgent);
     }
@@ -258,7 +245,6 @@ public class AuthServiceImpl implements AuthService {
         try {
             RestTemplate restTemplate = new RestTemplate();
             String url;
-            // ID tokens are JWTs and contain two dots (3 parts: header.payload.signature).
             if (token != null && token.contains(".") && token.split("\\.").length == 3) {
                 log.info("Verifying Google token as ID Token");
                 url = "https://oauth2.googleapis.com/tokeninfo?id_token=" + token;
@@ -281,7 +267,6 @@ public class AuthServiceImpl implements AuthService {
             throw new IllegalArgumentException("Email from " + provider + " accounts is required");
         }
 
-        // Find or create user
         User user = userRepository.findByEmail(email)
                 .orElseGet(() -> {
                     log.info("Social login: Creating new user for email: {} from provider: {}", email, provider);
@@ -296,7 +281,6 @@ public class AuthServiceImpl implements AuthService {
                     return userRepository.save(newUser);
                 });
 
-        // Verify account status
         if (!user.isAccountNonLocked()) {
             log.warn("Social login failed: Account locked for email: {}", email);
             saveAuditLog(email, "ACCOUNT_LOCKED", ipAddress, userAgent);
@@ -309,7 +293,6 @@ public class AuthServiceImpl implements AuthService {
             throw new DisabledException("ACCOUNT_DISABLED");
         }
 
-        // Successful Login
         user.setFailedLoginAttempts(0);
         user.setLastLoginAt(LocalDateTime.now());
         userRepository.save(user);
@@ -317,7 +300,6 @@ public class AuthServiceImpl implements AuthService {
         log.info("Social login successful for email: {} from provider: {}", email, provider);
         saveAuditLog(email, "SUCCESS_SOCIAL_" + provider.toUpperCase(), ipAddress, userAgent);
 
-        // Generate access/refresh tokens
         String accessToken = jwtService.generateAccessToken(user.getEmail(), user.getUserId(), user.getRole());
         String refreshToken = jwtService.generateRefreshToken(user.getEmail());
 
@@ -327,6 +309,72 @@ public class AuthServiceImpl implements AuthService {
                 .email(user.getEmail())
                 .role(user.getRole())
                 .build();
+    }
+
+    @Override
+    @Transactional
+    public void forgotPassword(String email, String ipAddress) {
+        log.info("UC3: Forgot password request for email: {}", email);
+
+        if (email == null || email.isBlank()) return;
+
+        userRepository.findByEmail(email.trim()).ifPresent(user -> {
+            String otp = String.format("%06d", new java.util.Random().nextInt(1_000_000));
+            user.setOtpCode(passwordEncoder.encode(otp));
+            user.setOtpExpiry(LocalDateTime.now().plusMinutes(15));
+            userRepository.save(user);
+
+            emailService.sendOtpEmail(email, user.getFullName(), otp);
+            log.info("OTP sent to email: {}, expires in 15 minutes", email);
+        });
+
+        saveAuditLog(email, "FORGOT_PASSWORD_REQUEST", ipAddress, null);
+    }
+
+    @Override
+    public void resetPassword(String token, String newPassword, String ipAddress) {
+        throw new UnsupportedOperationException("Use resetPasswordWithOtp instead");
+    }
+
+    @Transactional
+    public void resetPasswordWithOtp(String email, String otp, String newPassword, String ipAddress) {
+        log.info("UC3: Reset password with OTP for email: {}", email);
+
+        if (email == null || email.isBlank() || otp == null || otp.isBlank()
+            || newPassword == null || newPassword.isBlank()) {
+            throw new BadCredentialsException("Email, OTP, and new password are required");
+        }
+
+        User user = userRepository.findByEmail(email.trim())
+                .orElseThrow(() -> new BadCredentialsException("Invalid or expired reset token"));
+
+        if (user.getOtpCode() == null || user.getOtpExpiry() == null) {
+            throw new BadCredentialsException("No OTP was requested for this account");
+        }
+
+        if (user.getOtpExpiry().isBefore(LocalDateTime.now())) {
+            throw new BadCredentialsException("OTP has expired. Please request a new one.");
+        }
+
+        if (!passwordEncoder.matches(otp, user.getOtpCode())) {
+            throw new BadCredentialsException("Invalid OTP code");
+        }
+
+        if (newPassword.length() < 8
+            || !newPassword.matches(".*[a-z].*")
+            || !newPassword.matches(".*[A-Z].*")
+            || !newPassword.matches(".*\\d.*")
+            || !newPassword.matches(".*[!@#$%^&*(),.?\":{}|<>].*")) {
+            throw new BadCredentialsException("Password must be at least 8 characters with uppercase, lowercase, digit, and special character");
+        }
+
+        user.setPasswordHash(passwordEncoder.encode(newPassword));
+        user.setOtpCode(null);
+        user.setOtpExpiry(null);
+        userRepository.save(user);
+
+        log.info("Password reset successful for email: {}", email);
+        saveAuditLog(email, "PASSWORD_RESET_SUCCESS", ipAddress, null);
     }
 
     private void saveAuditLog(String email, String status, String ipAddress, String userAgent) {
