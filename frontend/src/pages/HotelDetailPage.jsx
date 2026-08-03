@@ -1521,17 +1521,6 @@ function HotelDetailPage() {
                     <option value="NONE">Chỉ Đặt Phòng (Không ăn)</option>
                   </select>
                 </div>
-
-                <div className="space-y-2 md:col-span-2 lg:col-span-2">
-                  <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">Mã Số Thuế CTP (Xóa nếu là đoàn gia đình)</label>
-                  <input
-                    type="text"
-                    placeholder="Mã số thuế doanh nghiệp (CTP)..."
-                    value={groupTaxCode}
-                    onChange={(e) => setGroupTaxCode(e.target.value)}
-                    className="w-full px-4 py-2.5 rounded-xl bg-white border border-slate-300 text-slate-800 text-sm focus:outline-none focus:border-cyan-500 font-mono"
-                  />
-                </div>
               </div>
 
               {/* Group Price Estimation Summary Box */}
