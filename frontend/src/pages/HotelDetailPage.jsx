@@ -20,6 +20,15 @@ const getStripePromise = () => {
   return stripePromiseInstance;
 };
 
+const detectIdType = (idNumber) => {
+  if (!idNumber) return 'CCCD';
+  const cleanId = idNumber.trim();
+  if (/^\d{12}$/.test(cleanId)) return 'CCCD';
+  if (/^\d{9}$/.test(cleanId)) return 'CMND';
+  if (/^[a-zA-Z0-9]{6,12}$/.test(cleanId)) return 'Hộ chiếu';
+  return 'CCCD'; // default fallback
+};
+
 function HotelDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -119,6 +128,7 @@ function HotelDetailPage() {
   const [guestEmail, setGuestEmail] = useState('');
   const [guestPhone, setGuestPhone] = useState('');
   const [guestIdNumber, setGuestIdNumber] = useState('');
+  const [guestIdType, setGuestIdType] = useState('CCCD');
   const [guestNameError, setGuestNameError] = useState('');
   const [guestPhoneError, setGuestPhoneError] = useState('');
   const [guestIdNumberError, setGuestIdNumberError] = useState('');
@@ -265,6 +275,7 @@ function HotelDetailPage() {
   const [mealBookerPhone, setMealBookerPhone] = useState('');
   const [mealBookerEmail, setMealBookerEmail] = useState('');
   const [mealBookerIdNumber, setMealBookerIdNumber] = useState('');
+  const [mealBookerIdType, setMealBookerIdType] = useState('CCCD');
   const [mealSpecialRequests, setMealSpecialRequests] = useState('');
   const [mealBookingError, setMealBookingError] = useState('');
   const [mealBookingSuccess, setMealBookingSuccess] = useState(null);
@@ -534,7 +545,9 @@ function HotelDetailPage() {
         setMealBookerName(profile.fullName || '');
         setMealBookerEmail(profile.email || '');
         setMealBookerPhone(profile.phoneNumber || '');
-        setMealBookerIdNumber(profile.identificationNumber || '');
+        const idNum = profile.identificationNumber || '';
+        setMealBookerIdNumber(idNum);
+        setMealBookerIdType(detectIdType(idNum));
       }
     } catch (err) {
       console.warn("Could not prefill profile details:", err);
@@ -576,12 +589,27 @@ function HotelDetailPage() {
     }
 
     if (!mealBookerIdNumber || !mealBookerIdNumber.trim()) {
-      setMealBookingError("Vui lòng nhập Số CCCD / CMND / Hộ chiếu.");
+      if (mealBookerIdType === 'CCCD') setMealBookingError("Vui lòng nhập Số CCCD.");
+      else if (mealBookerIdType === 'CMND') setMealBookingError("Vui lòng nhập Số CMND.");
+      else setMealBookingError("Vui lòng nhập Số Hộ chiếu.");
       return;
     }
-    if (!/^[0-9]{9,12}$/.test(mealBookerIdNumber.trim())) {
-      setMealBookingError("Số CCCD / CMND không hợp lệ (Phải chứa từ 9 đến 12 chữ số).");
-      return;
+    const cleanMealId = mealBookerIdNumber.trim();
+    if (mealBookerIdType === 'CCCD') {
+      if (!/^\d{12}$/.test(cleanMealId)) {
+        setMealBookingError("Số CCCD không hợp lệ (Phải chứa đúng 12 chữ số).");
+        return;
+      }
+    } else if (mealBookerIdType === 'CMND') {
+      if (!/^\d{9}$/.test(cleanMealId)) {
+        setMealBookingError("Số CMND không hợp lệ (Phải chứa đúng 9 chữ số).");
+        return;
+      }
+    } else if (mealBookerIdType === 'Hộ chiếu') {
+      if (!/^[a-zA-Z0-9]{6,12}$/.test(cleanMealId)) {
+        setMealBookingError("Số Hộ chiếu không hợp lệ. Phải chứa từ 6 đến 12 ký tự chữ và số.");
+        return;
+      }
     }
 
     const today = new Date().toISOString().split('T')[0];
@@ -799,15 +827,27 @@ function HotelDetailPage() {
     return true;
   };
 
-  const validateGuestIdNumber = (value) => {
+  const validateGuestIdNumber = (value, type = guestIdType) => {
     if (!value || !value.trim()) {
-      setGuestIdNumberError("ID / Passport Number is required.");
+      setGuestIdNumberError("Vui lòng nhập Số giấy tờ.");
       return false;
     }
-    const idRegex = /^[a-zA-Z0-9]{9,15}$/;
-    if (!idRegex.test(value.trim())) {
-      setGuestIdNumberError("ID / Passport Number must be alphanumeric (letters and numbers only) and between 9 to 15 characters.");
-      return false;
+    const val = value.trim();
+    if (type === 'CCCD') {
+      if (!/^\d{12}$/.test(val)) {
+        setGuestIdNumberError("Số CCCD không hợp lệ. Vui lòng nhập đúng 12 chữ số.");
+        return false;
+      }
+    } else if (type === 'CMND') {
+      if (!/^\d{9}$/.test(val)) {
+        setGuestIdNumberError("Số CMND không hợp lệ. Vui lòng nhập đúng 9 chữ số.");
+        return false;
+      }
+    } else if (type === 'Hộ chiếu') {
+      if (!/^[a-zA-Z0-9]{6,12}$/.test(val)) {
+        setGuestIdNumberError("Số Hộ chiếu không hợp lệ. Phải chứa từ 6 đến 12 ký tự chữ và số.");
+        return false;
+      }
     }
     setGuestIdNumberError("");
     return true;
@@ -888,7 +928,9 @@ function HotelDetailPage() {
       setGuestName(profileData?.fullName || sessionStorage.getItem("userFullName") || '');
       setGuestEmail(profileData?.email || sessionStorage.getItem("userEmail") || '');
       setGuestPhone(profileData?.phoneNumber || profileData?.phone || '');
-      setGuestIdNumber(profileData?.identificationNumber || profileData?.identNumber || profileData?.idNumber || '');
+      const idNum = profileData?.identificationNumber || profileData?.identNumber || profileData?.idNumber || '';
+      setGuestIdNumber(idNum);
+      setGuestIdType(detectIdType(idNum));
       
       try {
         const vouchersData = await BookingService.getActiveVouchers();
@@ -904,6 +946,7 @@ function HotelDetailPage() {
       setGuestEmail(sessionStorage.getItem("userEmail") || '');
       setGuestPhone('');
       setGuestIdNumber('');
+      setGuestIdType('CCCD');
       setBookingError("Failed to retrieve your profile details. Please try again.");
       setShowBookingModal(true);
     } finally {
@@ -995,7 +1038,7 @@ function HotelDetailPage() {
   const handleConfirmBookingCreation = async () => {
     const isNameValid = validateGuestName(guestName);
     const isPhoneValid = validateGuestPhone(guestPhone);
-    const isIdValid = validateGuestIdNumber(guestIdNumber);
+    const isIdValid = validateGuestIdNumber(guestIdNumber, guestIdType);
 
     if (!isNameValid || !isPhoneValid || !isIdValid) {
       setBookingError("Please fix the validation errors in the form.");
@@ -1854,24 +1897,40 @@ function HotelDetailPage() {
                                 )}
                               </div>
                               <div>
-                                <label className="text-xs font-bold text-slate-700 uppercase tracking-wide block mb-2">ID / Passport Number</label>
-                                <input 
-                                  type="text" 
-                                  className={`w-full px-5 py-3.5 rounded-xl border text-sm focus:outline-none focus:ring-1 transition-all ${guestIdNumberError ? 'border-red-500 focus:border-red-500 focus:ring-red-500 bg-red-50/10' : 'border-slate-300 focus:border-[#1A3B85] focus:ring-[#1A3B85]'}`} 
-                                  value={guestIdNumber} 
-                                  onChange={(e) => {
-                                    setGuestIdNumber(e.target.value);
-                                    validateGuestIdNumber(e.target.value);
-                                  }} 
-                                  required 
-                                  placeholder="001206123456" 
-                                />
+                                <label className="text-xs font-bold text-slate-700 uppercase tracking-wide block mb-2">Loại giấy tờ & Số ID/Passport</label>
+                                <div className="flex gap-2">
+                                  <select 
+                                    value={guestIdType} 
+                                    onChange={(e) => {
+                                      const newType = e.target.value;
+                                      setGuestIdType(newType);
+                                      if (guestIdNumber) {
+                                        validateGuestIdNumber(guestIdNumber, newType);
+                                      }
+                                    }}
+                                    className="px-3 py-3.5 rounded-xl border border-slate-300 text-sm focus:outline-none focus:border-[#1A3B85] focus:ring-1 focus:ring-[#1A3B85] bg-white cursor-pointer font-medium text-slate-700"
+                                  >
+                                    <option value="CCCD">CCCD</option>
+                                    <option value="Hộ chiếu">Hộ chiếu</option>
+                                    <option value="CMND">CMND</option>
+                                  </select>
+                                  <input 
+                                    type="text" 
+                                    className={`flex-1 px-5 py-3.5 rounded-xl border text-sm focus:outline-none focus:ring-1 transition-all ${guestIdNumberError ? 'border-red-500 focus:border-red-500 focus:ring-red-500 bg-red-50/10' : 'border-slate-300 focus:border-[#1A3B85] focus:ring-[#1A3B85]'}`} 
+                                    value={guestIdNumber} 
+                                    onChange={(e) => {
+                                      setGuestIdNumber(e.target.value);
+                                      validateGuestIdNumber(e.target.value, guestIdType);
+                                    }} 
+                                    required 
+                                    placeholder={guestIdType === 'CCCD' ? 'CCCD (12 số)' : guestIdType === 'CMND' ? 'CMND (9 số)' : 'Số Hộ chiếu'} 
+                                  />
+                                </div>
                                 {guestIdNumberError && (
                                   <p className="text-[11px] text-red-500 font-semibold mt-1.5 flex items-center gap-1">
                                     <span>⚠️</span> {guestIdNumberError}
                                   </p>
                                 )}
-                                <p className="text-[10px] text-slate-400 mt-1">CCCD (12 số), CMND (9 số) hoặc Hộ chiếu</p>
                               </div>
                             </div>
                             <div>
@@ -2567,8 +2626,26 @@ function HotelDetailPage() {
                     </div>
                   </div>
                   <div>
-                    <label className="text-xs font-bold text-slate-700 uppercase tracking-wide block mb-1.5">Số CCCD / CMND / Hộ chiếu <span className="text-red-500">*</span></label>
-                    <input type="text" placeholder="Ví dụ: 001202001122" value={mealBookerIdNumber} onChange={(e) => setMealBookerIdNumber(e.target.value)} className="w-full px-4 py-2.5 rounded-xl border border-slate-300 text-sm focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition-all font-medium font-mono" required />
+                    <label className="text-xs font-bold text-slate-700 uppercase tracking-wide block mb-1.5">Loại giấy tờ & Số ID/Passport <span className="text-red-500">*</span></label>
+                    <div className="flex gap-2">
+                      <select 
+                        value={mealBookerIdType} 
+                        onChange={(e) => setMealBookerIdType(e.target.value)}
+                        className="px-3 py-2.5 rounded-xl border border-slate-300 text-sm focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 bg-white cursor-pointer font-medium text-slate-700"
+                      >
+                        <option value="CCCD">CCCD</option>
+                        <option value="Hộ chiếu">Hộ chiếu</option>
+                        <option value="CMND">CMND</option>
+                      </select>
+                      <input 
+                        type="text" 
+                        placeholder={mealBookerIdType === 'CCCD' ? 'CCCD (12 số)' : mealBookerIdType === 'CMND' ? 'CMND (9 số)' : 'Số Hộ chiếu'}
+                        value={mealBookerIdNumber} 
+                        onChange={(e) => setMealBookerIdNumber(e.target.value)} 
+                        className="flex-1 px-4 py-2.5 rounded-xl border border-slate-300 text-sm focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition-all font-medium font-mono" 
+                        required 
+                      />
+                    </div>
                   </div>
                   <div>
                     <label className="text-xs font-bold text-slate-700 uppercase tracking-wide block mb-1.5">Yêu cầu đặc biệt (Ghi chú thêm)</label>

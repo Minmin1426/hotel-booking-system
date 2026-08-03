@@ -74,7 +74,7 @@ export default function GroupCheckInPage() {
   useEffect(() => {
     const role = sessionStorage.getItem("userRole");
     setUserRole(role || '');
-    if (!role || (role !== 'RECEPTIONIST' && role !== 'ADMIN')) {
+    if (!role || role !== 'RECEPTIONIST') {
       alert("⚠️ Bạn không có quyền truy cập SCR-309. Trang này dành riêng cho Lễ tân Khách sạn.");
       navigate('/');
     }

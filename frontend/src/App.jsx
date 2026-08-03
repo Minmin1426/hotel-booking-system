@@ -48,10 +48,10 @@ function App() {
         {/* Protected routes */}
         <Route path="/profile" element={isAuthenticated ? <ProfilePage /> : <Navigate to="/login" replace />} />
         <Route path="/admin/users" element={isAuthenticated && isAdminOrDirector ? <AdminDashboardPage /> : <Navigate to="/login" replace />} />
-        <Route path="/staff/rooms" element={isAuthenticated && (userRole === "HOUSEKEEPER" || userRole === "RECEPTIONIST" || isAdmin) ? <StaffRoomPage /> : <Navigate to="/login" replace />} />
-        <Route path="/receptionist/group-bookings" element={isAuthenticated && (userRole === "RECEPTIONIST" || isAdmin) ? <GroupBookingsPage /> : <Navigate to="/login" replace />} />
-        <Route path="/receptionist/group-checkin" element={isAuthenticated && (userRole === "RECEPTIONIST" || isAdmin) ? <GroupCheckInPage /> : <Navigate to="/login" replace />} />
-        <Route path="/receptionist/group-checkout" element={isAuthenticated && (userRole === "RECEPTIONIST" || isAdmin) ? <GroupCheckOutPage /> : <Navigate to="/login" replace />} />
+        <Route path="/staff/rooms" element={isAuthenticated && (userRole === "HOUSEKEEPER" || userRole === "RECEPTIONIST") ? <StaffRoomPage /> : <Navigate to="/login" replace />} />
+        <Route path="/receptionist/group-bookings" element={isAuthenticated && userRole === "RECEPTIONIST" ? <GroupBookingsPage /> : <Navigate to="/login" replace />} />
+        <Route path="/receptionist/group-checkin" element={isAuthenticated && userRole === "RECEPTIONIST" ? <GroupCheckInPage /> : <Navigate to="/login" replace />} />
+        <Route path="/receptionist/group-checkout" element={isAuthenticated && userRole === "RECEPTIONIST" ? <GroupCheckOutPage /> : <Navigate to="/login" replace />} />
         <Route path="/staff/restaurant" element={isAuthenticated && (userRole === "RESTAURANT_STAFF" || userRole === "STAFF" || isAdmin) ? <StaffRestaurantPage /> : <Navigate to="/login" replace />} />
 
         {/* Payment routes */}

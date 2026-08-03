@@ -4,6 +4,7 @@ import com.hotelbooking.payment.Payment;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Positive;
 import lombok.*;
 
@@ -27,7 +28,8 @@ public class PaymentConfirmRequest {
     private BigDecimal amount;
 
     @NotBlank(message = "Payment method is required")
-    private String paymentMethod; // ONLINE | CASH | BANK_TRANSFER
+    @Pattern(regexp = "^(?i)(CASH|VNPAY|CARD|STRIPE|ONLINE)$", message = "Payment method must be CASH, VNPAY, or CARD")
+    private String paymentMethod; // CASH | VNPAY | CARD
 
     public String getBookingCode() { return bookingCode; }
     public void setBookingCode(String bookingCode) { this.bookingCode = bookingCode; }

@@ -1,8 +1,10 @@
 package com.hotelbooking.booking.dto;
 import com.hotelbooking.hotel.Hotel;
 
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
 import lombok.*;
 
 import java.time.LocalDate;
@@ -16,6 +18,7 @@ import java.util.List;
 public class BookingRequest {
 
     @NotNull(message = "Hotel ID cannot be null")
+    @Min(value = 1, message = "Hotel ID must be a positive integer")
     private Long hotelId;
 
     @NotNull(message = "Check-in date cannot be null")
@@ -25,16 +28,19 @@ public class BookingRequest {
     private LocalDate checkOutDate;
 
     @NotEmpty(message = "At least one room must be selected")
-    private List<Long> roomIds;
+    private List<@Min(value = 1, message = "Room ID must be a positive integer") Long> roomIds;
 
-    private String paymentMethod; // e.g., ONLINE, CASH, BANK_TRANSFER
+    @Pattern(regexp = "^(?i)(CASH|VNPAY|CARD|STRIPE|ONLINE)$", message = "Payment method must be CASH, VNPAY, or CARD")
+    private String paymentMethod; // e.g., CASH, VNPAY, CARD
 
     private String voucherCode;
 
     @NotNull(message = "Adults count cannot be null")
+    @Min(value = 1, message = "Adults count must be at least 1")
     private Integer adults;
 
     @NotNull(message = "Children count cannot be null")
+    @Min(value = 0, message = "Children count cannot be negative")
     private Integer children;
 
     public Long getHotelId() { return hotelId; }

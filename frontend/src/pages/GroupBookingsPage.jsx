@@ -70,7 +70,7 @@ export default function GroupBookingsPage() {
   useEffect(() => {
     const role = sessionStorage.getItem("userRole");
     setUserRole(role || '');
-    if (!role || (role !== 'RECEPTIONIST' && role !== 'ADMIN')) {
+    if (!role || role !== 'RECEPTIONIST') {
       alert("⚠️ Bạn không có quyền truy cập trang Tiếp nhận. Trang này dành riêng cho Lễ tân Khách sạn.");
       navigate('/');
     }

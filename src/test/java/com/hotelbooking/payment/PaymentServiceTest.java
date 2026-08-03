@@ -146,24 +146,16 @@ public class PaymentServiceTest {
         when(paymentRepository.findByTransactionId(transactionId)).thenReturn(Optional.of(payment));
         when(paymentRepository.findByTransactionIdForUpdate(transactionId)).thenReturn(Optional.of(payment));
 
-        try (MockedStatic<PaymentIntent> mockedPaymentIntent = mockStatic(PaymentIntent.class)) {
-            PaymentIntent mockIntent = mock(PaymentIntent.class);
-            when(mockIntent.getStatus()).thenReturn("succeeded");
-            
-            mockedPaymentIntent.when(() -> PaymentIntent.retrieve(transactionId))
-                    .thenReturn(mockIntent);
+        paymentService.verifyPayment(transactionId);
 
-            paymentService.verifyPayment(transactionId);
-
-            assertEquals("SUCCESS", payment.getStatus());
-            assertEquals("SUCCESS", booking.getPaymentStatus());
-            assertEquals("CONFIRMED", booking.getStatus());
-            
-            verify(paymentRepository, times(1)).save(payment);
-            verify(bookingRepository, times(1)).save(booking);
-            verify(emailService, times(1)).sendBookingTicketEmail(any(), any());
-            verify(auditLogRepository, times(1)).save(any());
-        }
+        assertEquals("SUCCESS", payment.getStatus());
+        assertEquals("SUCCESS", booking.getPaymentStatus());
+        assertEquals("CONFIRMED", booking.getStatus());
+        
+        verify(paymentRepository, times(1)).save(payment);
+        verify(bookingRepository, times(1)).save(booking);
+        verify(emailService, times(1)).sendBookingTicketEmail(any(), any());
+        verify(auditLogRepository, times(1)).save(any());
     }
 
     @Test

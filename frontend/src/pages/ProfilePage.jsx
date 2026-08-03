@@ -8,6 +8,7 @@ import { LoyaltyService } from '../services/LoyaltyService';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
 import CheckInTicketModal from '../components/CheckInTicketModal';
+import BookingDetailModal from '../components/BookingDetailModal';
 
 export default function ProfilePage() {
   const location = useLocation();
@@ -46,6 +47,7 @@ export default function ProfilePage() {
 
   // E-Ticket Modal State
   const [selectedTicketBookingId, setSelectedTicketBookingId] = useState(null);
+  const [selectedDetailBookingId, setSelectedDetailBookingId] = useState(null);
 
   // Vouchers state
   const [vouchers, setVouchers] = useState([]);
@@ -732,25 +734,48 @@ export default function ProfilePage() {
                           </div>
                         </div>
 
-                        {(booking.status === 'PENDING' || booking.status === 'CONFIRMED') && (
-                          <div className="mt-4 pt-3 border-t border-[#f5f5fa] flex flex-wrap justify-end gap-2">
-                            {booking.status === 'CONFIRMED' && (
-                              <>
-                                <button
-                                  onClick={() => setSelectedTicketBookingId(booking.bookingId)}
-                                  className="px-3 py-1 rounded-full bg-amber-500/10 text-amber-600 border border-amber-500/30 hover:bg-amber-500/20 text-[10px] font-bold transition-all cursor-pointer flex items-center gap-1"
-                                >
-                                  🎟️ Xem Vé Check-in (Mã QR)
-                                </button>
-                                <button
-                                  onClick={() => handleDownloadInvoice(booking.bookingId, booking.bookingCode)}
-                                  className="px-3 py-1 rounded-full bg-blue-50 text-blue-600 border border-blue-100 hover:bg-blue-100 text-[10px] font-bold transition-all cursor-pointer"
-                                >
-                                  📄 Download Invoice PDF
-                                </button>
-                              </>
-                            )}
-                            {cancelingBookingId === booking.bookingId ? (
+                        <div className="mt-4 pt-3 border-t border-[#f5f5fa] flex flex-wrap justify-end gap-2">
+                          <button
+                            onClick={() => setSelectedDetailBookingId(booking.bookingId)}
+                            className="px-3 py-1 rounded-full bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200 text-[10px] font-bold transition-all cursor-pointer flex items-center gap-1"
+                          >
+                            🔍 Xem Chi Tiết
+                          </button>
+                          
+                          {(booking.status === 'CONFIRMED' || booking.status === 'COMPLETED') && (
+                            <>
+                              <button
+                                onClick={() => setSelectedTicketBookingId(booking.bookingId)}
+                                className="px-3 py-1 rounded-full bg-amber-500/10 text-amber-600 border border-amber-500/30 hover:bg-amber-500/20 text-[10px] font-bold transition-all cursor-pointer flex items-center gap-1"
+                              >
+                                🎟️ Xem Vé Check-in (Mã QR)
+                              </button>
+                              <button
+                                onClick={() => handleDownloadInvoice(booking.bookingId, booking.bookingCode)}
+                                className="px-3 py-1 rounded-full bg-blue-50 text-blue-600 border border-blue-100 hover:bg-blue-100 text-[10px] font-bold transition-all cursor-pointer"
+                              >
+                                📄 Download Invoice PDF
+                              </button>
+                            </>
+                          )}
+                          
+                          {booking.status === 'COMPLETED' && !booking.isReviewed && (
+                            <button
+                              onClick={() => openReviewModal(booking.bookingId, booking.hotelName)}
+                              className="px-3 py-1 rounded-full bg-[#eef8f2] text-[#008060] border border-[#d3eedd] hover:bg-[#e3f4ea] text-[10px] font-bold transition-all cursor-pointer"
+                            >
+                              Write Stay Review
+                            </button>
+                          )}
+
+                          {booking.status === 'COMPLETED' && booking.isReviewed && (
+                            <span className="px-3 py-1 rounded-full bg-slate-100 text-[#86868b] border border-slate-200 text-[10px] font-bold">
+                              Checked & Reviewed
+                            </span>
+                          )}
+
+                          {(booking.status === 'PENDING' || booking.status === 'CONFIRMED') && (
+                            cancelingBookingId === booking.bookingId ? (
                               <div className="flex gap-2 items-center">
                                 <span className="text-[10px] text-red-600 font-bold mr-2">Are you sure?</span>
                                 <button
@@ -773,38 +798,9 @@ export default function ProfilePage() {
                               >
                                 Cancel Booking
                               </button>
-                            )}
-                          </div>
-                        )}
-
-                        {booking.status === 'COMPLETED' && (
-                          <div className="mt-4 pt-3 border-t border-[#f5f5fa] flex flex-wrap justify-end gap-2">
-                            <button
-                              onClick={() => setSelectedTicketBookingId(booking.bookingId)}
-                              className="px-3 py-1 rounded-full bg-amber-500/10 text-amber-600 border border-amber-500/30 hover:bg-amber-500/20 text-[10px] font-bold transition-all cursor-pointer flex items-center gap-1"
-                            >
-                              🎟️ Xem Vé Check-in (Mã QR)
-                            </button>
-                            <button
-                              onClick={() => handleDownloadInvoice(booking.bookingId, booking.bookingCode)}
-                              className="px-3 py-1 rounded-full bg-blue-50 text-blue-600 border border-blue-100 hover:bg-blue-100 text-[10px] font-bold transition-all cursor-pointer"
-                            >
-                              📄 Download Invoice PDF
-                            </button>
-                            {booking.isReviewed ? (
-                              <span className="px-3 py-1 rounded-full bg-slate-100 text-[#86868b] border border-slate-200 text-[10px] font-bold">
-                                Checked & Reviewed
-                              </span>
-                            ) : (
-                              <button
-                                onClick={() => openReviewModal(booking.bookingId, booking.hotelName)}
-                                className="px-3 py-1 rounded-full bg-emerald-50 text-emerald-650 border border-emerald-100 hover:bg-emerald-100 text-[10px] font-bold transition-all cursor-pointer"
-                              >
-                                Write Stay Review
-                              </button>
-                            )}
-                          </div>
-                        )}
+                            )
+                          )}
+                        </div>
                       </div>
                     );
                   })
@@ -1361,6 +1357,14 @@ export default function ProfilePage() {
         bookingId={selectedTicketBookingId}
         isOpen={!!selectedTicketBookingId}
         onClose={() => setSelectedTicketBookingId(null)}
+      />
+
+      {/* Booking Detail Modal */}
+      <BookingDetailModal
+        bookingId={selectedDetailBookingId}
+        isOpen={!!selectedDetailBookingId}
+        onClose={() => setSelectedDetailBookingId(null)}
+        onOpenTicket={(id) => setSelectedTicketBookingId(id)}
       />
 
       <Footer />

@@ -247,51 +247,57 @@ public class PaymentServiceImpl implements PaymentService {
                     .build();
         }
 
-        try {
-            PaymentIntentCreateParams.Builder paramsBuilder = PaymentIntentCreateParams.builder()
-                    .setAmount(amountToPay.multiply(new BigDecimal(100)).longValue())
-                    .setCurrency("usd")
-                    .putMetadata("bookingId", booking.getBookingId().toString())
-                    .addPaymentMethodType("card");
-            
-            PaymentIntentCreateParams params = paramsBuilder.build();
+        if ("CARD".equalsIgnoreCase(requestDTO.getPaymentMethod())
+                || "STRIPE".equalsIgnoreCase(requestDTO.getPaymentMethod())
+                || "ONLINE".equalsIgnoreCase(requestDTO.getPaymentMethod())) {
+            try {
+                PaymentIntentCreateParams.Builder paramsBuilder = PaymentIntentCreateParams.builder()
+                        .setAmount(amountToPay.multiply(new BigDecimal(100)).longValue())
+                        .setCurrency("usd")
+                        .putMetadata("bookingId", booking.getBookingId().toString())
+                        .addPaymentMethodType("card");
+                
+                PaymentIntentCreateParams params = paramsBuilder.build();
 
-            PaymentIntent intent = PaymentIntent.create(params);
-            String transactionId = intent.getId();
+                PaymentIntent intent = PaymentIntent.create(params);
+                String transactionId = intent.getId();
 
-            payment.setPaymentMethod(requestDTO.getPaymentMethod());
-            payment.setAmount(amountToPay);
-            payment.setStatus("PENDING");
-            payment.setTransactionId(transactionId);
-            payment.setGateway("STRIPE");
-            payment.setIsDeposit(isDeposit);
-            payment.setDepositRatio(depositRatio);
-            payment.setCountdownEndTime(countdownEndTime);
-            payment.setInvoiceCompanyName(companyName);
-            payment.setInvoiceTaxId(taxId);
-            payment.setInvoiceCompanyAddress(companyAddress);
-            payment.setInvoiceCompanyEmail(companyEmail);
+                payment.setPaymentMethod(requestDTO.getPaymentMethod().toUpperCase());
+                payment.setAmount(amountToPay);
+                payment.setStatus("PENDING");
+                payment.setTransactionId(transactionId);
+                payment.setGateway("STRIPE");
+                payment.setIsDeposit(isDeposit);
+                payment.setDepositRatio(depositRatio);
+                payment.setCountdownEndTime(countdownEndTime);
+                payment.setInvoiceCompanyName(companyName);
+                payment.setInvoiceTaxId(taxId);
+                payment.setInvoiceCompanyAddress(companyAddress);
+                payment.setInvoiceCompanyEmail(companyEmail);
 
-            paymentRepository.save(payment);
+                paymentRepository.save(payment);
 
-            PaymentAuditLog auditLog = PaymentAuditLog.builder()
-                    .transactionId(transactionId)
-                    .action("CREATE_PAYMENT_INTENT_SUCCESS")
-                    .requestPayload("Booking ID: " + booking.getBookingId() + ", Intent ID: " + intent.getId())
-                    .build();
-            auditLogRepository.save(auditLog);
+                PaymentAuditLog auditLog = PaymentAuditLog.builder()
+                        .transactionId(transactionId)
+                        .action("CREATE_PAYMENT_INTENT_SUCCESS")
+                        .requestPayload("Booking ID: " + booking.getBookingId() + ", Intent ID: " + intent.getId())
+                        .build();
+                auditLogRepository.save(auditLog);
 
-            return PaymentResponseDTO.builder()
-                    .transactionId(transactionId)
-                    .clientSecret(intent.getClientSecret())
-                    .isDeposit(isDeposit)
-                    .depositRatio(depositRatio)
-                    .countdownEndTime(countdownEndTime)
-                    .build();
-        } catch (Exception e) {
-            log.error("Stripe payment intent creation failed", e);
-            throw new BusinessException("Payment intent creation failed: " + e.getMessage());
+                return PaymentResponseDTO.builder()
+                        .transactionId(transactionId)
+                        .clientSecret(intent.getClientSecret())
+                        .isDeposit(isDeposit)
+                        .depositRatio(depositRatio)
+                        .countdownEndTime(countdownEndTime)
+                        .build();
+            } catch (Exception e) {
+                log.error("Stripe payment intent creation failed", e);
+                throw new BusinessException("Payment intent creation failed: " + e.getMessage());
+            }
         }
+
+        throw new BusinessException("Unsupported payment method: " + requestDTO.getPaymentMethod());
     }
 
     @Override

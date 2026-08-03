@@ -136,7 +136,7 @@ export default function AdminDashboardPage() {
   const [bookingCheckIn, setBookingCheckIn] = useState('');
   const [bookingCheckOut, setBookingCheckOut] = useState('');
   const [bookingRoomIds, setBookingRoomIds] = useState(''); // Comma separated string e.g. "1, 2"
-  const [bookingPaymentMethod, setBookingPaymentMethod] = useState('ONLINE');
+  const [bookingPaymentMethod, setBookingPaymentMethod] = useState('CASH');
   const [bookingPaymentStatus, setBookingPaymentStatus] = useState('PENDING');
   const [bookingStatusState, setBookingStatusState] = useState('PENDING');
   const [bookingVoucherCode, setBookingVoucherCode] = useState('');
@@ -683,7 +683,7 @@ export default function AdminDashboardPage() {
     setBookingCheckIn('');
     setBookingCheckOut('');
     setBookingRoomIds('');
-    setBookingPaymentMethod('ONLINE');
+    setBookingPaymentMethod('CASH');
     setBookingPaymentStatus('PENDING');
     setBookingStatusState('PENDING');
     setBookingVoucherCode('');
@@ -725,21 +725,82 @@ export default function AdminDashboardPage() {
     setIsLoading(true);
     setError(null);
 
-    const roomIdsArr = bookingRoomIds
+    // Validate User ID
+    const userIdNum = Number(bookingUserId);
+    if (!bookingUserId || isNaN(userIdNum) || !Number.isInteger(userIdNum) || userIdNum <= 0) {
+      setError("User ID must be a valid positive integer.");
+      setIsLoading(false);
+      return;
+    }
+
+    // Validate Hotel ID
+    const hotelIdNum = Number(bookingHotelId);
+    if (!bookingHotelId || isNaN(hotelIdNum) || !Number.isInteger(hotelIdNum) || hotelIdNum <= 0) {
+      setError("Hotel ID must be a valid positive integer.");
+      setIsLoading(false);
+      return;
+    }
+
+    // Validate Check-in and Check-out dates
+    if (!bookingCheckIn) {
+      setError("Check-in date is required.");
+      setIsLoading(false);
+      return;
+    }
+
+    if (!bookingCheckOut) {
+      setError("Check-out date is required.");
+      setIsLoading(false);
+      return;
+    }
+
+    const todayStr = new Date().toISOString().split('T')[0];
+    if (bookingCheckIn < todayStr) {
+      setError("Check-in date cannot be in the past.");
+      setIsLoading(false);
+      return;
+    }
+
+    if (bookingCheckOut <= bookingCheckIn) {
+      setError("Check-out date must be after check-in date.");
+      setIsLoading(false);
+      return;
+    }
+
+    // Validate Room IDs list
+    const roomIdsRaw = bookingRoomIds
       .split(',')
       .map(id => id.trim())
-      .filter(id => id !== '')
-      .map(id => Number(id));
+      .filter(id => id !== '');
 
-    if (roomIdsArr.length === 0) {
+    if (roomIdsRaw.length === 0) {
       setError("At least one Room ID must be specified.");
       setIsLoading(false);
       return;
     }
 
+    const roomIdsArr = [];
+    for (let rId of roomIdsRaw) {
+      const parsedNum = Number(rId);
+      if (isNaN(parsedNum) || !Number.isInteger(parsedNum) || parsedNum <= 0) {
+        setError(`Room ID "${rId}" is invalid. All Room IDs must be positive integers.`);
+        setIsLoading(false);
+        return;
+      }
+      roomIdsArr.push(parsedNum);
+    }
+
+    // Validate Payment Method
+    const allowedPaymentMethods = ['CASH', 'VNPAY', 'CARD'];
+    if (!allowedPaymentMethods.includes(bookingPaymentMethod)) {
+      setError("Payment method must be Cash, Online (VnPay), or Card.");
+      setIsLoading(false);
+      return;
+    }
+
     const bookingData = {
-      userId: Number(bookingUserId),
-      hotelId: Number(bookingHotelId),
+      userId: userIdNum,
+      hotelId: hotelIdNum,
       checkInDate: bookingCheckIn,
       checkOutDate: bookingCheckOut,
       roomIds: roomIdsArr,
@@ -1435,11 +1496,9 @@ export default function AdminDashboardPage() {
                     onChange={(e) => setBookingPaymentFilter(e.target.value)}
                   >
                     <option value="ALL">All Payments</option>
-                    <option value="ONLINE">Online (ONLINE)</option>
                     <option value="CASH">Pay at Hotel (CASH)</option>
-                    <option value="BANK_TRANSFER">Bank Transfer (BANK_TRANSFER)</option>
-                    <option value="CREDIT_CARD">Credit Card (CREDIT_CARD)</option>
-                    <option value="PAYPAL">PayPal (PAYPAL)</option>
+                    <option value="VNPAY">Online (VnPay)</option>
+                    <option value="CARD">Card (CARD)</option>
                   </select>
                   <button
                     onClick={handleCreateBookingClick}
@@ -1475,8 +1534,7 @@ export default function AdminDashboardPage() {
                     </thead>
                     <tbody className="divide-y divide-[#e8e8ed]">
                       {bookings.map((booking) => {
-                        const isOfflinePending = booking.status === 'PENDING' && 
-                          (booking.paymentMethod === 'CASH' || booking.paymentMethod === 'BANK_TRANSFER');
+                        const isOfflinePending = booking.status === 'PENDING' && booking.paymentMethod === 'CASH';
                         
                         return (
                           <tr key={booking.bookingId} className="hover:bg-[#fafafc] transition-colors">
@@ -1496,15 +1554,13 @@ export default function AdminDashboardPage() {
                             </td>
                             <td className="p-4 text-xs leading-normal">
                               <span className={`inline-block px-2 py-0.5 rounded-full font-bold uppercase text-[9px] ${
-                                booking.paymentMethod === 'ONLINE' 
-                                  ? 'bg-cyan-50 text-cyan-700 border border-cyan-150' 
-                                  : booking.paymentMethod === 'BANK_TRANSFER'
-                                  ? 'bg-purple-50 text-purple-700 border border-purple-150'
-                                  : booking.paymentMethod === 'PAYPAL'
-                                  ? 'bg-blue-50 text-blue-700 border border-blue-150'
-                                  : booking.paymentMethod === 'CREDIT_CARD'
-                                  ? 'bg-emerald-50 text-emerald-700 border border-emerald-150'
-                                  : 'bg-indigo-50 text-indigo-700 border border-indigo-150'
+                                booking.paymentMethod === 'CASH' 
+                                  ? 'bg-slate-100 text-slate-700 border border-slate-200' 
+                                  : booking.paymentMethod === 'VNPAY'
+                                  ? 'bg-blue-50 text-blue-700 border border-blue-200'
+                                  : booking.paymentMethod === 'CARD'
+                                  ? 'bg-indigo-50 text-indigo-700 border border-indigo-200'
+                                  : 'bg-gray-100 text-gray-800 border border-gray-300'
                               }`}>
                                 {booking.paymentMethod}
                               </span>
@@ -2721,9 +2777,9 @@ export default function AdminDashboardPage() {
                     value={bookingPaymentMethod}
                     onChange={(e) => setBookingPaymentMethod(e.target.value)}
                   >
-                    <option value="ONLINE">Online (ONLINE)</option>
                     <option value="CASH">Pay at Hotel (CASH)</option>
-                    <option value="BANK_TRANSFER">Bank Transfer (BANK_TRANSFER)</option>
+                    <option value="VNPAY">Online (VnPay)</option>
+                    <option value="CARD">Card (CARD)</option>
                   </select>
                 </div>
 

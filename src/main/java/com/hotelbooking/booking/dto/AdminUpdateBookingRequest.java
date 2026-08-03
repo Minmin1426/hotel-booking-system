@@ -1,5 +1,7 @@
 package com.hotelbooking.booking.dto;
 
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.Pattern;
 import lombok.*;
 
 import java.time.LocalDate;
@@ -16,11 +18,12 @@ public class AdminUpdateBookingRequest {
 
     private LocalDate checkOutDate;
 
-    private List<Long> roomIds;
+    private List<@Min(value = 1, message = "Room ID must be a positive integer") Long> roomIds;
 
     private String status; // PENDING | CONFIRMED | CANCELLED | COMPLETED | FAILED
 
-    private String paymentMethod; // ONLINE | CASH | BANK_TRANSFER
+    @Pattern(regexp = "^(?i)(CASH|VNPAY|CARD|STRIPE|ONLINE)$", message = "Payment method must be CASH, VNPAY, or CARD")
+    private String paymentMethod; // CASH | VNPAY | CARD
 
     private String paymentStatus; // PENDING | SUCCESS | COMPLETED | FAILED | REFUND_PENDING
 
