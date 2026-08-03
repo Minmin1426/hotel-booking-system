@@ -135,6 +135,10 @@ public class BookingServiceImpl implements BookingService {
             throw new BusinessException("Total guests must be at least 1");
         }
 
+        if (request.getRoomIds() == null || request.getRoomIds().isEmpty()) {
+            throw new BusinessException("Vui lòng chọn ít nhất 1 phòng hợp lệ cho chuyến đi.");
+        }
+
         int totalRooms = request.getRoomIds().size();
         if (adults > 2 * totalRooms) {
             throw new BusinessException("Total adults exceed the maximum capacity allowed for the selected room(s). Max 2 adults per room.");
@@ -153,6 +157,9 @@ public class BookingServiceImpl implements BookingService {
         BigDecimal totalRoomPricePerNight = BigDecimal.ZERO;
 
         for (Long roomId : request.getRoomIds()) {
+            if (roomId == null) {
+                throw new BusinessException("Mã phòng không hợp lệ (null). Vui lòng chọn lại phòng.");
+            }
             Room room = roomRepository.findById(roomId)
                     .orElseThrow(() -> new ResourceNotFoundException("Room not found with ID: " + roomId));
 

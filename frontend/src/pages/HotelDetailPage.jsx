@@ -988,6 +988,13 @@ function HotelDetailPage() {
       // 2. Validate stay dates with backend (UC-10)
       await BookingService.validateDates(checkIn, checkOut);
 
+      // Helper to safely extract room ID from various API formats
+      const extractRoomId = (r) => {
+        if (!r) return null;
+        const raw = r.roomId ?? r.id ?? r.room_id;
+        return raw ? Number(raw) : null;
+      };
+
       // Determine valid room ID for hotel
       let targetRoomIds = [];
       let finalAdults = adults;
@@ -998,23 +1005,31 @@ function HotelDetailPage() {
         if (!liveRooms || liveRooms.length < groupRoomCount) {
           throw new Error(`Hiện không đủ phòng trống cho đoàn trong thời gian đã chọn (Yêu cầu ${groupRoomCount} phòng, chỉ còn ${liveRooms ? liveRooms.length : 0} phòng trống).`);
         }
-        targetRoomIds = liveRooms.slice(0, groupRoomCount).map(r => r.roomId);
+        targetRoomIds = liveRooms.slice(0, groupRoomCount).map(extractRoomId).filter(Boolean);
         finalAdults = groupMembers.filter(m => m.type === 'ADULT').length;
         finalChildren = groupMembers.filter(m => m.type === 'CHILD').length;
       } else {
         if (selectedRooms && selectedRooms.length > 0) {
-          targetRoomIds = selectedRooms.map(r => r.roomId);
-        } else if (selectedRoom && selectedRoom.roomId) {
-          targetRoomIds = [selectedRoom.roomId];
-        } else if (rooms && rooms.length > 0) {
-          targetRoomIds = [rooms[0].roomId];
-        } else {
+          targetRoomIds = selectedRooms.map(extractRoomId).filter(Boolean);
+        } else if (selectedRoom) {
+          const rId = extractRoomId(selectedRoom);
+          if (rId) targetRoomIds = [rId];
+        }
+
+        if (targetRoomIds.length === 0 && rooms && rooms.length > 0) {
+          const rId = extractRoomId(rooms[0]);
+          if (rId) targetRoomIds = [rId];
+        }
+
+        if (targetRoomIds.length === 0) {
           const liveRooms = await HotelService.searchAvailableRooms(id, checkIn, checkOut);
           if (liveRooms && liveRooms.length > 0) {
-            targetRoomIds = [liveRooms[0].roomId];
-          } else {
-            throw new Error("Hiện không còn phòng trống cho khách sạn này trong thời gian đã chọn.");
+            targetRoomIds = liveRooms.map(extractRoomId).filter(Boolean).slice(0, 1);
           }
+        }
+
+        if (targetRoomIds.length === 0) {
+          throw new Error("Hiện không còn phòng trống cho khách sạn này trong thời gian đã chọn.");
         }
       }
 

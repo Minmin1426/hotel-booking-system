@@ -171,7 +171,10 @@ public class GlobalExceptionHandler {
             Exception ex, WebRequest request) {
 
         log.error("Unhandled exception at {}: {}", request.getDescription(false), ex.getMessage(), ex);
-        return buildError(HttpStatus.INTERNAL_SERVER_ERROR, "An unexpected error occurred", request);
+        String message = (ex.getMessage() != null && !ex.getMessage().isBlank())
+                ? ex.getMessage()
+                : "An unexpected error occurred";
+        return buildError(HttpStatus.INTERNAL_SERVER_ERROR, message, request);
     }
 
     private ResponseEntity<ErrorResponse> buildError(
