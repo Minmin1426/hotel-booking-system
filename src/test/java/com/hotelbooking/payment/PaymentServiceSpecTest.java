@@ -147,6 +147,9 @@ public class PaymentServiceSpecTest {
     @Test
     void testProcessRefund_DynamicRefundCalculation() {
         Booking booking = new Booking();
+        User user = new User();
+        user.setEmail("test@test.com");
+        booking.setUser(user);
         booking.setBookingId(1L);
         booking.setStatus("CANCELLED");
         booking.setCheckInDate(LocalDateTime.now().plusDays(5)); // Check-in is 5 days from now

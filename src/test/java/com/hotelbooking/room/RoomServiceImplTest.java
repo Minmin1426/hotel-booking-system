@@ -217,8 +217,8 @@ class RoomServiceImplTest {
 
         verify(roomRepository).findAvailableRooms(
                 eq(1L),
-                eq(checkIn.atStartOfDay()),
-                eq(checkOut.atTime(LocalTime.MAX))
+                eq(checkIn.atTime(12, 0)),
+                eq(checkOut.atTime(12, 0))
         );
     }
 

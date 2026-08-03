@@ -20,4 +20,13 @@ public class BulkActionRequest {
     private String action; // SEND_NOTIFICATION, APPLY_TIER, APPLY_VOUCHER, LOCK_ACCOUNTS
 
     private Map<String, Object> payload;
+
+    public List<Long> getCustomerIds() { return customerIds; }
+    public void setCustomerIds(List<Long> customerIds) { this.customerIds = customerIds; }
+
+    public String getAction() { return action; }
+    public void setAction(String action) { this.action = action; }
+
+    public Map<String, Object> getPayload() { return payload; }
+    public void setPayload(Map<String, Object> payload) { this.payload = payload; }
 }

@@ -161,7 +161,7 @@ public class PaymentServiceTest {
             
             verify(paymentRepository, times(1)).save(payment);
             verify(bookingRepository, times(1)).save(booking);
-            verify(emailService, times(1)).sendBookingConfirmationEmail("test@test.com", "B-12345");
+            verify(emailService, times(1)).sendBookingTicketEmail(any(), any());
             verify(auditLogRepository, times(1)).save(any());
         }
     }
@@ -169,6 +169,9 @@ public class PaymentServiceTest {
     @Test
     void testProcessRefund_Success() {
         Booking booking = new Booking();
+        User user = new User();
+        user.setEmail("test@test.com");
+        booking.setUser(user);
         booking.setBookingId(1L);
         booking.setPaymentStatus("SUCCESS");
         booking.setCheckInDate(LocalDateTime.now().plusDays(10));
@@ -281,7 +284,7 @@ public class PaymentServiceTest {
 
         assertEquals("SUCCESS", payment.getStatus());
         assertEquals("SUCCESS", booking.getPaymentStatus());
-        verify(emailService, times(1)).sendBookingConfirmationEmail("cash@test.com", "B-CASH");
+        verify(emailService, times(1)).sendBookingTicketEmail(any(), any());
         verify(paymentRepository, times(1)).save(payment);
         verify(auditLogRepository, times(1)).save(any(PaymentAuditLog.class));
     }

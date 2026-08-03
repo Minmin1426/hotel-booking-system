@@ -89,4 +89,10 @@ public class Wallet {
     public boolean isPersonal() {
         return this.walletType == WalletType.PERSONAL;
     }
+
+    public Long getWalletId() { return walletId; }
+    public User getOwnerUser() { return ownerUser; }
+    public WalletType getWalletType() { return walletType; }
+    public Group getGroup() { return group; }
+    public BigDecimal getBalance() { return balance; }
 }

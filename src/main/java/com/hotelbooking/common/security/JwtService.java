@@ -67,7 +67,17 @@ public class JwtService {
     }
 
     public Long extractUserId(String token) {
-        return extractAllClaims(token).get("userId", Long.class);
+        Object val = extractAllClaims(token).get("userId");
+        if (val instanceof Number) {
+            return ((Number) val).longValue();
+        }
+        if (val instanceof String) {
+            try {
+                return Long.parseLong((String) val);
+            } catch (NumberFormatException ignored) {
+            }
+        }
+        return null;
     }
 
     public String extractRole(String token) {

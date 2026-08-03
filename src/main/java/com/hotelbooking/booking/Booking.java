@@ -108,4 +108,15 @@ public class Booking {
     @UpdateTimestamp
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
+
+    public Long getBookingId() { return bookingId; }
+    public String getBookingCode() { return bookingCode; }
+    public User getUser() { return user; }
+    public void setUser(User user) { this.user = user; }
+    public Hotel getHotel() { return hotel; }
+    public LocalDateTime getCheckInDate() { return checkInDate; }
+    public LocalDateTime getCheckOutDate() { return checkOutDate; }
+    public BigDecimal getTotalAmount() { return totalAmount; }
+    public String getStatus() { return status; }
+    public LocalDateTime getCreatedAt() { return createdAt; }
 }

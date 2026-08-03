@@ -43,4 +43,8 @@ public class Group {
 
     @OneToOne(mappedBy = "group", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private Wallet groupWallet;
+
+    public Long getGroupId() { return groupId; }
+    public String getGroupName() { return groupName; }
+    public User getOwnerUser() { return ownerUser; }
 }

@@ -41,8 +41,8 @@ class ExcelParsingServiceTest {
     void parseAndValidate_ValidExcel_ReturnsValidResult() throws IOException {
         MockMultipartFile file = createExcelFile(new String[][]{
                 {"guest_name", "email", "phone_number", "hotel_id", "check_in_date", "check_out_date", "room_type", "quantity"},
-                {"John Doe", "john@test.com", "0123", "1", "2026-08-01", "2026-08-03", "Standard", "1"},
-                {"Jane Doe", "jane@test.com", "0456", "1", "2026-08-05", "2026-08-07", "Deluxe", "2"}
+                {"John Doe", "john@test.com", "0123", "1", "2026-08-10", "2026-08-12", "Standard", "1"},
+                {"Jane Doe", "jane@test.com", "0456", "1", "2026-08-15", "2026-08-17", "Deluxe", "2"}
         });
 
         var result = excelParsingService.parseAndValidate(1L, file);

@@ -1,7 +1,6 @@
 package com.hotelbooking.mealticket;
 
 import com.hotelbooking.booking.BookingRepository;
-import com.hotelbooking.common.utils.QrCodeGenerator;
 import com.hotelbooking.admin.CustomerActivityRecorder;
 import com.hotelbooking.common.exception.ResourceNotFoundException;
 import com.hotelbooking.mealticket.dto.*;

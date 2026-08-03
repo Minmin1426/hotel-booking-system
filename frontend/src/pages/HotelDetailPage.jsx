@@ -974,7 +974,10 @@ function HotelDetailPage() {
     setBookingError('');
     try {
       // 1. Confirm and save user profile changes
-      await AuthService.updateProfile(guestName, guestEmail, guestPhone, guestIdNumber);
+      const effectiveEmail = guestEmail || sessionStorage.getItem("userEmail") || "";
+      if (effectiveEmail) {
+        await AuthService.updateProfile(guestName, effectiveEmail, guestPhone, guestIdNumber);
+      }
       sessionStorage.setItem("userFullName", guestName);
 
       // 2. Validate stay dates with backend (UC-10)

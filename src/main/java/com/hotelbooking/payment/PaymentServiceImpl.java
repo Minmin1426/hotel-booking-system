@@ -581,7 +581,8 @@ public class PaymentServiceImpl implements PaymentService {
             booking.setPaymentStatus("REFUNDED");
             bookingRepository.save(booking);
 
-            emailService.sendRefundConfirmationEmail(booking.getUser().getEmail(), booking.getBookingCode(), refundAmount);
+            String customerEmail = booking.getUser() != null ? booking.getUser().getEmail() : "customer@example.com";
+            emailService.sendRefundConfirmationEmail(customerEmail, booking.getBookingCode(), refundAmount);
 
             RefundAuditLog refundAuditLog = RefundAuditLog.builder()
                     .bookingId(bookingId)
