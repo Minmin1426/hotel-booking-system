@@ -1,4 +1,4 @@
-package com.hotelbooking.common.utils;
+package com.hotelbooking.mealticket;
 
 import com.google.zxing.BarcodeFormat;
 import com.google.zxing.EncodeHintType;

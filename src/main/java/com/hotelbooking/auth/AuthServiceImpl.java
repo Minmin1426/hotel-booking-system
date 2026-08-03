@@ -36,7 +36,6 @@ import java.time.LocalDateTime;
 @Slf4j
 @SuppressWarnings("unchecked")
 public class AuthServiceImpl implements AuthService {
-    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(AuthServiceImpl.class);
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;

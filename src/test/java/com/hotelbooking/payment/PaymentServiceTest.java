@@ -179,6 +179,7 @@ public class PaymentServiceTest {
         Payment payment = new Payment();
         payment.setAmount(BigDecimal.valueOf(1000));
         payment.setStatus("SUCCESS");
+        payment.setGateway("STRIPE");
         payment.setBooking(booking);
 
         com.hotelbooking.payment.refund.RefundPolicy policy = new com.hotelbooking.payment.refund.RefundPolicy();

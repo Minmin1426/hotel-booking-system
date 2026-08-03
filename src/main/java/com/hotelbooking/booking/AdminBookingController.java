@@ -20,7 +20,6 @@ import org.springframework.web.bind.annotation.*;
 @RequiredArgsConstructor
 @Slf4j
 public class AdminBookingController {
-    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(AdminBookingController.class);
 
     private final BookingService bookingService;
 
