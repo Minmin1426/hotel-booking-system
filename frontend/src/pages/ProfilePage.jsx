@@ -447,63 +447,7 @@ export default function ProfilePage() {
       
       <main className="w-full max-w-[1200px] mx-auto px-6 py-10 flex-1 flex flex-col justify-start">
 
-        {/* Tab Navigation */}
-        {!isAdmin && profile.role && (
-          <div className="w-full max-w-[800px] mx-auto mb-6">
-            <div className="flex gap-1 bg-white rounded-2xl p-1 border border-[#e3e3e8]/50 shadow-sm overflow-x-auto">
-              <a
-                href="?tab=profile"
-                className={`flex-1 min-w-fit px-4 py-2.5 rounded-xl text-xs font-semibold text-center transition-all whitespace-nowrap ${
-                  activeTab === 'profile'
-                    ? 'bg-[#0066cc] text-white shadow-sm'
-                    : 'text-[#86868b] hover:text-[#1d1d1f] hover:bg-[#f5f5f7]'
-                }`}
-              >
-                Profile
-              </a>
-              <a
-                href="?tab=tier"
-                className={`flex-1 min-w-fit px-4 py-2.5 rounded-xl text-xs font-semibold text-center transition-all whitespace-nowrap flex items-center justify-center gap-1.5 ${
-                  activeTab === 'tier'
-                    ? 'bg-[#0066cc] text-white shadow-sm'
-                    : 'text-[#86868b] hover:text-[#1d1d1f] hover:bg-[#f5f5f7]'
-                }`}
-              >
-                <span>🏆</span> My Tier
-              </a>
-              <a
-                href="?tab=bookings"
-                className={`flex-1 min-w-fit px-4 py-2.5 rounded-xl text-xs font-semibold text-center transition-all whitespace-nowrap ${
-                  activeTab === 'bookings'
-                    ? 'bg-[#0066cc] text-white shadow-sm'
-                    : 'text-[#86868b] hover:text-[#1d1d1f] hover:bg-[#f5f5f7]'
-                }`}
-              >
-                Bookings
-              </a>
-              <a
-                href="?tab=vouchers"
-                className={`flex-1 min-w-fit px-4 py-2.5 rounded-xl text-xs font-semibold text-center transition-all whitespace-nowrap ${
-                  activeTab === 'vouchers'
-                    ? 'bg-[#0066cc] text-white shadow-sm'
-                    : 'text-[#86868b] hover:text-[#1d1d1f] hover:bg-[#f5f5f7]'
-                }`}
-              >
-                Vouchers
-              </a>
-              <a
-                href="?tab=shop"
-                className={`flex-1 min-w-fit px-4 py-2.5 rounded-xl text-xs font-semibold text-center transition-all whitespace-nowrap ${
-                  activeTab === 'shop'
-                    ? 'bg-[#0066cc] text-white shadow-sm'
-                    : 'text-[#86868b] hover:text-[#1d1d1f] hover:bg-[#f5f5f7]'
-                }`}
-              >
-                Voucher Shop
-              </a>
-            </div>
-          </div>
-        )}
+
 
         {/* Conditional rendering based on tab and admin status */}
         <div className="w-full max-w-[800px] mx-auto">

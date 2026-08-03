@@ -153,10 +153,20 @@ export default function Header({ fullName, role }) {
                 {!isAdmin && !isDirector && !isStaff && (
                   <>
                     <Link 
+                      to="/profile?tab=tier" 
+                      className={`px-3 py-2 rounded-full transition-all flex items-center gap-1 ${
+                        currentPath.includes('tab=tier') 
+                          ? 'bg-[#0066cc]/10 text-[#0066cc] font-bold' 
+                          : 'hover:text-[#1d1d1f] hover:bg-[#f5f5f7]'
+                      }`}
+                    >
+                      <span>🏆</span> {t('nav.myTier')}
+                    </Link>
+                    <Link 
                       to="/profile?tab=bookings" 
-                      className={`px-4 py-2 rounded-full transition-all ${
-                        currentPath.includes('tab=bookings') 
-                          ? 'bg-[#0066cc]/5 text-[#0066cc]' 
+                      className={`px-3 py-2 rounded-full transition-all ${
+                        currentPath.includes('tab=bookings') || (window.location.pathname === '/profile' && !window.location.search.includes('tab='))
+                          ? 'bg-[#0066cc]/10 text-[#0066cc] font-bold' 
                           : 'hover:text-[#1d1d1f] hover:bg-[#f5f5f7]'
                       }`}
                     >
@@ -164,13 +174,23 @@ export default function Header({ fullName, role }) {
                     </Link>
                     <Link 
                       to="/profile?tab=vouchers" 
-                      className={`px-4 py-2 rounded-full transition-all ${
+                      className={`px-3 py-2 rounded-full transition-all ${
                         currentPath.includes('tab=vouchers') 
-                          ? 'bg-[#0066cc]/5 text-[#0066cc]' 
+                          ? 'bg-[#0066cc]/10 text-[#0066cc] font-bold' 
                           : 'hover:text-[#1d1d1f] hover:bg-[#f5f5f7]'
                       }`}
                     >
                       {t('nav.myVouchers')}
+                    </Link>
+                    <Link 
+                      to="/profile?tab=shop" 
+                      className={`px-3 py-2 rounded-full transition-all ${
+                        currentPath.includes('tab=shop') 
+                          ? 'bg-[#0066cc]/10 text-[#0066cc] font-bold' 
+                          : 'hover:text-[#1d1d1f] hover:bg-[#f5f5f7]'
+                      }`}
+                    >
+                      {t('nav.voucherShop')}
                     </Link>
                   </>
                 )}
