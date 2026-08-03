@@ -272,5 +272,27 @@ export const AuthService = {
       throw new Error(data.message || "Failed to delete user");
     }
     return data;
+  },
+
+  // Get User Details (Admin only)
+  getUserDetail: async (userId) => {
+    const accessToken = sessionStorage.getItem("accessToken");
+    if (!accessToken) {
+      throw new Error("No access token found");
+    }
+
+    const response = await fetch(`${API_BASE_URL}/admin/users/${userId}`, {
+      method: "GET",
+      headers: {
+        "Authorization": `Bearer ${accessToken}`,
+        "Content-Type": "application/json"
+      }
+    });
+
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.message || "Failed to fetch user details");
+    }
+    return data;
   }
 };

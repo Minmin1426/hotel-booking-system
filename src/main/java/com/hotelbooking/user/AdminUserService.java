@@ -163,6 +163,14 @@ public class AdminUserService {
         return mapToResponse(updatedUser);
     }
 
+    @Transactional(readOnly = true)
+    public UserResponse getUserById(Long userId) {
+        log.info("Fetching user by ID: {}", userId);
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found with ID: " + userId));
+        return mapToResponse(user);
+    }
+
     private UserResponse mapToResponse(User user) {
         return new UserResponse(
                 user.getUserId(),

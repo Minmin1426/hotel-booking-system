@@ -53,6 +53,13 @@ public class AdminUserController {
         return ResponseEntity.ok(ApiResponse.success("User deleted successfully", null));
     }
 
+    @GetMapping("/{userId}")
+    public ResponseEntity<UserResponse> getUserById(
+            @PathVariable Long userId) {
+        UserResponse user = adminUserService.getUserById(userId);
+        return ResponseEntity.ok(user);
+    }
+
     @PatchMapping("/{userId}/status")
     public ResponseEntity<UserResponse> updateUserStatus(
             @PathVariable Long userId,

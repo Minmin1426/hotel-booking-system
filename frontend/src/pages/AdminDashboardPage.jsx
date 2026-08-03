@@ -12,6 +12,14 @@ import { VoucherService } from '../services/VoucherService';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
 
+const getLocalTodayString = () => {
+  const d = new Date();
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
 export default function AdminDashboardPage() {
   const location = useLocation();
   const navigate = useNavigate();
@@ -754,7 +762,7 @@ export default function AdminDashboardPage() {
       return;
     }
 
-    const todayStr = new Date().toISOString().split('T')[0];
+    const todayStr = getLocalTodayString();
     if (bookingCheckIn < todayStr) {
       setError("Check-in date cannot be in the past.");
       setIsLoading(false);
@@ -794,6 +802,39 @@ export default function AdminDashboardPage() {
     const allowedPaymentMethods = ['CASH', 'VNPAY', 'CARD'];
     if (!allowedPaymentMethods.includes(bookingPaymentMethod)) {
       setError("Payment method must be Cash, Online (VnPay), or Card.");
+      setIsLoading(false);
+      return;
+    }
+
+    // Verify existence of records
+    try {
+      await AuthService.getUserDetail(userIdNum);
+    } catch (err) {
+      setError(`User ID ${userIdNum} does not exist: ` + err.message);
+      setIsLoading(false);
+      return;
+    }
+
+    try {
+      await HotelService.getHotelDetail(hotelIdNum);
+    } catch (err) {
+      setError(`Hotel ID ${hotelIdNum} does not exist: ` + err.message);
+      setIsLoading(false);
+      return;
+    }
+
+    try {
+      const hotelRooms = await HotelService.getRoomsByHotel(hotelIdNum);
+      const hotelRoomIds = hotelRooms.map(r => r.roomId || r.id);
+      for (let rId of roomIdsArr) {
+        if (!hotelRoomIds.includes(rId)) {
+          setError(`Room ID ${rId} does not belong to Hotel ID ${hotelIdNum} or does not exist.`);
+          setIsLoading(false);
+          return;
+        }
+      }
+    } catch (err) {
+      setError("Failed to verify rooms: " + err.message);
       setIsLoading(false);
       return;
     }
@@ -2737,6 +2778,7 @@ export default function AdminDashboardPage() {
                   <input
                     type="date"
                     required
+                    min={getLocalTodayString()}
                     disabled={!!editingBooking && editingBooking.status !== 'PENDING'}
                     className="w-full h-[44px] px-4 rounded-xl border border-[#e8e8ed] text-sm focus:outline-none focus:border-[#0066cc] transition-all bg-[#f5f5f7] focus:bg-white disabled:opacity-60 disabled:cursor-not-allowed"
                     value={bookingCheckIn}
@@ -2749,6 +2791,7 @@ export default function AdminDashboardPage() {
                   <input
                     type="date"
                     required
+                    min={bookingCheckIn || getLocalTodayString()}
                     disabled={!!editingBooking && editingBooking.status !== 'PENDING'}
                     className="w-full h-[44px] px-4 rounded-xl border border-[#e8e8ed] text-sm focus:outline-none focus:border-[#0066cc] transition-all bg-[#f5f5f7] focus:bg-white disabled:opacity-60 disabled:cursor-not-allowed"
                     value={bookingCheckOut}
