@@ -81,7 +81,12 @@ function PaymentStatusPage({ status }) {
       })
       .catch(err => {
         console.error('Payment verify exception:', err);
-        setSuccessMsg('Thanh toán thành công! Đang đồng bộ hóa đơn của bạn...');
+        if (stripeConfirmedSuccess) {
+          setSuccessMsg('Thanh toán đã được ghi nhận trên cổng thanh toán! Đang chờ hệ thống đồng bộ...');
+          setVerifyError('');
+        } else {
+          setVerifyError('Chưa thể xác nhận trạng thái thanh toán từ máy chủ. Bạn có thể bấm Refresh hoặc Xác thực thanh toán trong Lịch sử đặt phòng.');
+        }
       })
       .finally(() => {
         setLoading(false);

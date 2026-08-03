@@ -376,7 +376,11 @@ public class PaymentServiceImpl implements PaymentService {
         }
         bookingRepository.save(booking);
         if (mealTicketService != null) {
-            mealTicketService.autoIssueMealTicketsForBooking(booking);
+            try {
+                mealTicketService.autoIssueMealTicketsForBooking(booking);
+            } catch (Exception e) {
+                log.error("Failed to auto-issue meal tickets for booking ID {}: {}", booking.getBookingId(), e.getMessage());
+            }
         }
 
         // 011-loyalty-membership-tiers: award points and evaluate tier
@@ -389,7 +393,11 @@ public class PaymentServiceImpl implements PaymentService {
             }
         }
 
-        emailService.sendBookingTicketEmail(booking, payment);
+        try {
+            emailService.sendBookingTicketEmail(booking, payment);
+        } catch (Exception e) {
+            log.error("Failed to send booking ticket email for booking {}: {}", booking.getBookingId(), e.getMessage());
+        }
 
         PaymentAuditLog auditLog = PaymentAuditLog.builder()
                 .transactionId(transactionId)
