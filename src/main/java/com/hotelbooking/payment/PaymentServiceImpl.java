@@ -329,8 +329,19 @@ public class PaymentServiceImpl implements PaymentService {
                 .or(() -> {
                     if (transactionId != null && !transactionId.isBlank()) {
                         return paymentRepository.findAll().stream()
-                                .filter(p -> p.getTransactionId() != null && p.getTransactionId().startsWith(transactionId))
+                                .filter(p -> p.getTransactionId() != null && (p.getTransactionId().startsWith(transactionId) || transactionId.startsWith(p.getTransactionId())))
                                 .findFirst();
+                    }
+                    return java.util.Optional.empty();
+                })
+                .or(() -> {
+                    if (payload != null && payload.contains("BK-")) {
+                        int idx = payload.indexOf("BK-");
+                        String code = payload.substring(idx, Math.min(payload.length(), idx + 11)).replaceAll("[^A-Za-z0-9-]", "");
+                        java.util.Optional<com.hotelbooking.booking.Booking> bOpt = bookingRepository.findByBookingCode(code);
+                        if (bOpt.isPresent()) {
+                            return paymentRepository.findByBooking_BookingId(bOpt.get().getBookingId());
+                        }
                     }
                     return java.util.Optional.empty();
                 })

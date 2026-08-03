@@ -25,21 +25,46 @@ public class VnpayCallbackController {
     private String frontendUrl;
 
     @GetMapping("/vnpay-callback")
-    public ResponseEntity<Void> handleVnpayCallback(@RequestParam Map<String, String> params) {
+    public ResponseEntity<Void> handleVnpayCallback(
+            @RequestParam Map<String, String> params,
+            jakarta.servlet.http.HttpServletRequest request) {
+        log.info("Processing VNPAY Callback: {}", params);
+        String targetFrontend = resolveFrontendUrl(request);
         try {
             paymentService.processVnpayCallback(params);
             
             HttpHeaders headers = new HttpHeaders();
             String txnRef = params.get("vnp_TxnRef");
-            headers.setLocation(URI.create(frontendUrl + "/payment/success?payment_intent=" + (txnRef != null ? txnRef : "")));
+            String redirectUrl = targetFrontend + "/payment/success?payment_intent=" + (txnRef != null ? txnRef : "");
+            log.info("VNPAY callback succeeded, redirecting to: {}", redirectUrl);
+            headers.setLocation(URI.create(redirectUrl));
             return new ResponseEntity<>(headers, HttpStatus.FOUND);
         } catch (Exception e) {
             log.error("Error processing VNPAY Callback", e);
             HttpHeaders headers = new HttpHeaders();
             String errorMsg = e.getMessage() != null ? e.getMessage() : "VNPAY callback processing failed";
-            headers.setLocation(URI.create(frontendUrl + "/payment/cancel?error=" + URLEncoder.encode(errorMsg, StandardCharsets.UTF_8)));
+            String redirectUrl = targetFrontend + "/payment/cancel?error=" + URLEncoder.encode(errorMsg, StandardCharsets.UTF_8);
+            log.info("VNPAY callback failed, redirecting to: {}", redirectUrl);
+            headers.setLocation(URI.create(redirectUrl));
             return new ResponseEntity<>(headers, HttpStatus.FOUND);
         }
+    }
+
+    private String resolveFrontendUrl(jakarta.servlet.http.HttpServletRequest request) {
+        String referer = request.getHeader("Referer");
+        if (referer != null && !referer.isBlank()) {
+            try {
+                URI uri = URI.create(referer);
+                if (uri.getScheme() != null && uri.getAuthority() != null) {
+                    return uri.getScheme() + "://" + uri.getAuthority();
+                }
+            } catch (Exception ignored) {}
+        }
+        String origin = request.getHeader("Origin");
+        if (origin != null && !origin.isBlank()) {
+            return origin;
+        }
+        return frontendUrl;
     }
 
     @RequestMapping(value = "/vnpay-ipn", method = {RequestMethod.GET, RequestMethod.POST})
