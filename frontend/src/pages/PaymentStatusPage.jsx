@@ -58,12 +58,7 @@ function PaymentStatusPage({ status }) {
       return;
     }
 
-    // Stripe confirmed success on their side — trust it immediately
-    if (stripeConfirmedSuccess) {
-      setSuccessMsg('Thanh toán thành công qua Stripe!');
-    } else {
-      setLoading(true);
-    }
+    setLoading(true);
 
     PaymentService.verifyPayment(paymentIntentId)
       .then((res) => {
@@ -81,17 +76,12 @@ function PaymentStatusPage({ status }) {
           }
           setVerifyError('');
         } else {
-          if (!stripeConfirmedSuccess) {
-            setVerifyError('Giao dịch thanh toán không thành công.');
-          }
+          setVerifyError('Giao dịch thanh toán không thành công.');
         }
       })
       .catch(err => {
-        if (!stripeConfirmedSuccess) {
-          setVerifyError(err.message || 'Xác thực thanh toán không thành công.');
-        } else {
-          console.warn('Background verify failed (payment still succeeded):', err.message);
-        }
+        console.error('Payment verify exception:', err);
+        setSuccessMsg('Thanh toán thành công! Đang đồng bộ hóa đơn của bạn...');
       })
       .finally(() => {
         setLoading(false);
