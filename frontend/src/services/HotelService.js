@@ -158,7 +158,10 @@ export const HotelService = {
     if (!response.ok) {
       throw new Error(data.message || "Failed to retrieve hotel rooms");
     }
-    return data.data;
+    if (Array.isArray(data)) return data;
+    if (Array.isArray(data?.data)) return data.data;
+    if (Array.isArray(data?.content)) return data.content;
+    return [];
   },
 
   // Create room (Admin only)

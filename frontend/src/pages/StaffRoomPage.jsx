@@ -34,8 +34,8 @@ export default function StaffRoomPage() {
     HotelService.getHotels().then(res => {
       const raw = Array.isArray(res) ? res : (res?.content || res?.data || []);
       const hotelList = (raw || [])
-        .map(h => ({ ...h, id: h.hotelId || h.id }))
-        .filter(h => h && h.id != null && h.name);
+        .map(h => ({ ...h, id: h.hotelId || h.id, name: h.name || h.hotelName || `Khách sạn ${h.hotelId || h.id || ''}` }))
+        .filter(h => h && h.id != null);
       if (hotelList.length > 0) {
         setHotels(hotelList);
         setSelectedHotelId(String(hotelList[0].id));
