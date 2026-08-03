@@ -18,6 +18,7 @@ public class UserController {
 
     private final UserService userService;
     private final JwtService jwtService;
+    private final UserRepository userRepository;
 
     @PutMapping("/me/profile")
     @PreAuthorize("hasAnyRole('CUSTOMER', 'STAFF', 'ADMIN', 'DIRECTOR', 'RECEPTIONIST', 'HOUSEKEEPER')")
@@ -41,7 +42,20 @@ public class UserController {
     }
 
     private Long extractUserIdFromToken(String authorizationHeader) {
-        String token = authorizationHeader.substring(7); // strip "Bearer "
-        return jwtService.extractUserId(token);
+        if (authorizationHeader == null || !authorizationHeader.startsWith("Bearer ")) {
+            throw new com.hotelbooking.common.exception.BusinessException("Authorization token is missing or invalid");
+        }
+        String token = authorizationHeader.substring(7);
+        Long userId = jwtService.extractUserId(token);
+        if (userId != null) {
+            return userId;
+        }
+        String email = jwtService.extractUsername(token);
+        if (email != null) {
+            return userRepository.findByEmail(email)
+                    .map(User::getUserId)
+                    .orElseThrow(() -> new com.hotelbooking.common.exception.ResourceNotFoundException("User not found for email: " + email));
+        }
+        throw new com.hotelbooking.common.exception.BusinessException("Invalid user claims in token");
     }
 }

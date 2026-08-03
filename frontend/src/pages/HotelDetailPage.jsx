@@ -975,8 +975,13 @@ function HotelDetailPage() {
     try {
       // 1. Confirm and save user profile changes
       const effectiveEmail = guestEmail || sessionStorage.getItem("userEmail") || "";
-      if (effectiveEmail) {
-        await AuthService.updateProfile(guestName, effectiveEmail, guestPhone, guestIdNumber);
+      const userToken = sessionStorage.getItem("accessToken");
+      if (userToken && effectiveEmail) {
+        try {
+          await AuthService.updateProfile(guestName, effectiveEmail, guestPhone, guestIdNumber);
+        } catch (e) {
+          console.warn("Profile update notice during reservation:", e);
+        }
       }
       sessionStorage.setItem("userFullName", guestName);
 
