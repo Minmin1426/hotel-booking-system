@@ -619,15 +619,49 @@ public class BookingServiceImpl implements BookingService {
         );
     }
 
+    private Payment getLatestPayment(Long bookingId) {
+        if (bookingId == null) return null;
+        Payment payment = null;
+        try {
+            payment = paymentRepository.findByBooking_BookingId(bookingId).orElse(null);
+        } catch (Exception ignored) {}
+        if (payment != null) return payment;
+
+        List<Payment> payments = paymentRepository.findByBookingBookingId(bookingId);
+        if (payments.isEmpty()) return null;
+        for (Payment p : payments) {
+            if ("SUCCESS".equalsIgnoreCase(p.getStatus()) || "COMPLETED".equalsIgnoreCase(p.getStatus()) || "PAID".equalsIgnoreCase(p.getStatus())) {
+                return p;
+            }
+        }
+        return payments.get(payments.size() - 1);
+    }
+
     private BigDecimal getPaidAmount(Booking booking) {
         if (booking == null) return BigDecimal.ZERO;
         List<com.hotelbooking.payment.Payment> payments = paymentRepository.findByBookingBookingId(booking.getBookingId());
         BigDecimal paidAmount = BigDecimal.ZERO;
         for (com.hotelbooking.payment.Payment p : payments) {
-            if ("SUCCESS".equalsIgnoreCase(p.getStatus()) || "COMPLETED".equalsIgnoreCase(p.getStatus()) || "REFUND_PENDING".equalsIgnoreCase(p.getStatus()) || "REFUNDED".equalsIgnoreCase(p.getStatus())) {
-                paidAmount = paidAmount.add(p.getAmount());
+            if ("SUCCESS".equalsIgnoreCase(p.getStatus()) || "COMPLETED".equalsIgnoreCase(p.getStatus()) || "PAID".equalsIgnoreCase(p.getStatus()) || "REFUND_PENDING".equalsIgnoreCase(p.getStatus()) || "REFUNDED".equalsIgnoreCase(p.getStatus())) {
+                if (p.getAmount() != null) {
+                    paidAmount = paidAmount.add(p.getAmount());
+                }
             }
         }
+
+        if (paidAmount.compareTo(BigDecimal.ZERO) == 0) {
+            BigDecimal price = booking.getFinalPrice() != null ? booking.getFinalPrice() : booking.getTotalAmount();
+            if (price != null) {
+                if ("CONFIRMED".equalsIgnoreCase(booking.getStatus()) || "COMPLETED".equalsIgnoreCase(booking.getStatus()) || "SUCCESS".equalsIgnoreCase(booking.getPaymentStatus()) || "PAID".equalsIgnoreCase(booking.getPaymentStatus())) {
+                    paidAmount = price;
+                } else if ("DEPOSIT_30_PAID".equalsIgnoreCase(booking.getPaymentStatus())) {
+                    paidAmount = price.multiply(new BigDecimal("0.30"));
+                } else if ("PARTIALLY_PAID".equalsIgnoreCase(booking.getPaymentStatus())) {
+                    paidAmount = price.multiply(new BigDecimal("0.50"));
+                }
+            }
+        }
+
         return paidAmount;
     }
 
@@ -1194,7 +1228,7 @@ public class BookingServiceImpl implements BookingService {
             booking = bookingRepository.save(booking);
         }
 
-        Payment payment = paymentRepository.findByBooking_BookingId(bookingId).orElse(null);
+        Payment payment = getLatestPayment(bookingId);
         return buildTicketDTO(booking, payment);
     }
 
@@ -1211,7 +1245,7 @@ public class BookingServiceImpl implements BookingService {
             bookingRepository.save(booking);
         }
 
-        Payment payment = paymentRepository.findByBooking_BookingId(bookingId).orElse(null);
+        Payment payment = getLatestPayment(bookingId);
         emailService.sendBookingTicketEmail(booking, payment);
     }
 
@@ -1230,7 +1264,7 @@ public class BookingServiceImpl implements BookingService {
                         .findFirst()
                         .orElseThrow(() -> new ResourceNotFoundException("No valid booking found for QR Code: " + qrCode)));
 
-        Payment payment = paymentRepository.findByBooking_BookingId(booking.getBookingId()).orElse(null);
+        Payment payment = getLatestPayment(booking.getBookingId());
 
         String message;
         if ("COMPLETED".equalsIgnoreCase(booking.getStatus()) || "CHECKED_IN".equalsIgnoreCase(booking.getStatus())) {
@@ -1254,9 +1288,22 @@ public class BookingServiceImpl implements BookingService {
         Room room = (booking.getBookingRooms() != null && !booking.getBookingRooms().isEmpty())
                 ? booking.getBookingRooms().get(0).getRoom() : null;
 
-        BigDecimal totalPrice = (booking.getFinalPrice() != null) ? booking.getFinalPrice() : booking.getTotalAmount();
-        BigDecimal paidAmount = (payment != null && payment.getAmount() != null) ? payment.getAmount() : totalPrice;
-        BigDecimal remainingAmount = totalPrice.subtract(paidAmount);
+        BigDecimal totalAmount = booking.getTotalAmount() != null ? booking.getTotalAmount() : BigDecimal.ZERO;
+        BigDecimal discountAmount = booking.getDiscountAmount() != null ? booking.getDiscountAmount() : BigDecimal.ZERO;
+        BigDecimal serviceFee = booking.getServiceFee() != null ? booking.getServiceFee() : BigDecimal.ZERO;
+        BigDecimal taxes = booking.getTaxes() != null ? booking.getTaxes() : BigDecimal.ZERO;
+        BigDecimal finalPrice = booking.getFinalPrice() != null ? booking.getFinalPrice() : totalAmount.subtract(discountAmount).add(serviceFee).add(taxes);
+        if (finalPrice.compareTo(BigDecimal.ZERO) < 0) finalPrice = BigDecimal.ZERO;
+
+        BigDecimal totalPrice = finalPrice;
+        BigDecimal paidAmount = getPaidAmount(booking);
+        if (paidAmount.compareTo(BigDecimal.ZERO) == 0 && payment != null && payment.getAmount() != null) {
+            if ("SUCCESS".equalsIgnoreCase(payment.getStatus()) || "COMPLETED".equalsIgnoreCase(payment.getStatus()) || "PAID".equalsIgnoreCase(payment.getStatus())) {
+                paidAmount = payment.getAmount();
+            }
+        }
+
+        BigDecimal remainingAmount = finalPrice.subtract(paidAmount);
         if (remainingAmount.compareTo(BigDecimal.ZERO) < 0) remainingAmount = BigDecimal.ZERO;
 
         String checkinCode = (booking.getCheckinQrCode() != null) ? booking.getCheckinQrCode() : "CHK-" + booking.getBookingCode();
@@ -1287,6 +1334,12 @@ public class BookingServiceImpl implements BookingService {
                 .status(booking.getStatus())
                 .paymentStatus(booking.getPaymentStatus())
                 .totalPrice(totalPrice)
+                .totalAmount(totalAmount)
+                .discountAmount(discountAmount)
+                .serviceFee(serviceFee)
+                .taxes(taxes)
+                .finalPrice(finalPrice)
+                .voucherCode(booking.getVoucher() != null ? booking.getVoucher().getCode() : null)
                 .paidAmount(paidAmount)
                 .remainingAmount(remainingAmount)
                 .paymentMethod(payment != null ? payment.getPaymentMethod() : "ONLINE")

@@ -2535,7 +2535,6 @@ export default function AdminDashboardPage() {
                   <input
                     type="email"
                     required
-                    disabled={!!editingUser}
                     className={`w-full h-[44px] px-4 rounded-xl border text-sm focus:outline-none transition-all bg-[#f5f5f7] focus:bg-white disabled:opacity-60 disabled:cursor-not-allowed ${
                       fieldErrors.email ? 'border-red-400 focus:border-red-500' : 'border-[#e8e8ed] focus:border-[#0066cc]'
                     }`}

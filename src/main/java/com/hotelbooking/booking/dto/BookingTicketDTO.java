@@ -36,6 +36,12 @@ public class BookingTicketDTO {
     private String paymentStatus;
 
     private BigDecimal totalPrice;
+    private BigDecimal totalAmount;
+    private BigDecimal discountAmount;
+    private BigDecimal serviceFee;
+    private BigDecimal taxes;
+    private BigDecimal finalPrice;
+    private String voucherCode;
     private BigDecimal paidAmount;
     private BigDecimal remainingAmount;
     private String paymentMethod;

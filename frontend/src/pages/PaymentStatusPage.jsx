@@ -62,7 +62,8 @@ function PaymentStatusPage({ status }) {
 
     PaymentService.verifyPayment(paymentIntentId)
       .then((res) => {
-        const { status: payStatus, bookingId: resBookingId, bookingCode, isDeposit, depositRatio, amount } = res;
+        const data = res?.data || res;
+        const { status: payStatus, bookingId: resBookingId, bookingCode, isDeposit, depositRatio, amount } = data;
         if (payStatus === 'SUCCESS' || payStatus === 'PENDING_VERIFICATION') {
           if (resBookingId) {
             setBookingId(resBookingId);

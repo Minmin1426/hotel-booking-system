@@ -1,0 +1,1540 @@
+
+FPT UNIVERSITYDEPARTMENT OF SOFTWARE ENGINEERING
+
+SOFTWARE REQUIREMENTS SPECIFICATION
+Project: Hotel Booking SystemCourse Code: SWP391 - Software Engineering Project
+
+Document Version: 1.0Author: Senior Software Engineering TeamBaseline Commit: main (Spring Boot 4 / SQL Server / React)– Hanoi, July 2026 –
+
+I. Record of Changes
+The following revision history table documents all modifications, additions, and deletions made to this Software Requirements Specification (SRS) document during the development lifecycle.
+
+
+Version
+
+Date
+
+A/M/D
+
+In charge
+
+Change Description
+
+V0.1
+
+10/05/2026
+
+A
+
+Req Team
+
+Initial draft SRS outline & System Context Diagram.
+
+V0.2
+
+20/05/2026
+
+A
+
+BA Team
+
+Added User Roles, Business Processes Swimlanes & Use Case Catalog.
+
+V0.3
+
+02/06/2026
+
+M
+
+Backend Team
+
+Defined Authorization Matrix (RBAC), Non-UI Functions & ERD.
+
+V0.5
+
+18/06/2026
+
+A
+
+Dev Team
+
+Completed detailed Use Case Specifications (Triple-Table format).
+
+V0.8
+
+05/07/2026
+
+A
+
+QA Team
+
+Added Functional Screen Specs, Planguage NFRs & Traceability Matrix.
+
+V1.0
+
+23/07/2026
+
+M
+
+Lead Architect
+
+Final baseline reconciliation with Java codebase and Flyway migrations.
+
+II. Software Requirement Specification
+1. Introduction
+1.1 Purpose
+This document specifies the software requirements for the Hotel Booking System (Version 1.0). It defines functional, non-functional, business rules, and interface requirements to guide developers, testers, database administrators, and project stakeholders.
+1.2 Scope
+The Hotel Booking System is a multi-tenant enterprise hotel management and reservation platform built using Java 17, Spring Boot 4, SQL Server / PostgreSQL, and React. The system covers:
+• Public & Customer Portal: Room search, real-time room locking, individual & Excel batch booking, online payment (VNPay/Stripe), customer wallet top-up, spending limit management, meal ticket purchasing, physical wristband linking, loyalty point accumulation, and voucher store redemption.
+• Hotel Operations & Reception: Check-in/check-out, physical wristband pairing, meal ticket QR code scanning at restaurant areas, room maintenance matrix state tracking, and cancellation approval workflow.
+• Administration & Finance: User management, customer activity logging, refund policy engine, hotel approval workflow, group pricing rules, voucher creation, system settings, and multi-dimensional reporting.
+1.3 Intended Audience
+This specification is intended for Software Developers, Quality Assurance Engineers, System Architects, Hotel Operations Staff, System Administrators, and Project Evaluators at FPT University.
+1.4 Definitions and Abbreviations
+
+
+Term / Abbreviation
+
+Definition
+
+SRS
+
+Software Requirements Specification.
+
+RBAC
+
+Role-Based Access Control enforcing fine-grained permissions per user role.
+
+JWT
+
+JSON Web Token used for stateless authentication and authorization (24h expiry).
+
+Room Lock
+
+Temporary 15-minute optimistic database reservation lock before payment completion.
+
+Physical Wristband
+
+RFID/NFC or QR-encoded physical wristband assigned to guests for seamless meal ticket scanning.
+
+Meal Ticket
+
+Digital or wristband-linked voucher authorizing dining access at hotel restaurant areas.
+
+Spending Limit
+
+Daily or per-transaction wallet capping mechanism configured by customers or parents.
+
+Maker-Checker
+
+Dual authorization rule requiring distinct users to create and approve sensitive requests.
+1.5 Reference and Source Priority
+In case of conflict or ambiguity, the single source of truth priority order is defined as follows:
+1. JPA Entity Classes & Java Controller Annotations (Source Code Baseline)
+2. Flyway Migration Scripts (src/main/resources/db/migration/sqlserver/)
+3. This Software Requirements Specification (SRS) Document
+4. Software Design Specification (SDS) Document
+2. Overall Requirements
+2.1 Context and Product Perspective
+The Hotel Booking System operates in a web-based client-server architecture interacting with external payment gateways (VNPay, Stripe), SMTP mail servers, and physical QR/wristband scanner devices.
+Figure SRS-CTX-01. System Context Diagram (Context Diagram Level 0).
+
+
++-----------------------+              +-----------------------------------+              +-----------------------+|    Guest / Customer   |<------------>|                                   |<------------>|     Payment Gateways  ||  (Web / Mobile SPA)   |  HTTP/HTTPS  |                                   |  HTTPS REST  |    (VNPay / Stripe)    |+-----------------------+              |                                   |              +-----------------------+                                       |       HOTEL BOOKING SYSTEM        |+-----------------------+              |   (Spring Boot 4 / SQL Server)    |              +-----------------------+|  Hotel Staff / Admin  |<------------>|                                   |<------------>|    SMTP Mail Server   || (Management Console)  |  REST APIs   |                                   |  SMTP / TLS  |   (Email Notifications)|+-----------------------+              |                                   |              +-----------------------+                                       |                                   |+-----------------------+              |                                   |              +-----------------------+|  Restaurant Scanner   |<------------>|                                   |<------------>| Physical Wristband QR ||   (POS / Handheld)    |  QR Scans    +-----------------------------------+  Barcode/NFC |   (Hardware Devices)  |+-----------------------+                                                                 +-----------------------+
+
+2.2 Main Business Processes
+The system core business workflows are modeled using Swimlane Process Diagrams (rules.md Section 6):
+2.2.1 Hotel Search & Room Reservation Process
+Figure SRS-BP-01. Hotel Search & Room Reservation Swimlane Diagram.
+
+
+CUSTOMER                SYSTEM / BACKEND                   DATABASE / LOCK ENGINE   |                           |                                      |   |-- 1. Search Rooms ------->|                                      |   |   (Dates, Guests, Hotel)  |-- 2. Query Available Rooms --------->|   |                           |<-- 3. Return Room List --------------|   |-- 4. Select Room & Lock ->|                                      |   |                           |-- 5. Acquire RoomLock (15 mins) ---->|   |                           |<-- 6. Lock Granted (Lock Token) -----|   |-- 7. Proceed to Pay ------>|                                      |
+
+2.2.2 Online Payment & Refund Process
+Figure SRS-BP-02. Online Payment & Refund Swimlane Diagram.
+
+
+CUSTOMER / ADMIN         BACKEND / PAYMENT SERVICE          VNPAY / STRIPE GATEWAY   |                           |                                      |   |-- 1. Initiate Payment --->|-- 2. Create Payment URL ------------>|   |                           |<-- 3. Redirect to Checkout ----------|   |-- 4. Complete Payment --->|                                      |   |                           |<-- 5. Webhook Callback (IPN) --------|   |                           |-- 6. Confirm Booking & Invoice ----->|   |                           |                                      |   |-- 7. Request Refund ----->|-- 8. Evaluate Refund Policy Engine ->|   |                           |-- 9. Execute Payout API ------------>|
+
+2.2.3 Customer Wallet Top-Up & Spending Limit Process
+Figure SRS-BP-03. Customer Wallet Top-up & Spending Limit Swimlane Diagram.
+
+
+CUSTOMER                 WALLET SERVICE                     SPENDING LIMIT ENGINE   |                           |                                      |   |-- 1. Config Limit ------->|-- 2. Validate Capping Rules ------->|   |   (Daily/Per-Tx Cap)      |<-- 3. Limit Saved -------------------|   |-- 4. Top Up Wallet ------>|-- 5. Process Payment via Gateway --->|   |                           |<-- 6. Credit Wallet Balance ---------|   |-- 7. Spend at Resort ----->|-- 8. Check Spending Limit ---------->|   |                           |<-- 9. Approve / Reject Tx -----------|
+
+2.2.4 Meal Ticket & Physical Wristband Redemption Process
+Figure SRS-BP-04. Meal Ticket & Physical Wristband Redemption Swimlane Diagram.
+
+
+GUEST / WRISTBAND       RESTAURANT SCANNER POS             MEAL TICKET SERVICE   |                           |                                      |   |-- 1. Present QR/Wristband>|-- 2. Scan Code --------------------->|   |                           |                                      |-- 3. Check Validity & Area   |                           |                                      |-- 4. Deduct Ticket Balance   |                           |<-- 5. Grant Access / Alert (SUCCESS)-|   |-- 6. Enter Restaurant --->|                                      |
+
+2.2.5 Loyalty Points & Tier Upgrade Process
+Figure SRS-BP-05. Loyalty Points & Tier Upgrade Swimlane Diagram.
+
+
+SYSTEM TRIGGER          LOYALTY ENGINE                     CUSTOMER ACCOUNT   |                           |                                      |   |-- 1. Booking Checkout --->|-- 2. Calculate Earned Points ------->|   |                           |-- 3. Append Point Ledger ------------|   |                           |-- 4. Check Tier Threshold ----------->|   |                           |   (SILVER/GOLD/PLATINUM)             |   |                           |-- 5. Trigger Auto Tier Upgrade ------>|
+
+2.2.6 Admin & Hotel Operations Process
+Figure SRS-BP-06. Admin & Hotel Operations Swimlane Diagram.
+
+
+HOTEL ADMIN              SYSTEM SERVICE                     DIRECTOR / SYSTEM ADMIN   |                           |                                      |   |-- 1. Submit Hotel Edit -->|-- 2. Create HotelApprovalRequest --->|   |                           |                                      |-- 3. Review Request   |                           |                                      |-- 4. Approve / Reject   |                           |<-- 5. Apply Changes / Notify --------|
+
+2.3 User Requirements
+2.3.1 Actors (Roles Defined)
+
+
+Actor Role
+
+System Code
+
+Description & Responsibilities
+
+Guest / Customer
+
+ROLE_CUSTOMER
+
+Public user who searches rooms, books reservations, tops up wallet, and redeems meal tickets.
+
+Receptionist
+
+ROLE_RECEPTIONIST
+
+Hotel front-desk staff responsible for guest check-in, check-out, and wristband pairing.
+
+Housekeeper
+
+ROLE_HOUSEKEEPER
+
+Staff managing room cleaning status, inventory readiness, and matrix room state updates.
+
+Staff
+
+ROLE_STAFF
+
+General hotel operational staff assisting guests and scanning restaurant meal tickets.
+
+Hotel Admin
+
+ROLE_HOTEL_ADMIN
+
+Manager overseeing hotel room allocations, group pricing rules, and local operations.
+
+Director
+
+ROLE_DIRECTOR
+
+Executive authority reviewing hotel approval requests, financial payouts, and high-level reports.
+
+System Admin
+
+ROLE_ADMIN
+
+Superuser maintaining user accounts, global system settings, audit logs, and security policies.
+2.3.2 Use Cases (UC Catalog)
+The system contains 35 sequential Use Cases grouped across 8 feature categories:
+
+
+UC ID
+
+Use Case Name
+
+Feature Group
+
+Primary Actor & Summary
+
+UC-01
+
+Register Account
+
+Authentication
+
+Customer. Create new user account with BCrypt password.
+
+UC-02
+
+Login System
+
+Authentication
+
+All Roles. Authenticate via username/password and receive JWT.
+
+UC-03
+
+Password Reset
+
+Authentication
+
+All Roles. Request password reset email token.
+
+UC-04
+
+Search Hotels & Rooms
+
+Hotel & Room
+
+Customer. Filter rooms by check-in/out dates, price, and amenities.
+
+UC-05
+
+Lock Room
+
+Hotel & Room
+
+Customer. Acquire 15-min optimistic lock on selected room.
+
+UC-06
+
+Create Reservation
+
+Booking
+
+Customer. Formulate booking with guest details and locked rooms.
+
+UC-07
+
+Import Batch Booking
+
+Booking
+
+Customer/Admin. Upload Excel file for group block reservation.
+
+UC-08
+
+Process Payment
+
+Payment
+
+Customer. Pay reservation via VNPay or Stripe online gateway.
+
+UC-09
+
+Request Refund
+
+Payment
+
+Customer/Admin. Submit booking refund request evaluated by policy engine.
+
+UC-10
+
+Top-Up Wallet
+
+Wallet
+
+Customer. Charge customer wallet using online payment gateway.
+
+UC-11
+
+Configure Spending Limit
+
+Wallet
+
+Customer. Set daily or per-transaction spending limit caps.
+
+UC-12
+
+Issue Meal Ticket
+
+Meal Ticket
+
+Customer/Admin. Purchase meal package tickets for resort dining.
+
+UC-13
+
+Link Physical Wristband
+
+Meal Ticket
+
+Receptionist. Pair physical wristband QR code with guest meal wallet.
+
+UC-14
+
+Scan Meal Ticket QR
+
+Meal Ticket
+
+Staff. Scan wristband or digital QR code at restaurant entry.
+
+UC-15
+
+Redeem Voucher
+
+Voucher
+
+Customer. Apply voucher discount code during checkout.
+
+UC-16
+
+Purchase Store Voucher
+
+Voucher
+
+Customer. Buy vouchers from store front using wallet balance.
+
+UC-17
+
+View Loyalty Status
+
+Loyalty
+
+Customer. Check loyalty tier (BRONZE/SILVER/GOLD/PLATINUM).
+
+UC-18
+
+Process Check-in
+
+Operations
+
+Receptionist. Validate booking QR code and issue room key.
+
+UC-19
+
+Process Check-out
+
+Operations
+
+Receptionist. Finalize room charges and unpair wristbands.
+
+UC-20
+
+Update Room Status
+
+Operations
+
+Housekeeper. Change room status (CLEAN, DIRTY, IN_MAINTENANCE).
+
+UC-21
+
+Manage Group Pricing
+
+Operations
+
+Hotel Admin. Define room group allotment rules and tiered pricing.
+
+UC-22
+
+Submit Hotel Approval
+
+Operations
+
+Hotel Admin. Submit hotel modifications for executive approval.
+
+UC-23
+
+Approve Hotel Request
+
+Operations
+
+Director. Review and approve pending hotel change requests.
+
+UC-24
+
+Manage System Users
+
+Admin
+
+System Admin. Create, update, block, or delete user accounts.
+
+UC-25
+
+View Audit Logs
+
+Admin
+
+System Admin. Inspect append-only audit trail of system events.
+
+UC-26
+
+Configure System Settings
+
+Admin
+
+System Admin. Manage tax rate, service fee, and JWT secrets.
+
+UC-27
+
+Manage Refund Policies
+
+Admin
+
+System Admin. Configure cancellation penalty calculation rules.
+
+UC-28
+
+Order Room Service
+
+Room Service
+
+Customer. Place food/service orders from room tablet/app.
+
+UC-29
+
+Get AI Travel Advice
+
+AI Advice
+
+Customer. Receive LLM-powered hotel and itinerary recommendations.
+
+UC-30
+
+View Occupancy Report
+
+Reporting
+
+Director/Admin. Generate room occupancy and turnover charts.
+
+UC-31
+
+View Financial Payouts
+
+Reporting
+
+Director. Review hotel revenue payouts and commission fee.
+
+UC-32
+
+Manage Customer Activity
+
+Admin
+
+System Admin. View customer activity timeline and internal notes.
+
+UC-33
+
+Manage Physical Wristbands
+
+Meal Ticket
+
+Staff. Register, deactivate, or replace lost physical wristbands.
+
+UC-34
+
+Manage Restaurant Areas
+
+Operations
+
+Hotel Admin. Define dining areas and ticket type restrictions.
+
+UC-35
+
+Manage Loyalty Tier Config
+
+Loyalty
+
+System Admin. Set point thresholds and tier discount percentages.
+2.3.3 Use Case Diagrams
+Figure SRS-UC-01. Master Use Case Diagram.
+
+
++---------------------------------------------------+                       |              HOTEL BOOKING SYSTEM                 |                       |                                                   |   (( Customer ))----->| (UC-04: Search Rooms)   (UC-05: Lock Room)        |                       | (UC-06: Create Booking) (UC-08: Process Payment)   |                       | (UC-10: Top-Up Wallet)  (UC-15: Redeem Voucher)    |                       +---------------------------------------------------+                       |                                                   | (( Receptionist ))--->| (UC-13: Link Wristband) (UC-18: Process Check-in)  |                       | (UC-19: Process Check-out)                        |                       +---------------------------------------------------+                       |                                                   |    (( Staff ))------->| (UC-14: Scan Meal Ticket QR)                        |                       +---------------------------------------------------+                       |                                                   | (( Hotel Admin ))---->| (UC-21: Group Pricing)  (UC-22: Submit Approval)   |                       +---------------------------------------------------+                       |                                                   |   (( Director ))----->| (UC-23: Approve Request) (UC-31: View Payouts)     |                       +---------------------------------------------------+                       |                                                   | (( System Admin ))--->| (UC-24: Manage Users)   (UC-25: View Audit Logs)   |                       +---------------------------------------------------+
+
+2.4 System Functionalities
+2.4.1 Screen Flow Diagram
+Figure SRS-SF-01. Global Application Screen Flow Diagram.
+
+
+[Unauthenticated] ----> ( Login Screen ) ----> [Authenticated User]                             |                             +----> ( Search Rooms ) ----> ( Room Detail ) ----> ( Booking Checkout )                             |                                                        |                             |                                                        v                             +----> ( Customer Dashboard ) <---- ( Payment Gateway / VNPay )                             |           |                             |           +---> ( My Wallet & Top Up )                             |           +---> ( My Meal Tickets & Wristband )                             |           +---> ( Loyalty Tier & Vouchers )                             |                             +----> ( Admin Console ) [ROLE_ADMIN / ROLE_HOTEL_ADMIN]                                         |                                         +---> ( User Management )                                         +---> ( Operations & Scanning POS )                                         +---> ( Reports & Audit Logs )
+
+2.4.2 Authorization Matrix (RBAC)
+
+
+Feature / Action
+
+Cust
+
+Recept
+
+Housek
+
+Staff
+
+H-Admin
+
+Direct
+
+S-Admin
+
+Search & Book Rooms
+
+Y
+
+Y
+
+N
+
+N
+
+Y
+
+Y
+
+Y
+
+Process Check-in/out
+
+N
+
+Y
+
+N
+
+N
+
+Y
+
+Y
+
+Y
+
+Update Cleaning Status
+
+N
+
+N
+
+Y
+
+N
+
+Y
+
+N
+
+Y
+
+Scan Meal Ticket QR
+
+N
+
+Y
+
+N
+
+Y
+
+Y
+
+N
+
+Y
+
+Manage Wallet & Limits
+
+Y
+
+N
+
+N
+
+N
+
+N
+
+N
+
+Y
+
+Configure Group Pricing
+
+N
+
+N
+
+N
+
+N
+
+Y
+
+Y
+
+Y
+
+Approve Hotel Requests
+
+N
+
+N
+
+N
+
+N
+
+N
+
+Y
+
+Y
+
+Manage Users & Roles
+
+N
+
+N
+
+N
+
+N
+
+N
+
+N
+
+Y
+
+Configure System Rules
+
+N
+
+N
+
+N
+
+N
+
+N
+
+N
+
+Y
+
+Inspect Audit Trail
+
+N
+
+N
+
+N
+
+N
+
+N
+
+Y
+
+Y
+2.4.3 Non-UI Functions (System Automated Functions)
+
+
+Function Code
+
+Function Name
+
+Automated Execution Trigger & Logic
+
+SYS-AUTO-01
+
+Room Lock Expiration Sweeper
+
+Scheduled cron task running every 60s to release expired 15-minute RoomLocks.
+
+SYS-AUTO-02
+
+Token Blacklist Cleanup
+
+Scheduled job removing revoked JWT tokens from database after 24h expiration.
+
+SYS-AUTO-03
+
+Loyalty Auto-Tier Calculation
+
+Event listener recalculating customer loyalty tier points upon booking checkout.
+
+SYS-AUTO-04
+
+Append-Only Audit Recorder
+
+Aspect-oriented interceptor recording all sensitive operations into database audit log.
+
+SYS-AUTO-05
+
+Refund Policy Calculator
+
+Automated business rule engine determining refund percentage based on cancel lead time.
+2.5 Database Object Inventory and Logical Data Model
+Figure SRS-ERD-01. Logical Data Model ERD Overview.
+
+
++------------------+         +------------------+         +------------------+|      USERS       |1       N|     BOOKINGS     |1       N|  BOOKING_ROOMS   |+------------------+---------+------------------+---------+------------------+| id (PK)          |         | id (PK)          |         | id (PK)          || username (UN)    |         | booking_code(UN) |         | booking_id (FK)  || password_hash    |         | user_id (FK)     |         | room_id (FK)     || role             |         | status           |         | price_per_night  |+------------------+         +------------------+---------+------------------+        |1                         |1                               |N        |                          |                                |        |1                         |1                               |1+------------------+         +------------------+         +------------------+|     WALLETS      |         |     PAYMENTS     |         |      ROOMS       |+------------------+         +------------------+         +------------------+| id (PK)          |         | id (PK)          |         | id (PK)          || user_id (FK, UN) |         | booking_id (FK)  |         | room_number      || balance          |         | amount           |         | hotel_id (FK)    || wallet_type      |         | payment_status   |         | status           |+------------------+         +------------------+         +------------------+
+
+
+3. Use Case Specifications
+This section provides triple-table specifications (Attribute Table, Main Flow Table, Alternative/Exception Flows Table) for primary Use Cases in accordance with Template 6.2 of rules_san_xuat_tai_lieu.md.
+3.1 UC-02: Login System
+
+
+Attribute
+
+Specification
+
+Use Case ID
+
+UC-02
+
+Primary Actor
+
+All Users (Customer, Receptionist, Staff, Admin)
+
+Description
+
+Authenticate user credentials and issue a valid JWT token.
+
+Preconditions
+
+User account exists and status is ACTIVE.
+
+Trigger
+
+User submits login form with username and password.
+
+Success Postcondition
+
+User is authenticated, JWT issued, login audit logged.
+
+Failure Postcondition
+
+Authentication fails, error returned, failure attempt logged.
+
+Related Rules
+
+BR-AUTH-01 (BCrypt Check), BR-AUTH-02 (24h JWT Expiry)
+
+Authorization
+
+Public endpoint (/api/auth/login)
+
+Failure Guarantee
+
+No token issued; account locked after 5 consecutive failures.
+
+
+
+Step
+
+Actor
+
+Action Description
+
+1
+
+User
+
+Enters username and password on Login Screen and clicks 'Submit'.
+
+2
+
+System
+
+Validates input request DTO parameters (@NotBlank).
+
+3
+
+System
+
+Fetches user by username and compares password hash via BCryptPasswordEncoder.
+
+4
+
+System
+
+Generates signed JWT token, updates last_login_at, records LoginAuditLog, and returns token DTO.
+
+
+
+ID
+
+At Step
+
+Condition
+
+System / User Response
+
+EX-AUTH-01
+
+Step 3
+
+Invalid username or password match
+
+System returns HTTP 401 with generic MSG-01 ('Invalid credentials').
+
+EX-AUTH-02
+
+Step 3
+
+Account status is BLOCKED
+
+System returns HTTP 403 with MSG-02 ('Account is suspended').
+3.2 UC-05: Lock Room (Optimistic 15-Minute Reservation)
+
+
+Attribute
+
+Specification
+
+Use Case ID
+
+UC-05
+
+Primary Actor
+
+Customer
+
+Description
+
+Acquire temporary 15-minute lock on a room to prevent double-booking.
+
+Preconditions
+
+Customer is authenticated; room status is AVAILABLE for selected dates.
+
+Trigger
+
+Customer clicks 'Book Now' on selected room.
+
+Success Postcondition
+
+RoomLock entity created with 15-minute expiration; room status locked.
+
+Failure Postcondition
+
+Lock rejected; system informs user room is already held.
+
+Related Rules
+
+BR-ROOM-01 (15-Min Lock Duration), BR-ROOM-02 (Optimistic Concurrency)
+
+Authorization
+
+ROLE_CUSTOMER
+
+Failure Guarantee
+
+Database transaction rolls back; no partial locks created.
+
+
+
+Step
+
+Actor
+
+Action Description
+
+1
+
+Customer
+
+Selects room and date range, clicks 'Lock & Reserve'.
+
+2
+
+System
+
+Executes atomical check against existing RoomLocks and active Bookings.
+
+3
+
+System
+
+Inserts RoomLock record with locked_until = NOW + 15 minutes.
+
+4
+
+System
+
+Returns lock_token and expiration timestamp to customer frontend.
+
+
+
+ID
+
+At Step
+
+Condition
+
+System / User Response
+
+EX-ROOM-01
+
+Step 2
+
+Room already locked by another user
+
+System returns HTTP 409 Conflict with MSG-05 ('Room is currently held by another guest').
+
+4. Functional Requirements (Screen & UI Component Specs)
+This section details UI component specifications and field dictionaries mapped directly to Use Cases (Template 6.3).
+4.1 Login Screen Spec (Mapped to UC-02)
+
+
+#
+
+Field Name
+
+UI Type
+
+Mandatory
+
+Length / Range
+
+Description & Validation Rules
+
+1
+
+username
+
+Text Input
+
+Yes
+
+4–50 chars
+
+Username or email. Regex: ^[a-zA-Z0-9_@.]+$.
+
+2
+
+password
+
+Password Input
+
+Yes
+
+8–100 chars
+
+Plaintext password sent via HTTPS POST body.
+
+3
+
+rememberMe
+
+Checkbox
+
+No
+
+Boolean
+
+If checked, refresh token validity extended.
+4.2 Room Search Screen Spec (Mapped to UC-04, UC-05)
+
+
+#
+
+Field Name
+
+UI Type
+
+Mandatory
+
+Length / Range
+
+Description & Validation Rules
+
+1
+
+hotelId
+
+Dropdown
+
+No
+
+Long ID
+
+Optional filter for specific hotel instance.
+
+2
+
+checkInDate
+
+Date Picker
+
+Yes
+
+ISO Date
+
+Must be >= current date.
+
+3
+
+checkOutDate
+
+Date Picker
+
+Yes
+
+ISO Date
+
+Must be at least 1 day after checkInDate.
+
+4
+
+guestCount
+
+Number Input
+
+Yes
+
+1–10
+
+Number of guests.
+
+5
+
+maxPrice
+
+Slider Input
+
+No
+
+0–50,000,000 VND
+
+Upper price threshold per night.
+4.3 Wallet Top-Up Screen Spec (Mapped to UC-10, UC-11)
+
+
+#
+
+Field Name
+
+UI Type
+
+Mandatory
+
+Length / Range
+
+Description & Validation Rules
+
+1
+
+amount
+
+Number Input
+
+Yes
+
+50,000–50,000,000 VND
+
+Top-up credit amount.
+
+2
+
+paymentMethod
+
+Radio Group
+
+Yes
+
+VNPAY / STRIPE / BANK
+
+Online payment gateway choice.
+
+3
+
+dailyLimitCap
+
+Number Input
+
+No
+
+0–100,000,000 VND
+
+Configurable daily spending limit.
+5. Non-Functional Requirements
+5.1 External Interfaces
+
+
+Interface Name
+
+Protocol / Format
+
+Direction
+
+Purpose & Data Exchanged
+
+VNPay Payment API
+
+HTTPS REST / HMAC-SHA512
+
+Bi-directional
+
+Online payment URL generation & IPN payment webhook callback.
+
+Stripe API
+
+HTTPS REST / Bearer Token
+
+Bi-directional
+
+International credit card charging & webhook callback.
+
+SMTP Email Server
+
+SMTP / TLS (Port 587)
+
+Outbound
+
+Sending registration OTPs, booking confirmations, and password reset tokens.
+
+Wristband QR Scanner
+
+USB / Bluetooth HID Barcode
+
+Inbound
+
+Reading physical wristband QR codes at restaurant POS terminals.
+5.2 Quality Attributes (Planguage Format)
+Non-functional requirements are specified using Gilb's Planguage format (rules.md Section 19):
+
+
+Planguage Keyword
+
+Specification Value
+
+TAG
+
+NFR-PERF-01. Room Search Response Time
+
+AMBITION
+
+Provide ultra-fast room search queries even under heavy concurrent traffic.
+
+SCALE
+
+Response latency in milliseconds from HTTP request initiation to rendering search result cards.
+
+METER
+
+Measured via JMeter performance test suite executing 200 concurrent virtual users.
+
+GOAL
+
+< 500 ms for 95% of room search requests.
+
+STRETCH
+
+< 250 ms under normal database load.
+
+
+
+Planguage Keyword
+
+Specification Value
+
+TAG
+
+NFR-SEC-01. Password Hashing & Secret Protection
+
+AMBITION
+
+Guarantee zero credential leaks and enforce strong encryption standards.
+
+SCALE
+
+BCrypt hashing work factor and secret scanning pass rate.
+
+METER
+
+Automated OWASP Dependency Check & pre-commit bash security hook.
+
+GOAL
+
+BCrypt strength >= 12; zero hardcoded passwords or JWT secrets in source code.
+
+STRETCH
+
+Automated secret rotation policy every 90 days.
+
+6. Requirement Traceability
+6.1 Traceability Matrix
+
+
+Req ID
+
+Functional Domain
+
+Use Cases
+
+Design / Data Mapping
+
+Minimum Verification
+
+REQ-001
+
+Authentication
+
+UC-01, UC-02, UC-03
+
+users, AuthController, JwtService
+
+Unit + Integration Test
+
+REQ-002
+
+Room Reservation
+
+UC-04, UC-05, UC-06
+
+rooms, room_locks, bookings, BookingService
+
+Concurrency Integration Test
+
+REQ-003
+
+Online Payment
+
+UC-08, UC-09
+
+payments, VnpayService, RefundPolicyEngine
+
+Mock Webhook End-to-End Test
+
+REQ-004
+
+Customer Wallet
+
+UC-10, UC-11
+
+wallets, spending_limits, WalletService
+
+Transaction Rollback Unit Test
+
+REQ-005
+
+Meal Ticket Scanning
+
+UC-12, UC-13, UC-14
+
+ops_meal_tickets, MealTicketService
+
+QR Code Scan Test
+
+REQ-006
+
+Voucher Store
+
+UC-15, UC-16
+
+vouchers, user_vouchers, VoucherService
+
+Discount Calculation Unit Test
+
+REQ-007
+
+Loyalty Program
+
+UC-17, UC-35
+
+loyalty_tier_configs, LoyaltyService
+
+Auto Tier Upgrade Integration Test
+
+REQ-008
+
+System Audit
+
+UC-25
+
+login_audit_logs, payment_audit_logs
+
+Audit Aspect Verification Test
+6.2 Diagram Insertion Checklist
+
+
+Diagram ID
+
+Section Placement
+
+Verification Status
+
+SRS-CTX-01
+
+Section 2.1 (System Context)
+
+✓ Verified & Formatted
+
+SRS-BP-01..06
+
+Section 2.2 (Process Swimlanes)
+
+✓ Verified & Formatted
+
+SRS-UC-01
+
+Section 2.3.3 (Master Use Case)
+
+✓ Verified & Formatted
+
+SRS-SF-01
+
+Section 2.4.1 (Screen Flow)
+
+✓ Verified & Formatted
+
+SRS-ERD-01
+
+Section 2.5 (Logical ERD)
+
+✓ Verified & Formatted
+
+
+
+
+
+
+
+7. Requirement Appendix
+7.1 Business Rules (BR-01 to BR-20)
+
+
+Rule ID
+
+Business Rule Statement & Enforced Logic
+
+BR-AUTH-01
+
+Passwords must be hashed using BCryptPasswordEncoder with a strength factor of at least 12.
+
+BR-AUTH-02
+
+JWT tokens must expire within 24 hours. Refresh token rotation is strictly required upon renewal.
+
+BR-ROOM-01
+
+Room locking duration is capped at exactly 15 minutes. Unpaid locks auto-expire via background sweeper.
+
+BR-ROOM-02
+
+Room availability check must use optimistic locking (@Version) to prevent double reservations.
+
+BR-PAY-01
+
+Payment transactions are idempotent. Duplicate webhook calls with the same tx_ref must be ignored.
+
+BR-PAY-02
+
+Refund requests must be processed via the Refund Policy Engine based on cancellation lead days.
+
+BR-WALL-01
+
+Customer wallet balances cannot be negative. Overdraft attempts must be immediately rejected.
+
+BR-WALL-02
+
+Daily spending limit caps configured by users must be evaluated synchronously before deducting funds.
+
+BR-MEAL-01
+
+Meal tickets can only be redeemed within their specified validity window and designated restaurant area.
+
+BR-MEAL-02
+
+Physical wristbands linked to a guest meal wallet must be deactivated immediately upon guest check-out.
+
+BR-VOUCH-01
+
+Voucher codes are single-use per customer unless specified as multi-use promotional campaigns.
+
+BR-VOUCH-02
+
+Voucher discount amounts cannot exceed the configured max_discount_amount cap.
+
+BR-LOYAL-01
+
+Loyalty points earned equal 1 point per 100,000 VND spent on completed hotel bookings.
+
+BR-LOYAL-02
+
+Tier progression thresholds: BRONZE (0), SILVER (500), GOLD (1500), PLATINUM (3000 points).
+
+BR-ADMIN-01
+
+Hotel creation and major pricing edits require dual-authorization (Maker-Checker approval by Director).
+
+BR-AUD-01
+
+All financial payments, payouts, and user role modifications must produce append-only audit records.
+
+BR-SEC-01
+
+CORS origins must be restricted to explicitly authorized domain origins in production.
+
+BR-SEC-02
+
+System endpoints outside /api/auth/** and /api/rooms/search require a valid Bearer JWT.
+
+BR-BATCH-01
+
+Excel batch booking imports must validate row-level constraints before committing group allocations.
+
+BR-CANC-01
+
+Guest cancellation requests submitted < 24h before check-in incur a 100% room penalty fee.
+7.2 System Messages (MSG-01 to MSG-15)
+
+
+Message ID
+
+System Toast / Validation Message Text
+
+MSG-01
+
+Invalid username or password.
+
+MSG-02
+
+Your account has been suspended. Please contact customer support.
+
+MSG-03
+
+Your session has expired. Please log in again.
+
+MSG-04
+
+Check-out date must be strictly after check-in date.
+
+MSG-05
+
+The selected room is currently locked by another guest. Please select another room.
+
+MSG-06
+
+Room lock expired. Please restart the reservation process.
+
+MSG-07
+
+Payment completed successfully. Your booking reference is {booking_code}.
+
+MSG-08
+
+Payment failed or was cancelled by user.
+
+MSG-09
+
+Insufficient wallet balance. Please top up your wallet.
+
+MSG-10
+
+Transaction exceeds your configured daily spending limit.
+
+MSG-11
+
+Meal ticket successfully redeemed. Welcome to the dining area.
+
+MSG-12
+
+Invalid or expired meal ticket code.
+
+MSG-13
+
+Voucher code applied successfully.
+
+MSG-14
+
+Voucher code has expired or reached its maximum redemptions.
+
+MSG-15
+
+Hotel modification request submitted for Director approval.
+7.3 Other Requirements / Global Constraints
+• Compliance: Enforce Vietnamese personal data protection privacy guidelines.
+• Hardware: POS QR scanner devices must communicate via standard HID keyboard emulation protocol.
+• Timezone: All application server timestamps must be persisted in UTC and converted to GMT+7 (Asia/Ho_Chi_Minh) for client display.

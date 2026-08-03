@@ -25,9 +25,24 @@ public class DataInitializer implements CommandLineRunner {
     private final HotelRepository hotelRepository;
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final org.springframework.jdbc.core.JdbcTemplate jdbcTemplate;
 
     @Override
     public void run(String... args) throws Exception {
+        log.info("Cleaning up failed test bookings from CSDL...");
+        try {
+            jdbcTemplate.execute("DELETE FROM room_locks WHERE booking_id IN (SELECT booking_id FROM bookings WHERE status = 'FAILED' AND booking_code NOT LIKE 'BK-1%')");
+            jdbcTemplate.execute("DELETE FROM booking_rooms WHERE booking_id IN (SELECT booking_id FROM bookings WHERE status = 'FAILED' AND booking_code NOT LIKE 'BK-1%')");
+            jdbcTemplate.execute("DELETE FROM payments WHERE booking_id IN (SELECT booking_id FROM bookings WHERE status = 'FAILED' AND booking_code NOT LIKE 'BK-1%')");
+            jdbcTemplate.execute("DELETE FROM reviews WHERE booking_id IN (SELECT booking_id FROM bookings WHERE status = 'FAILED' AND booking_code NOT LIKE 'BK-1%')");
+            jdbcTemplate.execute("DELETE FROM meal_tickets WHERE booking_id IN (SELECT booking_id FROM bookings WHERE status = 'FAILED' AND booking_code NOT LIKE 'BK-1%')");
+            jdbcTemplate.execute("DELETE FROM refund_audit_logs WHERE booking_id IN (SELECT booking_id FROM bookings WHERE status = 'FAILED' AND booking_code NOT LIKE 'BK-1%')");
+            jdbcTemplate.execute("DELETE FROM bookings WHERE status = 'FAILED' AND booking_code NOT LIKE 'BK-1%'");
+            log.info("Cleanup of failed test bookings completed successfully.");
+        } catch (Exception e) {
+            log.warn("Failed to clean up test bookings: {}", e.getMessage());
+        }
+
         if (hotelRepository.count() == 0) {
             log.info("Seeding initial Hotels, Rooms, and Images for H2 database...");
             seedHotelsAndRooms();

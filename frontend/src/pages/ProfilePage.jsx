@@ -48,6 +48,7 @@ export default function ProfilePage() {
   // E-Ticket Modal State
   const [selectedTicketBookingId, setSelectedTicketBookingId] = useState(null);
   const [selectedDetailBookingId, setSelectedDetailBookingId] = useState(null);
+  const [bookingFilter, setBookingFilter] = useState('ALL');
 
   // Vouchers state
   const [vouchers, setVouchers] = useState([]);
@@ -121,7 +122,11 @@ export default function ProfilePage() {
     setBookingsLoading(true);
     try {
       const res = await BookingService.getMyBookingHistory(0, 100);
-      setBookings(res.content || []);
+      const allBookings = res.content || [];
+      const successfulBookings = allBookings.filter(
+        b => b.status !== 'PENDING' && b.status !== 'FAILED'
+      );
+      setBookings(successfulBookings);
     } catch (err) {
       console.error("Failed to fetch booking history:", err);
     } finally {
@@ -685,6 +690,9 @@ export default function ProfilePage() {
                       statusColor = "text-amber-600 bg-amber-50 border-amber-100 animate-pulse";
                     } else if (booking.status === 'CONFIRMED' || booking.status === 'COMPLETED') {
                       statusColor = "text-emerald-650 bg-emerald-50 border-emerald-100";
+                    } else if (booking.status === 'FAILED') {
+                      statusColor = "text-red-700 bg-red-50 border-red-200 font-bold";
+                      statusLabel = "FAILED (Payment Error)";
                     } else if (booking.status === 'CANCELLED') {
                       if (booking.paymentStatus === 'REFUND_PENDING') {
                         statusColor = "text-amber-700 bg-amber-50 border-amber-200";
@@ -702,6 +710,8 @@ export default function ProfilePage() {
                       if (!dateStr) return '';
                       return dateStr.split('T')[0];
                     };
+
+                    const displayTotalPrice = booking.finalPrice != null ? booking.finalPrice : (booking.totalAmount - (booking.discountAmount || 0));
 
                     return (
                       <div key={booking.bookingId} className="border border-[#f0f0f5] rounded-2xl p-5 hover:shadow-[0_4px_20px_rgba(0,0,0,0.03)] transition-all">
@@ -727,37 +737,31 @@ export default function ProfilePage() {
                           </div>
                           <div>
                             <span className="text-[9px] uppercase tracking-wider text-[#86868b] block font-semibold">Total Price</span>
-                            <span className="text-[#1d1d1f] font-bold mt-0.5 block">${(booking.totalAmount - (booking.discountAmount || 0)).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
+                            <span className="text-[#1d1d1f] font-bold mt-0.5 block">${Number(displayTotalPrice || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
                           </div>
                           <div>
                             <span className="text-[9px] uppercase tracking-wider text-[#86868b] block font-semibold">Paid Amount</span>
-                            <span className="text-[#1A3B85] font-bold mt-0.5 block">${(booking.paidAmount || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
+                            <span className="text-[#1A3B85] font-bold mt-0.5 block">${Number(booking.paidAmount || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
                           </div>
                         </div>
 
                         <div className="mt-4 pt-3 border-t border-[#f5f5fa] flex flex-wrap justify-end gap-2">
-                          <button
-                            onClick={() => setSelectedDetailBookingId(booking.bookingId)}
-                            className="px-3 py-1 rounded-full bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200 text-[10px] font-bold transition-all cursor-pointer flex items-center gap-1"
-                          >
-                            🔍 Xem Chi Tiết
-                          </button>
-                          
+                          {!['CANCELLED', 'FAILED', 'REFUNDED', 'EXPIRED'].includes(booking.status?.toUpperCase()) && (
+                            <button
+                              onClick={() => setSelectedTicketBookingId(booking.bookingId)}
+                              className="px-3 py-1 rounded-full bg-amber-500/10 text-amber-700 border border-amber-500/30 hover:bg-amber-500/20 text-[10px] font-bold transition-all cursor-pointer flex items-center gap-1"
+                            >
+                              🎟️ Xem Vé Check-in
+                            </button>
+                          )}
+
                           {(booking.status === 'CONFIRMED' || booking.status === 'COMPLETED') && (
-                            <>
-                              <button
-                                onClick={() => setSelectedTicketBookingId(booking.bookingId)}
-                                className="px-3 py-1 rounded-full bg-amber-500/10 text-amber-600 border border-amber-500/30 hover:bg-amber-500/20 text-[10px] font-bold transition-all cursor-pointer flex items-center gap-1"
-                              >
-                                🎟️ Xem Vé Check-in (Mã QR)
-                              </button>
-                              <button
-                                onClick={() => handleDownloadInvoice(booking.bookingId, booking.bookingCode)}
-                                className="px-3 py-1 rounded-full bg-blue-50 text-blue-600 border border-blue-100 hover:bg-blue-100 text-[10px] font-bold transition-all cursor-pointer"
-                              >
-                                📄 Download Invoice PDF
-                              </button>
-                            </>
+                            <button
+                              onClick={() => handleDownloadInvoice(booking.bookingId, booking.bookingCode)}
+                              className="px-3 py-1 rounded-full bg-blue-50 text-blue-600 border border-blue-100 hover:bg-blue-100 text-[10px] font-bold transition-all cursor-pointer"
+                            >
+                              📄 Download Invoice PDF
+                            </button>
                           )}
                           
                           {booking.status === 'COMPLETED' && !booking.isReviewed && (

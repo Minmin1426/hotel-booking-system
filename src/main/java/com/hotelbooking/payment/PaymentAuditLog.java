@@ -17,7 +17,7 @@ public class PaymentAuditLog {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "log_id")
+    @Column(name = "audit_id")
     private Long auditId;
 
     @Column(name = "transaction_id", length = 100)
@@ -26,7 +26,7 @@ public class PaymentAuditLog {
     @Column(name = "action", nullable = false, length = 100)
     private String action;
 
-    @Column(name = "request_payload", columnDefinition = "TEXT")
+    @Column(name = "payload", columnDefinition = "TEXT")
     private String requestPayload;
 
     @Column(name = "response_payload", columnDefinition = "TEXT")

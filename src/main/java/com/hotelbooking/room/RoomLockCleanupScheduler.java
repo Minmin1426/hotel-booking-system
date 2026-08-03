@@ -1,6 +1,8 @@
 package com.hotelbooking.room;
 import com.hotelbooking.booking.Booking;
 import com.hotelbooking.booking.BookingRepository;
+import com.hotelbooking.voucher.UserVoucher;
+import com.hotelbooking.voucher.UserVoucherRepository;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -18,6 +20,7 @@ public class RoomLockCleanupScheduler {
 
     private final RoomLockRepository roomLockRepository;
     private final BookingRepository bookingRepository;
+    private final UserVoucherRepository userVoucherRepository;
 
     // Run every minute (60000 ms) to clean up expired room locks
     @Scheduled(fixedDelay = 60000)
@@ -35,6 +38,22 @@ public class RoomLockCleanupScheduler {
                         log.info("Booking {} has expired locks. Marking booking status as FAILED.", booking.getBookingCode());
                         booking.setStatus("FAILED");
                         bookingRepository.save(booking);
+
+                        // Revert Voucher usage if booking had a voucher
+                        if (booking.getVoucher() != null) {
+                            java.util.Optional<UserVoucher> uvOpt = userVoucherRepository.findByUserUserIdAndVoucherVoucherId(
+                                booking.getUser().getUserId(), 
+                                booking.getVoucher().getVoucherId()
+                            );
+                            if (uvOpt.isPresent()) {
+                                UserVoucher uv = uvOpt.get();
+                                uv.setIsUsed(false);
+                                uv.setUsedAt(null);
+                                uv.setBooking(null);
+                                userVoucherRepository.save(uv);
+                                log.info("Reverted voucher {} for expired booking {}", booking.getVoucher().getCode(), booking.getBookingCode());
+                            }
+                        }
                     }
                     roomLockRepository.delete(lock);
                 }

@@ -49,6 +49,8 @@ const BookingDetailModal = ({ bookingId, isOpen, onClose, onOpenTicket }) => {
   const [detail, setDetail] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [sendingEmail, setSendingEmail] = useState(false);
+  const [emailSentMsg, setEmailSentMsg] = useState('');
 
   useEffect(() => {
     if (isOpen && bookingId) {
@@ -60,6 +62,7 @@ const BookingDetailModal = ({ bookingId, isOpen, onClose, onOpenTicket }) => {
     try {
       setLoading(true);
       setError(null);
+      setEmailSentMsg('');
       const data = await BookingService.getTicket(bookingId);
       setDetail(data || null);
     } catch (err) {
@@ -67,6 +70,21 @@ const BookingDetailModal = ({ bookingId, isOpen, onClose, onOpenTicket }) => {
       setError("Không thể tải chi tiết đơn đặt phòng. Vui lòng thử lại.");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleResendEmail = async () => {
+    try {
+      setSendingEmail(true);
+      setEmailSentMsg('');
+      await BookingService.resendTicketEmail(bookingId);
+      setEmailSentMsg('Đã gửi lại email xác nhận / vé thành công!');
+      setTimeout(() => setEmailSentMsg(''), 4000);
+    } catch (err) {
+      console.error("Error resending email:", err);
+      alert("Không thể gửi lại email lúc này. Vui lòng thử lại sau.");
+    } finally {
+      setSendingEmail(false);
     }
   };
 
@@ -268,26 +286,52 @@ const BookingDetailModal = ({ bookingId, isOpen, onClose, onOpenTicket }) => {
                 <div className="space-y-2.5">
                   <div className="flex justify-between text-slate-650">
                     <span>Tổng giá tiền gốc:</span>
-                    <span className="font-medium text-slate-850">${Number(detail.totalPrice).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
+                    <span className="font-medium text-slate-850">
+                      ${Number(detail.totalAmount || detail.totalPrice || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                    </span>
                   </div>
+
+                  {(detail.voucherCode || Number(detail.discountAmount) > 0) && (
+                    <div className="flex justify-between text-emerald-600 font-medium">
+                      <span>Giảm giá Voucher {detail.voucherCode ? `(${detail.voucherCode})` : ''}:</span>
+                      <span>
+                        -${Number(detail.discountAmount || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                      </span>
+                    </div>
+                  )}
+
+                  {(Number(detail.serviceFee) > 0 || Number(detail.taxes) > 0) && (
+                    <div className="flex justify-between text-slate-650">
+                      <span>Phí dịch vụ & Thuế:</span>
+                      <span>
+                        +${(Number(detail.serviceFee || 0) + Number(detail.taxes || 0)).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                      </span>
+                    </div>
+                  )}
                   
                   {/* Paid amount & remaining details */}
-                  <div className="pt-2.5 border-t border-slate-100 flex justify-between font-bold text-slate-900 text-sm">
-                    <span>Tổng cộng (Đã áp dụng Voucher/Phí):</span>
-                    <span className="text-[#1A3B85]">${Number(detail.totalPrice).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
+                  <div className="pt-2.5 border-t border-slate-200/80 flex justify-between font-bold text-slate-900 text-sm">
+                    <span>Tổng cộng (Thành tiền):</span>
+                    <span className="text-[#1A3B85]">
+                      ${Number(detail.finalPrice || detail.totalPrice || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                    </span>
                   </div>
 
                   <div className="flex justify-between text-slate-650 pt-1.5">
                     <span className="flex items-center gap-1">
                       <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Số tiền đã thanh toán:
                     </span>
-                    <span className="font-bold text-emerald-600">${Number(detail.paidAmount).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
+                    <span className="font-bold text-emerald-600">
+                      ${Number(detail.paidAmount || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                    </span>
                   </div>
 
                   {Number(detail.remainingAmount) > 0 ? (
                     <div className="p-3 bg-amber-50 border border-amber-100 rounded-2xl flex items-center justify-between text-xs font-bold mt-2">
                       <span className="text-amber-800">Số tiền còn lại cần thanh toán tại quầy:</span>
-                      <span className="text-amber-700 font-mono">${Number(detail.remainingAmount).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
+                      <span className="text-amber-700 font-mono">
+                        ${Number(detail.remainingAmount).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                      </span>
                     </div>
                   ) : (
                     <div className="p-3 bg-emerald-50 border border-emerald-100 rounded-2xl flex items-center justify-between text-xs font-bold mt-2">
@@ -299,9 +343,29 @@ const BookingDetailModal = ({ bookingId, isOpen, onClose, onOpenTicket }) => {
               </div>
             </div>
 
-            {/* Bottom Note */}
-            <div className="text-center pt-2 text-[10px] text-slate-400">
-              Cảm ơn bạn đã lựa chọn dịch vụ của Luxury Stay. Nếu cần hỗ trợ khẩn cấp, vui lòng liên hệ lễ tân khách sạn.
+            {/* Email Sent Feedback Banner */}
+            {emailSentMsg && (
+              <div className="p-3 bg-emerald-50 border border-emerald-100 rounded-2xl text-center text-emerald-700 text-xs font-bold animate-pulse">
+                {emailSentMsg}
+              </div>
+            )}
+
+            {/* Resend Email Button & Action Footer */}
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-3 border-t border-slate-100">
+              <button
+                onClick={handleResendEmail}
+                disabled={sendingEmail}
+                className="w-full sm:w-auto px-4 py-2.5 bg-blue-50 hover:bg-blue-100 text-[#1A3B85] border border-blue-200 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition cursor-pointer disabled:opacity-50"
+              >
+                ✉️ {sendingEmail ? 'Đang gửi...' : 'Gửi Lại Email Vé / Xác Nhận'}
+              </button>
+              
+              <button
+                onClick={onClose}
+                className="w-full sm:w-auto px-6 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition cursor-pointer"
+              >
+                Đóng
+              </button>
             </div>
 
           </div>

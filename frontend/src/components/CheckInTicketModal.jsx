@@ -213,6 +213,7 @@ const CheckInTicketModal = ({ bookingId, isOpen, onClose }) => {
             {(() => {
               const isDeposit = ticket.isDeposit || (Number(ticket.remainingAmount) > 0 && Number(ticket.paidAmount) > 0);
               const depositRatio = ticket.depositRatio || (isDeposit ? Math.round((Number(ticket.paidAmount) / Number(ticket.totalPrice)) * 100) : 0);
+              const hasVoucher = ticket.voucherCode || Number(ticket.discountAmount) > 0;
               
               return (
                 <div className="bg-slate-50 border border-slate-100 rounded-2xl p-5 space-y-3">
@@ -225,25 +226,54 @@ const CheckInTicketModal = ({ bookingId, isOpen, onClose }) => {
                     </span>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4 text-xs">
-                    <div>
-                      <span className="text-slate-400">Tổng tiền đơn:</span>
-                      <p className="font-bold text-slate-800 mt-0.5">
-                        {Number(ticket.totalPrice).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})} $
-                      </p>
+                  {ticket.status === 'FAILED' && (
+                    <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-xs text-red-700 font-bold flex items-center gap-2">
+                      ⚠️ Giao dịch thanh toán thất bại hoặc đã bị hủy.
                     </div>
-                    <div>
-                      <span className="text-slate-400">
+                  )}
+
+                  {ticket.status === 'CANCELLED' && (
+                    <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-800 font-bold flex items-center gap-2">
+                      ❌ Đơn đặt phòng này đã được hủy ({ticket.paymentStatus === 'REFUNDED' ? 'Đã hoàn tiền' : ticket.paymentStatus === 'REFUND_PENDING' ? 'Chờ hoàn tiền' : 'Đã hủy'}).
+                    </div>
+                  )}
+
+                  <div className="space-y-2 text-xs">
+                    <div className="flex justify-between text-slate-600">
+                      <span>Giá tiền gốc:</span>
+                      <span className="font-semibold text-slate-800">
+                        {Number(ticket.totalAmount || ticket.totalPrice || 0).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})} $
+                      </span>
+                    </div>
+
+                    {hasVoucher && (
+                      <div className="flex justify-between text-emerald-600 font-medium">
+                        <span>Giảm giá Voucher {ticket.voucherCode ? `(${ticket.voucherCode})` : ''}:</span>
+                        <span>
+                          -{Number(ticket.discountAmount || 0).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})} $
+                        </span>
+                      </div>
+                    )}
+
+                    <div className="flex justify-between text-slate-900 font-bold pt-1.5 border-t border-slate-200/60">
+                      <span>Tổng tiền đơn (Thành tiền):</span>
+                      <span className="text-slate-900">
+                        {Number(ticket.finalPrice || ticket.totalPrice || 0).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})} $
+                      </span>
+                    </div>
+
+                    <div className="flex justify-between text-emerald-600 font-bold pt-1">
+                      <span>
                         Đã thanh toán online{isDeposit && depositRatio ? ` (Đặt cọc ${depositRatio}%)` : ''}:
                       </span>
-                      <p className="font-bold text-emerald-600 mt-0.5">
-                        {Number(ticket.paidAmount).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})} $
-                      </p>
+                      <span>
+                        {Number(ticket.paidAmount || 0).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})} $
+                      </span>
                     </div>
                   </div>
 
                   {Number(ticket.remainingAmount) > 0 && (
-                    <div className="bg-amber-50 border border-amber-100 rounded-xl p-3 flex items-center justify-between text-xs">
+                    <div className="bg-amber-50 border border-amber-100 rounded-xl p-3 flex items-center justify-between text-xs mt-2">
                       <div className="flex items-center text-amber-800 font-bold">
                         <Icons.CreditCard className="w-4 h-4 mr-1.5 text-amber-600" />
                         Thanh toán thêm tại quầy:
