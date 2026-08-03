@@ -47,7 +47,7 @@ export const HotelService = {
 
     const response = await fetch(`${API_BASE_URL}/hotels?${queryParams.toString()}`, {
       method: "GET",
-      headers: { "Content-Type": "application/json" }
+      headers: getHeaders()
     });
 
     if (!response.ok) {

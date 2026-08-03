@@ -40,6 +40,7 @@ public interface RoomRepository extends JpaRepository<Room, Long> {
 
     boolean existsByHotel_HotelId(Long hotelId);
 
+    @org.springframework.data.jpa.repository.EntityGraph(attributePaths = {"hotel"})
     List<Room> findByHotel_HotelId(Long hotelId);
 
     boolean existsByHotel_HotelIdAndRoomNumber(Long hotelId, String roomNumber);

@@ -19,6 +19,7 @@ export default function StaffRoomPage() {
   const [selectedHotelId, setSelectedHotelId] = useState('');
   const [rooms, setRooms] = useState([]);
   const [roomsLoading, setRoomsLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [userRole, setUserRole] = useState(() => sessionStorage.getItem("userRole") || '');
 
   // Filters state
@@ -38,15 +39,22 @@ export default function StaffRoomPage() {
       if (hotelList.length > 0) {
         setHotels(hotelList);
         setSelectedHotelId(String(hotelList[0].id));
+      } else {
+        setRoomsLoading(false);
       }
     }).catch(err => {
       console.warn("Fetch hotels notice:", err);
+      setError(err.message || "Không thể tải danh sách khách sạn.");
+      setRoomsLoading(false);
     });
   }, []);
 
   // Fetch rooms function
   const loadRoomsData = async () => {
-    if (!selectedHotelId) return;
+    if (!selectedHotelId) {
+      setRoomsLoading(false);
+      return;
+    }
     setRoomsLoading(true);
     setError(null);
     try {
