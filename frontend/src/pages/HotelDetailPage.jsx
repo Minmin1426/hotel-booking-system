@@ -1353,6 +1353,13 @@ function HotelDetailPage() {
           {/* TAB 1: SINGLE ROOM SEARCH & BOOKING */}
           {detailTab === 'single' && (
             <div className="space-y-6">
+              <div className="p-4 rounded-2xl bg-amber-50/80 border border-amber-200/80 flex items-start gap-3 text-amber-900 text-xs font-medium shadow-sm">
+                <span className="text-base leading-none">💡</span>
+                <span>
+                  <strong>Lưu ý về suất ăn:</strong> Giá phòng đặt lẻ là <em>giá thuần lưu trú</em> và <u>chưa bao gồm vé ăn Buffet miễn phí</u>. Quý khách có nhu cầu sử dụng dịch vụ ăn uống vui lòng chọn mua thêm suất ăn lẻ tại <strong>Tab 🍽️ Vé Ăn Buffet</strong>.
+                </span>
+              </div>
+
               <form onSubmit={handleCheckAvailability} className="grid grid-cols-1 md:grid-cols-3 gap-6 items-end">
                 <div className="space-y-2">
                   <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Ngày Nhận Phòng (Check-in)</label>
@@ -1793,6 +1800,10 @@ function HotelDetailPage() {
                           <div>
                             <h3 className="text-2xl font-bold text-slate-800 tracking-tight">Guest Information</h3>
                             <p className="text-sm text-slate-500 mt-1">Please provide your details to ensure the best service.</p>
+                            <div className="mt-3 p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs font-medium flex items-center gap-2">
+                              <span>ℹ️</span>
+                              <span><strong>Lưu ý:</strong> Giá phòng lẻ thuần lưu trú, chưa bao gồm vé ăn Buffet miễn phí.</span>
+                            </div>
                           </div>
                           
                           <div className="space-y-5">
