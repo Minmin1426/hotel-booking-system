@@ -646,27 +646,49 @@ public class BookingTestCasesIntegrationTest {
                 .build();
         roomLockRepository.save(originalLock);
 
-        AdminUpdateBookingRequest updateRequest = AdminUpdateBookingRequest.builder()
-                .roomIds(List.of(room102.getRoomId())) // change to room 102
-                .checkInDate(checkIn.plusDays(1))
-                .checkOutDate(checkOut.plusDays(1))
-                .status("CONFIRMED")
+        // 1. Verify that attempting to change roomIds throws a bad request exception
+        AdminUpdateBookingRequest updateRoomRequest = AdminUpdateBookingRequest.builder()
+                .roomIds(List.of(room102.getRoomId()))
                 .build();
 
         mockMvc.perform(put("/api/v1/admin/bookings/" + booking.getBookingId())
                         .header("Authorization", adminToken)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(updateRequest)))
+                        .content(objectMapper.writeValueAsString(updateRoomRequest)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.message").value("Chỉnh sửa phòng không được phép. Vui lòng hủy/xóa đơn cũ và tạo đơn mới."));
+
+        // 2. Verify that attempting to change checkInDate throws a bad request exception
+        AdminUpdateBookingRequest updateCheckInRequest = AdminUpdateBookingRequest.builder()
+                .checkInDate(checkIn.plusDays(1))
+                .build();
+
+        mockMvc.perform(put("/api/v1/admin/bookings/" + booking.getBookingId())
+                        .header("Authorization", adminToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(updateCheckInRequest)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.message").value("Chỉnh sửa ngày check-in không được phép. Vui lòng hủy/xóa đơn cũ và tạo đơn mới."));
+
+        // 3. Verify that updating payment status with a reason works successfully (allowed override)
+        AdminUpdateBookingRequest validUpdateRequest = AdminUpdateBookingRequest.builder()
+                .paymentStatus("SUCCESS")
+                .paymentUpdateReason("Guest paid cash at reception counter")
+                .build();
+
+        mockMvc.perform(put("/api/v1/admin/bookings/" + booking.getBookingId())
+                        .header("Authorization", adminToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(validUpdateRequest)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value(200))
                 .andExpect(jsonPath("$.data.status").value("CONFIRMED"));
 
-        // Verify lock on room101 is released
-        List<RoomLock> locks = roomLockRepository.findAll();
-        assertTrue(locks.isEmpty());
-
         Booking updatedBooking = bookingRepository.findById(booking.getBookingId()).orElseThrow();
         assertEquals("CONFIRMED", updatedBooking.getStatus());
+        assertEquals("SUCCESS", updatedBooking.getPaymentStatus());
     }
 
     // ==========================================
@@ -952,5 +974,57 @@ public class BookingTestCasesIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.message").value(containsString("Booking is already cancelled")));
+    }
+
+    @Test
+    void test_TC_Checkout_Success() throws Exception {
+        LocalDate checkIn = LocalDate.now().plusDays(2);
+        LocalDate checkOut = checkIn.plusDays(3);
+
+        Booking booking = Booking.builder()
+                .bookingCode("BK-CHECKOUT-TEST-NEW")
+                .user(customer)
+                .hotel(hotel)
+                .checkInDate(checkIn.atStartOfDay())
+                .checkOutDate(checkOut.atStartOfDay())
+                .totalAmount(BigDecimal.valueOf(300))
+                .status("CHECKED_IN")
+                .build();
+        booking = bookingRepository.save(booking);
+
+        Payment payment = Payment.builder()
+                .booking(booking)
+                .paymentMethod("CASH")
+                .amount(BigDecimal.valueOf(300))
+                .status("PENDING")
+                .build();
+        paymentRepository.save(payment);
+
+        BookingRoom br = BookingRoom.builder()
+                .booking(booking)
+                .room(room101)
+                .quantity(1)
+                .priceAtBooking(room101.getPrice())
+                .build();
+        booking.setBookingRooms(List.of(br));
+        bookingRepository.save(booking);
+
+        // Make sure room starts as AVAILABLE
+        room101.setStatus("AVAILABLE");
+        roomRepository.save(room101);
+
+        UpdateBookingStatusRequest statusRequest = new UpdateBookingStatusRequest("CHECKED_OUT");
+
+        mockMvc.perform(patch("/api/v1/admin/bookings/" + booking.getBookingId() + "/status")
+                        .header("Authorization", receptionistToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(statusRequest)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value(200))
+                .andExpect(jsonPath("$.data.status").value("CHECKED_OUT"));
+
+        // Verify room status is updated to UNAVAILABLE
+        Room updatedRoom = roomRepository.findById(room101.getRoomId()).orElseThrow();
+        assertEquals("UNAVAILABLE", updatedRoom.getStatus());
     }
 }

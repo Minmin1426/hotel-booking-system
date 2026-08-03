@@ -921,6 +921,38 @@ public class BookingServiceImpl implements BookingService {
         Booking booking = bookingRepository.findById(bookingId)
                 .orElseThrow(() -> new ResourceNotFoundException("Booking not found with ID: " + bookingId));
 
+        // Do not allow editing check-in, check-out, room numbers, voucher, or booking status.
+        // If the user wants to change these details, they must cancel/delete the booking and create a new one.
+        if (request.getCheckInDate() != null && !request.getCheckInDate().equals(booking.getCheckInDate().toLocalDate())) {
+            throw new BusinessException("Chỉnh sửa ngày check-in không được phép. Vui lòng hủy/xóa đơn cũ và tạo đơn mới.");
+        }
+        if (request.getCheckOutDate() != null && !request.getCheckOutDate().equals(booking.getCheckOutDate().toLocalDate())) {
+            throw new BusinessException("Chỉnh sửa ngày check-out không được phép. Vui lòng hủy/xóa đơn cũ và tạo đơn mới.");
+        }
+        if (request.getRoomIds() != null && !request.getRoomIds().isEmpty()) {
+            List<Long> currentRoomIds = booking.getBookingRooms().stream()
+                    .map(br -> br.getRoom().getRoomId())
+                    .sorted()
+                    .collect(Collectors.toList());
+            List<Long> requestedRoomIds = request.getRoomIds().stream()
+                    .sorted()
+                    .collect(Collectors.toList());
+            if (!currentRoomIds.equals(requestedRoomIds)) {
+                throw new BusinessException("Chỉnh sửa phòng không được phép. Vui lòng hủy/xóa đơn cũ và tạo đơn mới.");
+            }
+        }
+        String currentVoucherCode = booking.getVoucher() != null ? booking.getVoucher().getCode() : null;
+        if (request.getVoucherCode() != null && !request.getVoucherCode().trim().isEmpty()) {
+            if (!request.getVoucherCode().equalsIgnoreCase(currentVoucherCode)) {
+                throw new BusinessException("Chỉnh sửa mã giảm giá không được phép. Vui lòng hủy/xóa đơn cũ và tạo đơn mới.");
+            }
+        } else if (currentVoucherCode != null && request.getVoucherCode() != null && request.getVoucherCode().trim().isEmpty()) {
+            throw new BusinessException("Chỉnh sửa mã giảm giá không được phép. Vui lòng hủy/xóa đơn cũ và tạo đơn mới.");
+        }
+        if (request.getStatus() != null && !request.getStatus().equalsIgnoreCase(booking.getStatus())) {
+            throw new BusinessException("Chỉnh sửa trạng thái đặt phòng không được phép. Vui lòng hủy/xóa đơn cũ và tạo đơn mới.");
+        }
+
         boolean checkDatesOrRoomsChanged = false;
         LocalDate checkIn = request.getCheckInDate() != null ? request.getCheckInDate() : booking.getCheckInDate().toLocalDate();
         LocalDate checkOut = request.getCheckOutDate() != null ? request.getCheckOutDate() : booking.getCheckOutDate().toLocalDate();
