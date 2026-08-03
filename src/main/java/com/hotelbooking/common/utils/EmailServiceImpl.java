@@ -372,6 +372,6 @@ public class EmailServiceImpl implements EmailService {
             fullName != null ? fullName : "Quý khách",
             otpCode
         );
-        sendEmailAsync(email, "Mã xác minh khôi phục mật khẩu - Luxury Stay", htmlContent);
+        sendEmailAsync(email, "Mã xác minh khôi phục mật khẩu - Luxury Stay", htmlContent, "otp-reset-" + email);
     }
 }
