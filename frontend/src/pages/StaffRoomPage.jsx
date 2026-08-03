@@ -1,5 +1,6 @@
 // src/pages/StaffRoomPage.jsx (Sơ Đồ Trạng Thái Phòng)
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
 import { HotelService } from '../services/HotelService';
@@ -220,7 +221,7 @@ export default function StaffRoomPage() {
             </p>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3">
             {hotels.length > 0 && (
               <select
                 value={selectedHotelId}
@@ -234,6 +235,20 @@ export default function StaffRoomPage() {
                 ))}
               </select>
             )}
+
+            <Link
+              to="/receptionist/group-checkin"
+              className="h-11 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center gap-1.5 shadow-sm transition-all cursor-pointer"
+            >
+              🔑 Check-in
+            </Link>
+
+            <Link
+              to="/receptionist/group-checkout"
+              className="h-11 px-4 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-bold text-xs flex items-center gap-1.5 shadow-sm transition-all cursor-pointer"
+            >
+              🚪 Check-out
+            </Link>
           </div>
         </div>
 
