@@ -137,16 +137,12 @@ function PaymentStatusPage({ status }) {
 
               <Link 
                 to="/profile?tab=bookings" 
-                className="w-full sm:w-auto px-6 py-3.5 rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 font-bold tracking-wide transition-all shadow-md flex items-center justify-center space-x-2"
+              <Link
+                to="/profile?tab=bookings"
+                className="w-full sm:w-auto px-6 py-3.5 rounded-2xl bg-[#0066cc] hover:bg-[#0055b3] text-white font-bold tracking-wide transition-all shadow-md flex items-center justify-center space-x-2"
               >
                 <Icons.Ticket />
-                <span>Xem phòng đã đặt</span>
-              </Link>
-              <Link
-                to="/profile?tab=tickets"
-                className="w-full sm:w-auto px-6 py-3.5 rounded-2xl bg-cyan-600 hover:bg-cyan-700 text-white font-bold tracking-wide transition-all shadow-md flex items-center justify-center space-x-2"
-              >
-                🎫 Xem Vé Ăn Của Tôi
+                <span>Xem Phòng Đã Đặt & Mã Nhận Phòng</span>
               </Link>
             </div>
           </div>

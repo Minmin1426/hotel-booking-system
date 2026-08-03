@@ -492,16 +492,6 @@ export default function ProfilePage() {
                 Vouchers
               </a>
               <a
-                href="?tab=tickets"
-                className={`flex-1 min-w-fit px-4 py-2.5 rounded-xl text-xs font-semibold text-center transition-all whitespace-nowrap ${
-                  activeTab === 'tickets'
-                    ? 'bg-[#0066cc] text-white shadow-sm'
-                    : 'text-[#86868b] hover:text-[#1d1d1f] hover:bg-[#f5f5f7]'
-                }`}
-              >
-                Meal Tickets
-              </a>
-              <a
                 href="?tab=shop"
                 className={`flex-1 min-w-fit px-4 py-2.5 rounded-xl text-xs font-semibold text-center transition-all whitespace-nowrap ${
                   activeTab === 'shop'
@@ -988,91 +978,7 @@ export default function ProfilePage() {
               )}
             </div>
           )}
-          {/* My Meal Tickets Tab */}
-          {activeTab === 'tickets' && !isAdmin && (
-            <div className="w-full bg-white p-[32px] md:p-[40px] rounded-[24px] border border-[#e3e3e8]/50 shadow-[0_10px_40px_rgba(0,0,0,0.02)] text-left animate-fade-in">
-              <div className="mb-8 flex justify-between items-center border-b border-[#f5f5f7] pb-6">
-                <div>
-                  <h2 className="text-2xl font-bold tracking-tight text-[#1d1d1f]">My Meal Tickets</h2>
-                  <p className="text-xs text-[#86868b] mt-1">Show these QR codes to the restaurant staff to redeem your buffet meals</p>
-                </div>
-                <button 
-                  onClick={loadTickets}
-                  disabled={ticketsLoading}
-                  className="px-4 py-2 rounded-full border border-[#d2d2d7] text-xs font-bold hover:bg-[#f5f5f7] active:scale-95 transition-all cursor-pointer bg-white"
-                >
-                  {ticketsLoading ? 'Refreshing...' : '🔄 Refresh'}
-                </button>
-              </div>
 
-              {error && (
-                <div className="text-red-500 text-center bg-red-50 py-2.5 rounded-xl mb-6 text-xs font-semibold">
-                  {error}
-                </div>
-              )}
-
-              {ticketsLoading && tickets.length === 0 ? (
-                <div className="text-center py-20 text-[#86868b] text-xs font-medium">
-                  Loading active meal tickets...
-                </div>
-              ) : tickets.length === 0 ? (
-                <div className="text-center py-16 text-[#86868b] text-xs italic bg-slate-50 border border-dashed border-slate-200 rounded-[20px] p-10">
-                  No meal tickets available. If you have confirmed bookings with meals, your tickets will appear here.
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {tickets.map((t) => {
-                    const statusColor = t.status === 'UNUSED' ? 'text-emerald-700 bg-emerald-50 border-emerald-200' : 'text-slate-500 bg-slate-50 border-slate-200';
-                    const expiryDate = t.expiresAt ? new Date(t.expiresAt).toLocaleDateString('vi-VN') : 'No expiry';
-                    
-                    return (
-                      <div 
-                        key={t.ticketId} 
-                        className={`bg-gradient-to-tr from-[#f9fafb] to-white border border-[#e8e8ed] rounded-3xl p-6 transition-all flex flex-col justify-between relative overflow-hidden hover:border-[#0066cc]/30 shadow-sm hover:shadow-md`}
-                      >
-                        {/* Cutouts for voucher ticket aesthetic */}
-                        <div className="absolute left-[-8px] top-1/2 -translate-y-1/2 w-4 h-6 bg-[#f5f7fa] border-r border-[#e8e8ed] rounded-r-full" />
-                        <div className="absolute right-[-8px] top-1/2 -translate-y-1/2 w-4 h-6 bg-[#f5f7fa] border-l border-[#e8e8ed] rounded-l-full" />
-                        
-                        <div>
-                          <div className="flex justify-between items-start gap-2 mb-2">
-                            <div>
-                              <span className="text-[10px] font-bold text-slate-400 block">TICKET #{t.ticketId}</span>
-                              <h4 className="text-lg font-bold text-slate-800 mt-1">{t.ticketTypeName || t.ticketType}</h4>
-                            </div>
-                            <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full border uppercase tracking-wider ${statusColor}`}>
-                              {t.status}
-                            </span>
-                          </div>
-
-                          <div className="space-y-1 mt-4 text-[11px] text-slate-500 font-medium">
-                            <p>👤 Người đặt: <span className="font-semibold text-slate-700">{t.userFullName}</span></p>
-                            {t.bookerPhone && <p>📞 SĐT: <span className="font-mono font-semibold text-slate-700">{t.bookerPhone}</span></p>}
-                            {t.bookerIdNumber && <p>🪪 CCCD: <span className="font-mono font-semibold text-slate-700">{t.bookerIdNumber}</span></p>}
-                            <p>📅 Ngày sử dụng: <span className="font-semibold text-slate-700">{expiryDate}</span> {t.session && <span className="text-amber-700 font-bold">({t.session})</span>}</p>
-                            {t.quantity && <p>🎟️ Số lượng vé: <span className="font-bold text-slate-900">{t.quantity} vé</span> {t.totalPrice && <span className="text-emerald-700 font-extrabold font-mono">(${(t.totalPrice).toFixed(0)})</span>}</p>}
-                            {t.bookingId && <p>🔖 Booking Ref: <span className="font-semibold text-slate-700">#{t.bookingId}</span></p>}
-                          </div>
-                        </div>
-
-                        <div className="mt-6 pt-4 border-t border-[#f5f5f7] flex justify-between items-center gap-3">
-                          <span className="text-[10px] font-mono font-bold text-amber-700">
-                            {t.orderCode || (t.qrCode ? t.qrCode.substring(0, 12) + '...' : '')}
-                          </span>
-                          <button
-                            onClick={() => handleShowQr(t)}
-                            className="px-4 py-2 rounded-xl bg-[#0066cc] hover:bg-[#0055b3] text-white text-xs font-bold shadow-sm active:scale-95 cursor-pointer transition-all flex items-center gap-1.5"
-                          >
-                            <span>📱</span> Show QR Code
-                          </button>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          )}
 
           {/* My Loyalty Tier Tab */}
           {activeTab === 'tier' && !isAdmin && (

@@ -2517,13 +2517,12 @@ function HotelDetailPage() {
               <div className="p-6 text-center space-y-6">
                 <div className="w-16 h-16 bg-amber-100 text-amber-600 rounded-full flex items-center justify-center text-3xl mx-auto shadow-inner">✓</div>
                 <div>
-                  <span className="text-[10px] font-black tracking-widest uppercase bg-emerald-100 text-emerald-800 px-3 py-1 rounded-full">ĐẶT VÉ BUFFET THÀNH CÔNG</span>
-                  <h3 className="text-2xl font-black text-slate-900 mt-2">Mã Vé Suất Ăn: {mealBookingSuccess.ticketCode}</h3>
-                  <p className="text-xs text-slate-500 mt-1">Vui lòng xuất trình mã QR Code này cho nhân viên nhà hàng tại sảnh khi đến dùng bữa.</p>
+                  <span className="text-[10px] font-black tracking-widest uppercase bg-emerald-100 text-emerald-800 px-3 py-1 rounded-full">ĐẶT DỊCH VỤ THÀNH CÔNG</span>
+                  <h3 className="text-2xl font-black text-slate-900 mt-2">Mã Đăng Ký: {mealBookingSuccess.ticketCode}</h3>
+                  <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto">Tất cả dịch vụ suất ăn sẽ được Lễ tân cấp vòng đeo tay vật lý trực tiếp khi quý khách hoàn tất thủ tục check-in tại khách sạn.</p>
                 </div>
-                <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 inline-block mx-auto shadow-inner">
-                  <img src={mealBookingSuccess.qrCodeUrl} alt="Mã QR Code vé ăn" className="w-44 h-44 mx-auto rounded-lg" />
-                  <div className="mt-2 text-sm font-black text-amber-700 font-mono tracking-widest">{mealBookingSuccess.orderCode}</div>
+                <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 inline-block mx-auto shadow-inner text-center">
+                  <div className="text-base font-black text-amber-700 font-mono tracking-widest px-6 py-3 bg-white rounded-xl border border-slate-200">{mealBookingSuccess.orderCode || mealBookingSuccess.ticketCode}</div>
                 </div>
                 <button type="button" onClick={() => { setShowMealModal(false); setMealBookingSuccess(null); }} className="w-full max-w-xs py-3.5 rounded-xl bg-slate-900 text-white font-bold text-xs uppercase tracking-wider hover:bg-slate-800 transition-colors mx-auto block cursor-pointer">Hoàn thành & Đóng</button>
               </div>

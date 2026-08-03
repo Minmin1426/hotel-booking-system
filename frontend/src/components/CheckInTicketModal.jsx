@@ -168,7 +168,7 @@ const CheckInTicketModal = ({ bookingId, isOpen, onClose }) => {
                 {ticket.checkinQrCode}
               </span>
               <p className="text-xs text-slate-500 mt-3 max-w-xs leading-relaxed">
-                Vui lòng cung cấp mã này cho nhân viên Lễ tân để nhận phòng của bạn.
+                Vui lòng cung cấp mã này cho Lễ tân khi đến nhận phòng để nhận chìa khóa và cấp vòng đeo tay vật lý.
               </p>
             </div>
 
