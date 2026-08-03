@@ -1429,6 +1429,9 @@ function HotelDetailPage() {
                           </div>
                           <h4 className="text-base font-bold text-slate-900 leading-tight">Phòng {room.roomType} Hạng Sang</h4>
                           <p className="text-xs text-slate-500">Trang bị điều hòa, hệ thống cách âm cao cấp, dịch vụ phòng 24/7.</p>
+                          <div className="mt-1">
+                            <span className="inline-block px-2.5 py-1 rounded-lg bg-amber-50 text-amber-800 border border-amber-200 text-[10px] font-bold">☕ Phòng thuần lưu trú (Chưa gồm vé ăn Buffet)</span>
+                          </div>
                         </div>
 
                         <div className="flex items-center justify-between pt-3 border-t border-slate-100">
@@ -1456,8 +1459,12 @@ function HotelDetailPage() {
                 )}
 
                 {!hasSearchedRooms && !roomsLoading && (
-                  <div className="py-12 text-center rounded-2xl border border-dashed border-slate-250 text-slate-500 text-xs bg-slate-50/50">
-                    Chưa chọn ngày tra cứu. Vui lòng chọn ngày Check-in/Check-out ở trên và nhấn Tra Cứu Phòng Trống.
+                  <div className="py-10 px-6 text-center rounded-2xl border border-dashed border-slate-300 text-slate-500 text-xs bg-slate-50/50 space-y-3">
+                    <p className="font-semibold text-slate-700">Chưa chọn ngày tra cứu. Vui lòng chọn ngày Check-in/Check-out ở trên và nhấn Tra Cứu Phòng Trống.</p>
+                    <div className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs font-bold shadow-sm">
+                      <span>💡</span>
+                      <span>Lưu ý: Giá phòng đặt lẻ là giá thuần lưu trú, chưa bao gồm vé ăn Buffet miễn phí. Bạn có thể mua vé ăn lẻ tại Tab 🍽️ Vé Ăn Buffet.</span>
+                    </div>
                   </div>
                 )}
               </div>
