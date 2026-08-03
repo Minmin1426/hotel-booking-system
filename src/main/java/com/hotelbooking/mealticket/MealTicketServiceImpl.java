@@ -35,6 +35,7 @@ public class MealTicketServiceImpl implements MealTicketService {
     private final GroupMembershipRepository membershipRepository;
     private final QrCodeGenerator qrCodeGenerator;
     private final com.hotelbooking.admin.CustomerActivityRecorder activityRecorder;
+    private final PhysicalWristbandRepository wristbandRepository;
 
     // ── AC-061: Issue ticket (booking auto-issue or loyalty tier benefit) ─────────
 
@@ -306,6 +307,92 @@ public class MealTicketServiceImpl implements MealTicketService {
             createTicket(booking.getUser(), booking, ticketType, (int) nights, null,
                     "Auto-issued for booking " + booking.getBookingCode(), "ISSUED");
         }
+    }
+
+    // ── Physical Wristband System Implementation ─────────────────────────────
+
+    @Override
+    @Transactional
+    public WristbandResponse issuePhysicalWristband(IssueWristbandRequest request, Long staffUserId) {
+        String cleanCode = request.getWristbandCode().trim().toUpperCase();
+        if (wristbandRepository.existsByWristbandCode(cleanCode)) {
+            throw new IllegalArgumentException("Wristband serial code already exists: " + cleanCode);
+        }
+
+        Booking booking = bookingRepository.findById(request.getBookingId())
+                .orElseThrow(() -> new ResourceNotFoundException("Booking", "id", request.getBookingId().toString()));
+
+        User staff = staffUserId != null ? userRepository.findById(staffUserId).orElse(null) : null;
+
+        PhysicalWristband wristband = PhysicalWristband.builder()
+                .wristbandCode(cleanCode)
+                .booking(booking)
+                .user(booking.getUser())
+                .colorCode(request.getColorCode() != null ? request.getColorCode().toUpperCase() : "BLUE")
+                .packageName(request.getPackageName() != null ? request.getPackageName() : "Breakfast Buffet")
+                .status("ACTIVE")
+                .issuedByStaff(staff)
+                .notes(request.getNotes())
+                .build();
+
+        PhysicalWristband saved = wristbandRepository.save(wristband);
+        log.info("Issued physical wristband {} for booking {}", saved.getWristbandCode(), booking.getBookingCode());
+        return mapToWristbandResponse(saved);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public WristbandResponse verifyWristband(String wristbandCode) {
+        PhysicalWristband wristband = wristbandRepository.findByWristbandCode(wristbandCode.trim().toUpperCase())
+                .orElseThrow(() -> new ResourceNotFoundException("PhysicalWristband", "code", wristbandCode));
+        return mapToWristbandResponse(wristband);
+    }
+
+    @Override
+    @Transactional
+    public WristbandResponse returnWristband(String wristbandCode) {
+        PhysicalWristband wristband = wristbandRepository.findByWristbandCode(wristbandCode.trim().toUpperCase())
+                .orElseThrow(() -> new ResourceNotFoundException("PhysicalWristband", "code", wristbandCode));
+
+        wristband.setStatus("RETURNED");
+        wristband.setReturnedAt(LocalDateTime.now());
+        PhysicalWristband updated = wristbandRepository.save(wristband);
+        log.info("Returned physical wristband {}", updated.getWristbandCode());
+        return mapToWristbandResponse(updated);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<WristbandResponse> getWristbandsByBooking(Long bookingId) {
+        return wristbandRepository.findByBookingBookingId(bookingId)
+                .stream()
+                .map(this::mapToWristbandResponse)
+                .toList();
+    }
+
+    private WristbandResponse mapToWristbandResponse(PhysicalWristband w) {
+        String guestName = w.getUser() != null ? w.getUser().getFullName() : "Guest";
+        String roomNumber = "N/A";
+        if (w.getBooking() != null && w.getBooking().getBookingRooms() != null && !w.getBooking().getBookingRooms().isEmpty()) {
+            if (w.getBooking().getBookingRooms().get(0).getRoom() != null) {
+                roomNumber = w.getBooking().getBookingRooms().get(0).getRoom().getRoomNumber();
+            }
+        }
+
+        return WristbandResponse.builder()
+                .wristbandId(w.getWristbandId())
+                .wristbandCode(w.getWristbandCode())
+                .bookingId(w.getBooking() != null ? w.getBooking().getBookingId() : null)
+                .bookingCode(w.getBooking() != null ? w.getBooking().getBookingCode() : null)
+                .guestName(guestName)
+                .roomNumber(roomNumber)
+                .colorCode(w.getColorCode())
+                .packageName(w.getPackageName())
+                .status(w.getStatus())
+                .issuedAt(w.getIssuedAt())
+                .returnedAt(w.getReturnedAt())
+                .notes(w.getNotes())
+                .build();
     }
 }
 

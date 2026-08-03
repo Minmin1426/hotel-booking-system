@@ -11,6 +11,7 @@ export default function Header({ fullName, role }) {
   const userRole = sessionStorage.getItem("userRole") || role;
   const isAdmin = userRole === 'ADMIN';
   const isDirector = userRole === 'DIRECTOR';
+  const isStaff = userRole === 'RECEPTIONIST' || userRole === 'HOUSEKEEPER' || userRole === 'RESTAURANT_STAFF' || userRole === 'STAFF';
 
   const getDisplayName = () => {
     if (fullName) return fullName;
@@ -37,23 +38,26 @@ export default function Header({ fullName, role }) {
       <div className="max-w-7xl mx-auto px-6 h-[72px] flex items-center justify-between">
         
         {/* Brand Logo & Name */}
-        <Link to="/" className="flex items-center gap-2 text-xl font-bold tracking-tight bg-gradient-to-r from-cyan-600 to-indigo-600 bg-clip-text text-transparent hover:opacity-90 transition-opacity">
-          <span>✨</span> {t('common.brandName')}
+        <Link to="/" className="flex items-center gap-2.5 text-xl font-extrabold tracking-tight text-slate-900 hover:opacity-90 transition-opacity">
+          <img src="/logo.png" alt="LuxuryStay" className="h-9 w-auto object-contain drop-shadow-sm" />
+          <span className="bg-gradient-to-r from-amber-600 via-amber-700 to-yellow-600 bg-clip-text text-transparent">{t('common.brandName')}</span>
         </Link>
 
         {/* Navigation Links & User Area */}
         <div className="flex items-center gap-6">
           <nav className="flex items-center gap-1.5 text-xs font-semibold text-[#86868b]">
-            <Link 
-              to="/" 
-              className={`px-4 py-2 rounded-full transition-all ${
-                window.location.pathname === '/' 
-                  ? 'bg-[#0066cc]/5 text-[#0066cc]' 
-                  : 'hover:text-[#1d1d1f] hover:bg-[#f5f5f7]'
-              }`}
-            >
-              {t('nav.findHotels')}
-            </Link>
+            {!isAdmin && !isDirector && !isStaff && (
+              <Link 
+                to="/" 
+                className={`px-4 py-2 rounded-full transition-all ${
+                  window.location.pathname === '/' 
+                    ? 'bg-[#0066cc]/5 text-[#0066cc]' 
+                    : 'hover:text-[#1d1d1f] hover:bg-[#f5f5f7]'
+                }`}
+              >
+                {t('nav.findHotels')}
+              </Link>
+            )}
 
             {isAuthenticated && (
               <>
@@ -118,20 +122,30 @@ export default function Header({ fullName, role }) {
                   </Link>
                 )}
 
-                {(userRole === 'HOUSEKEEPER' || userRole === 'RECEPTIONIST') && (
-                  <Link 
-                    to="/staff/rooms" 
-                    className={`px-4 py-2 rounded-full transition-all ${
-                      window.location.pathname === '/staff/rooms' 
-                        ? 'bg-[#0066cc]/5 text-[#0066cc]' 
-                        : 'hover:text-[#1d1d1f] hover:bg-[#f5f5f7]'
-                    }`}
-                  >
-                    {t('nav.roomStatus')}
+                {userRole === 'HOUSEKEEPER' && (
+                  <Link to="/staff/rooms" className={`px-3 py-2 rounded-full transition-all ${window.location.pathname === '/staff/rooms' ? 'bg-[#0066cc]/5 text-[#0066cc]' : 'hover:text-[#1d1d1f] hover:bg-[#f5f5f7]'}`}>
+                    Trạng Thái Phòng
                   </Link>
                 )}
 
-                {!isAdmin && !isDirector && userRole !== 'HOUSEKEEPER' && userRole !== 'RECEPTIONIST' && (
+                {userRole === 'RECEPTIONIST' && (
+                  <>
+                    <Link to="/staff/rooms" className={`px-3 py-2 rounded-full transition-all ${window.location.pathname === '/staff/rooms' ? 'bg-[#0066cc]/5 text-[#0066cc]' : 'hover:text-[#1d1d1f] hover:bg-[#f5f5f7]'}`}>
+                      Trạng Thái Phòng
+                    </Link>
+                    <Link to="/receptionist/group-bookings" className={`px-3 py-2 rounded-full transition-all ${window.location.pathname === '/receptionist/group-bookings' ? 'bg-[#0066cc]/5 text-[#0066cc]' : 'hover:text-[#1d1d1f] hover:bg-[#f5f5f7]'}`}>
+                      Tiếp nhận
+                    </Link>
+                  </>
+                )}
+
+                {(userRole === 'RESTAURANT_STAFF' || userRole === 'STAFF') && (
+                  <Link to="/staff/restaurant" className={`px-4 py-2 rounded-full transition-all ${window.location.pathname === '/staff/restaurant' ? 'bg-[#0066cc]/5 text-[#0066cc]' : 'hover:text-[#1d1d1f] hover:bg-[#f5f5f7]'}`}>
+                    🍷 Quản Lý Đặt Bàn Nhà Hàng
+                  </Link>
+                )}
+
+                {!isAdmin && !isDirector && !isStaff && (
                   <>
                     <Link 
                       to="/profile?tab=bookings" 
@@ -152,16 +166,6 @@ export default function Header({ fullName, role }) {
                       }`}
                     >
                       {t('nav.myVouchers')}
-                    </Link>
-                    <Link 
-                      to="/profile?tab=tickets" 
-                      className={`px-4 py-2 rounded-full transition-all ${
-                        currentPath.includes('tab=tickets') 
-                          ? 'bg-[#0066cc]/5 text-[#0066cc]' 
-                          : 'hover:text-[#1d1d1f] hover:bg-[#f5f5f7]'
-                      }`}
-                    >
-                      {t('nav.myTickets')}
                     </Link>
                   </>
                 )}

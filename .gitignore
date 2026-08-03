@@ -36,3 +36,5 @@ yarn-error.log*
 apache-maven-3.9.8/
 maven.zip
 run-backend.*
+*.bak*
+run-backend.bat

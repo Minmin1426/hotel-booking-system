@@ -204,26 +204,45 @@ export default function ProfilePage() {
     }
   };
 
-  // ── Loyalty tier loading ────────────────────────────────────────────────
+  const [wristbands, setWristbands] = useState([]);
 
   const loadTickets = async () => {
     setTicketsLoading(true);
     setError(null);
-    let apiTickets = [];
     try {
       const token = sessionStorage.getItem("accessToken");
+      if (!token) {
+        setWristbands([]);
+        return;
+      }
       const baseApiUrl = import.meta.env.VITE_API_URL || (window.location.origin.includes("localhost") ? "http://localhost:8080/api/v1" : "https://hotel-booking-system-0wv2.onrender.com/api/v1");
-      const response = await fetch(`${baseApiUrl}/users/me/meal-tickets?size=100`, {
-        headers: {
-          "Authorization": `Bearer ${token}`
-        }
+      const response = await fetch(`${baseApiUrl}/bookings/my-bookings`, {
+        headers: { "Authorization": `Bearer ${token}` }
       });
       if (response.ok) {
         const data = await response.json();
-        apiTickets = data.data?.content || data.content || [];
+        const bookings = data.data?.content || data.content || (Array.isArray(data.data) ? data.data : []);
+        let allWbs = [];
+        for (const b of bookings) {
+          try {
+            const wbRes = await fetch(`${baseApiUrl}/admin/wristbands/booking/${b.bookingId}`, {
+              headers: { "Authorization": `Bearer ${token}` }
+            });
+            if (wbRes.ok) {
+              const wbData = await wbRes.json();
+              if (wbData.data) allWbs = allWbs.concat(wbData.data);
+            }
+          } catch (e) {}
+        }
+        setWristbands(allWbs);
       }
     } catch (err) {
-      console.warn("Could not fetch API meal tickets:", err);
+      console.warn("Could not fetch tickets or wristbands:", err);
+      setWristbands([]);
+    } finally {
+      setTicketsLoading(false);
+    }
+  };
     }
 
     let localTickets = [];
@@ -974,7 +993,6 @@ export default function ProfilePage() {
               )}
             </div>
           )}
-
           {/* My Meal Tickets Tab */}
           {activeTab === 'tickets' && !isAdmin && (
             <div className="w-full bg-white p-[32px] md:p-[40px] rounded-[24px] border border-[#e3e3e8]/50 shadow-[0_10px_40px_rgba(0,0,0,0.02)] text-left animate-fade-in">
