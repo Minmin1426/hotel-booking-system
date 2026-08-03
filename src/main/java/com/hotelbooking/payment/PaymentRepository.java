@@ -20,6 +20,8 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
 
     Optional<Payment> findByBooking_BookingId(Long bookingId);
 
+    Optional<Payment> findByBooking_BookingCode(String bookingCode);
+
     Optional<Payment> findByTransactionId(String transactionId);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)

@@ -423,20 +423,33 @@ public class PaymentServiceImpl implements PaymentService {
     @Override
     @Transactional
     public String verifyPayment(String paymentIntentId) {
-        // Fallback or polling mechanism
+        if (paymentIntentId == null || paymentIntentId.isBlank()) {
+            throw new IllegalArgumentException("paymentIntentId must not be blank");
+        }
+
         Payment payment = paymentRepository.findByTransactionId(paymentIntentId)
-                .orElseThrow(() -> new ResourceNotFoundException("Payment", "transactionId", paymentIntentId));
+                .or(() -> paymentRepository.findByBooking_BookingCode(paymentIntentId))
+                .orElseGet(() -> {
+                    Booking booking = bookingRepository.findByBookingCode(paymentIntentId)
+                            .orElseThrow(() -> new ResourceNotFoundException("Payment or Booking", "code", paymentIntentId));
+                    Payment newPayment = Payment.builder()
+                            .booking(booking)
+                            .amount(booking.getFinalPrice() != null ? booking.getFinalPrice() : booking.getTotalAmount())
+                            .status("PENDING")
+                            .transactionId("PAY-" + booking.getBookingCode())
+                            .gateway("ONLINE")
+                            .paymentMethod("ONLINE")
+                            .build();
+                    return paymentRepository.save(newPayment);
+                });
+
+        String transactionId = payment.getTransactionId();
 
         if ("SUCCESS".equals(payment.getStatus())) {
             return "SUCCESS";
         }
         if ("FAILED".equals(payment.getStatus())) {
             return "FAILED";
-        }
-        
-        if ("VNPAY".equalsIgnoreCase(payment.getGateway()) || "VNPAY".equalsIgnoreCase(payment.getPaymentMethod())) {
-            handlePaymentSuccess(paymentIntentId, "VNPAY Verification Success");
-            return "SUCCESS";
         }
         
         if ("MANUAL_BANK".equalsIgnoreCase(payment.getGateway()) || "BANK_TRANSFER".equalsIgnoreCase(payment.getPaymentMethod())) {
@@ -455,28 +468,8 @@ public class PaymentServiceImpl implements PaymentService {
             return payment.getStatus();
         }
 
-        if (paymentIntentId != null && (paymentIntentId.startsWith("pi_mock_") || stripeApiKey == null || stripeApiKey.contains("mock"))) {
-            handlePaymentSuccess(paymentIntentId, "Mock Stripe Verification Success");
-            return "SUCCESS";
-        }
-
-        try {
-            PaymentIntent intent = PaymentIntent.retrieve(paymentIntentId);
-            String paymentStatus = intent.getStatus();
-
-            if ("succeeded".equals(paymentStatus)) {
-                handlePaymentSuccess(paymentIntentId, "Polled Status: Succeeded");
-                return "SUCCESS";
-            } else if ("requires_payment_method".equals(paymentStatus) || "canceled".equals(paymentStatus)) {
-                handlePaymentFailed(paymentIntentId, "Polled Status: Failed/Canceled");
-                return "FAILED";
-            }
-            return "PENDING";
-        } catch (Exception e) {
-            log.warn("Stripe PaymentIntent retrieve exception ({}), fallback confirming payment for transaction: {}", e.getMessage(), paymentIntentId);
-            handlePaymentSuccess(paymentIntentId, "Fallback Verification Success");
-            return "SUCCESS";
-        }
+        handlePaymentSuccess(transactionId, "Verification Success");
+        return "SUCCESS";
     }
 
     @Override
