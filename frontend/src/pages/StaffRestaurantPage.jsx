@@ -84,9 +84,50 @@ export default function StaffRestaurantPage() {
     setWbLookupLoading(true);
     setWbErrMsg('');
     setWbLookupResult(null);
+
+    // 1. Search in localStorage first (since receptionist check-in is simulated locally)
+    const codeToSearch = wbLookupCode.trim().toUpperCase();
+    let localMatch = null;
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && key.startsWith("booking_checkin_data_")) {
+        try {
+          const data = JSON.parse(localStorage.getItem(key) || '{}');
+          if (data && data.members) {
+            const member = data.members.find(
+              m => m.wbCode && m.wbCode.trim().toUpperCase() === codeToSearch
+            );
+            if (member) {
+              const bookingCode = key.replace("booking_checkin_data_", "");
+              const bookingStatus = localStorage.getItem(`booking_status_${bookingCode}`) || 'CHECKED_IN';
+              localMatch = {
+                wristbandCode: member.wbCode,
+                status: bookingStatus === 'CHECKED_OUT' ? 'RETURNED' : 'ACTIVE',
+                guestName: member.name,
+                roomNumber: member.room ? member.room.replace("Phòng ", "").trim() : 'N/A',
+                bookingCode: bookingCode,
+                colorCode: data.wbColor || 'BLUE'
+              };
+              break;
+            }
+          }
+        } catch (err) {
+          console.error("Error parsing local wristband data:", err);
+        }
+      }
+    }
+
+    if (localMatch) {
+      setWbLookupResult(localMatch);
+      setWbLookupLoading(false);
+      return;
+    }
+
+    // 2. If not found locally, fetch from backend API as fallback
     try {
       const token = sessionStorage.getItem("accessToken");
-      const res = await fetch(`http://localhost:8080/api/v1/admin/wristbands/verify/${wbLookupCode.trim()}`, {
+      const baseApiUrl = import.meta.env.VITE_API_URL || (window.location.origin.includes("localhost") ? "http://localhost:8080/api/v1" : "https://hotel-booking-system-0wv2.onrender.com/api/v1");
+      const res = await fetch(`${baseApiUrl}/admin/wristbands/verify/${wbLookupCode.trim()}`, {
         headers: { "Authorization": `Bearer ${token}` }
       });
       if (!res.ok) {

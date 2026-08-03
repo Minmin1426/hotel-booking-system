@@ -352,7 +352,8 @@ export default function ProfilePage() {
 
   const handleDownloadInvoice = async (bookingId, bookingCode) => {
     try {
-      const response = await fetch(`http://localhost:8080/api/v1/payments/booking/${bookingId}`, {
+      const baseApiUrl = import.meta.env.VITE_API_URL || (window.location.origin.includes("localhost") ? "http://localhost:8080/api/v1" : "https://hotel-booking-system-0wv2.onrender.com/api/v1");
+      const response = await fetch(`${baseApiUrl}/payments/booking/${bookingId}`, {
         headers: {
           "Authorization": `Bearer ${sessionStorage.getItem("accessToken")}`
         }
@@ -366,7 +367,7 @@ export default function ProfilePage() {
         throw new Error("No invoice generated for this payment.");
       }
 
-      const pdfResponse = await fetch(`http://localhost:8080/api/v1/payments/invoice/pdf/${paymentId}`, {
+      const pdfResponse = await fetch(`${baseApiUrl}/payments/invoice/pdf/${paymentId}`, {
         headers: {
           "Authorization": `Bearer ${sessionStorage.getItem("accessToken")}`
         }

@@ -3,6 +3,8 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
+import { BookingService } from '../services/BookingService';
+
 
 export default function GroupCheckInPage() {
   const navigate = useNavigate();
@@ -105,7 +107,7 @@ export default function GroupCheckInPage() {
     return parseInt(localStorage.getItem('wristband_global_counter') || '1');
   };
 
-  const handleFastGroupCheckIn = () => {
+  const handleFastGroupCheckIn = async () => {
     const count = members.length;
     const startNum = getNextWristbandNumber();
 
@@ -134,6 +136,31 @@ export default function GroupCheckInPage() {
         assignedRange: rangeStr
       }));
     }
+
+    // Save to DB
+    if (booking?.id) {
+      try {
+        // 1. Process check-in status
+        await BookingService.processBooking(booking.id, 'CHECKED_IN');
+        
+        // 2. Issue wristbands in the backend database
+        await Promise.all(
+          updated.map(m => 
+            BookingService.issueWristband(
+              booking.id, 
+              m.wbCode, 
+              wbColor, 
+              wbColor === 'RED' ? 'All-Inclusive' : wbColor === 'GOLD' ? 'VIP Lounge' : 'Breakfast Buffet', 
+              `Gán cho khách: ${m.name}`
+            )
+          )
+        );
+      } catch (err) {
+        console.error("Failed to save check-in details to database:", err);
+        alert("⚠️ Lỗi lưu dữ liệu check-in lên cơ sở dữ liệu: " + err.message);
+      }
+    }
+
     alert(`⚡ Check-in Đoàn thành công! Đã tự động gán ${count} Vòng Tay: ${firstCode} → ${lastCode}`);
   };
 

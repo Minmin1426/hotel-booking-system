@@ -62,7 +62,13 @@ class AdminBookingControllerTest {
                 "CONFIRMED",
                 "BANK_TRANSFER",
                 "COMPLETED",
-                LocalDateTime.now()
+                LocalDateTime.now(),
+                "Test User",
+                "0912345678",
+                java.util.List.of("Phòng 101"),
+                2,
+                0,
+                1
         );
 
         when(bookingService.processBooking(eq(10L), any(UpdateBookingStatusRequest.class))).thenReturn(response);

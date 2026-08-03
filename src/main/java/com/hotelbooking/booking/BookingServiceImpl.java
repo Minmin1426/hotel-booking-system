@@ -488,19 +488,7 @@ public class BookingServiceImpl implements BookingService {
             log.error("Failed to release locks: {}", e.getMessage());
         }
 
-        return new AdminBookingResponse(
-                booking.getBookingId(),
-                booking.getBookingCode(),
-                booking.getUser().getEmail(),
-                booking.getHotel().getName(),
-                booking.getCheckInDate(),
-                booking.getCheckOutDate(),
-                booking.getTotalAmount(),
-                booking.getStatus(),
-                payment.getPaymentMethod(),
-                payment.getStatus(),
-                booking.getUpdatedAt()
-        );
+        return mapToAdminBookingResponseWithPayment(booking, payment.getPaymentMethod(), payment.getStatus());
     }
 
     // UC-14: Hủy đặt phòng
@@ -704,6 +692,18 @@ public class BookingServiceImpl implements BookingService {
         List<Payment> payments = paymentRepository.findByBookingBookingId(booking.getBookingId());
         String paymentMethod = payments.isEmpty() ? "UNKNOWN" : payments.get(0).getPaymentMethod();
         String paymentStatus = payments.isEmpty() ? "UNKNOWN" : payments.get(0).getStatus();
+        return mapToAdminBookingResponseWithPayment(booking, paymentMethod, paymentStatus);
+    }
+
+    private AdminBookingResponse mapToAdminBookingResponseWithPayment(Booking booking, String paymentMethod, String paymentStatus) {
+        List<String> roomNumbers = booking.getBookingRooms().stream()
+                .map(br -> br.getRoom() != null ? br.getRoom().getRoomNumber() : "N/A")
+                .toList();
+
+        int roomCount = booking.getBookingRooms().stream()
+                .mapToInt(br -> br.getQuantity() != null ? br.getQuantity() : 1)
+                .sum();
+
         return new AdminBookingResponse(
                 booking.getBookingId(),
                 booking.getBookingCode(),
@@ -715,7 +715,13 @@ public class BookingServiceImpl implements BookingService {
                 booking.getStatus(),
                 paymentMethod,
                 paymentStatus,
-                booking.getUpdatedAt()
+                booking.getUpdatedAt(),
+                booking.getUser().getFullName(),
+                booking.getUser().getPhoneNumber(),
+                roomNumbers,
+                booking.getAdults(),
+                booking.getChildren(),
+                roomCount
         );
     }
 

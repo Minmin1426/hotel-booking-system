@@ -288,5 +288,19 @@ export const BookingService = {
       throw new Error(data.message || "Failed to resend ticket email");
     }
     return data;
+  },
+
+  issueWristband: async (bookingId, wristbandCode, colorCode = 'BLUE', packageName = 'Breakfast Buffet', notes = '') => {
+    const response = await fetch(`${API_BASE_URL}/admin/wristbands/issue`, {
+      method: "POST",
+      headers: getHeaders(),
+      body: JSON.stringify({ bookingId, wristbandCode, colorCode, packageName, notes }),
+    });
+
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.message || "Failed to issue wristband");
+    }
+    return data.data;
   }
 };

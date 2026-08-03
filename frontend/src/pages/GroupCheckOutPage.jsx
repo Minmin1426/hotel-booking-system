@@ -3,6 +3,8 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
+import { BookingService } from '../services/BookingService';
+
 
 export default function GroupCheckOutPage() {
   const navigate = useNavigate();
@@ -91,7 +93,7 @@ export default function GroupCheckOutPage() {
   const totalSurcharges = surcharges.reduce((sum, item) => sum + item.amount, 0);
   const finalTotal = baseAmount - discountAmount + totalSurcharges;
 
-  const handleCompleteCheckOut = () => {
+  const handleCompleteCheckOut = async () => {
     if (!wristbandsReturned) {
       alert("⚠️ Vui lòng đánh dấu Xác Nhận Thu Hồi Đủ Vòng Tay Vật Lý trước khi hoàn tất Check-out!");
       return;
@@ -101,6 +103,17 @@ export default function GroupCheckOutPage() {
     if (booking?.code) {
       localStorage.setItem(`booking_status_${booking.code}`, 'CHECKED_OUT');
     }
+
+    // Save to DB
+    if (booking?.id) {
+      try {
+        await BookingService.processBooking(booking.id, 'CHECKED_OUT');
+      } catch (err) {
+        console.error("Failed to save check-out status to database:", err);
+        alert("⚠️ Lỗi lưu trạng thái check-out lên cơ sở dữ liệu: " + err.message);
+      }
+    }
+
     alert(`🎉 Hoàn tất Check-out Đoàn ${groupCode}! Đã tổng kết hóa đơn thanh toán $${finalTotal} và giải phóng ${roomCount} phòng sang trạng thái Cần dọn dẹp (Dirty).`);
   };
 
