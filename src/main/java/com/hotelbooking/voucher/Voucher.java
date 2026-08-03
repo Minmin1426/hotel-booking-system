@@ -102,7 +102,7 @@ public class Voucher {
     }
 
     public boolean isForAccountType(String accountType) {
-        return "ALL".equals(forAccountType) || forAccountType.equals(forAccountType);
+        return forAccountType == null || "ALL".equalsIgnoreCase(forAccountType) || forAccountType.equalsIgnoreCase(accountType);
     }
 
     public void incrementUsage() {

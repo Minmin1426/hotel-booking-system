@@ -27,4 +27,6 @@ public class BookingHistoryResponse {
     private LocalDateTime confirmedAt;
     private LocalDateTime createdAt;
     private Boolean isReviewed;
+    private String paymentStatus;
+    private BigDecimal paidAmount;
 }

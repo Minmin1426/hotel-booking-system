@@ -6,4 +6,5 @@ import java.util.List;
 public interface VoucherService {
     Booking applyVoucher(Long bookingId, String voucherCode);
     List<VoucherResponse> getAllActiveVouchers();
+    List<VoucherResponse> getAllActiveVouchersForUser(Long userId);
 }

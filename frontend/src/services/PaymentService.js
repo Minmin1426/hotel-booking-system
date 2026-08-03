@@ -56,7 +56,7 @@ export const PaymentService = {
       }
     }
     
-    return await response.text();
+    return await response.json();
   },
 
   processRefund: async (bookingId) => {

@@ -48,6 +48,7 @@ function HotelDetailPage() {
 
   // Booking states
   const [selectedRoom, setSelectedRoom] = useState(null);
+  const [selectedRooms, setSelectedRooms] = useState([]);
   const [showBookingModal, setShowBookingModal] = useState(false);
   const [isBookingInProgress, setIsBookingInProgress] = useState(false);
   const [bookingDetails, setBookingDetails] = useState(null);
@@ -61,15 +62,21 @@ function HotelDetailPage() {
   const [bankTransferDetails, setBankTransferDetails] = useState(null);
   const [transactionId, setTransactionId] = useState('');
 
-  // Guest details verification states
   const [guestName, setGuestName] = useState('');
   const [guestEmail, setGuestEmail] = useState('');
   const [guestPhone, setGuestPhone] = useState('');
   const [guestIdNumber, setGuestIdNumber] = useState('');
+  const [guestNameError, setGuestNameError] = useState('');
+  const [guestPhoneError, setGuestPhoneError] = useState('');
+  const [guestIdNumberError, setGuestIdNumberError] = useState('');
   const [voucherCode, setVoucherCode] = useState('');
   const [availableVouchers, setAvailableVouchers] = useState([]);
   const [adults, setAdults] = useState(1);
   const [children, setChildren] = useState(0);
+  const [showRecommendationModal, setShowRecommendationModal] = useState(false);
+  const [showGroupWarningModal, setShowGroupWarningModal] = useState(false);
+  const [proposedAdults, setProposedAdults] = useState(null);
+  const [proposedChildren, setProposedChildren] = useState(null);
   const [cashConfirmChecked, setCashConfirmChecked] = useState(false);
 
   // Payment methods, deposits & invoices states
@@ -114,6 +121,103 @@ function HotelDetailPage() {
   const [mealBookingError, setMealBookingError] = useState('');
   const [mealBookingSuccess, setMealBookingSuccess] = useState(null);
   const [isSubmittingMealTicket, setIsSubmittingMealTicket] = useState(false);
+
+  const handleUpdateAdults = (newAdults) => {
+    const currentRooms = selectedRooms.length;
+    const reqRoomsForAdults = Math.ceil(newAdults / 2);
+    const reqRoomsForChildren = Math.ceil(children / 3);
+    const totalReqRooms = Math.max(reqRoomsForAdults, reqRoomsForChildren, 1);
+
+    if (totalReqRooms > currentRooms) {
+      if (totalReqRooms >= 5) {
+        setProposedAdults(newAdults);
+        setProposedChildren(children);
+        setShowGroupWarningModal(true);
+      } else {
+        setProposedAdults(newAdults);
+        setProposedChildren(children);
+        setShowRecommendationModal(true);
+      }
+    } else {
+      setAdults(newAdults);
+    }
+  };
+
+  const handleUpdateChildren = (newChildren) => {
+    const currentRooms = selectedRooms.length;
+    const reqRoomsForAdults = Math.ceil(adults / 2);
+    const reqRoomsForChildren = Math.ceil(newChildren / 3);
+    const totalReqRooms = Math.max(reqRoomsForAdults, reqRoomsForChildren, 1);
+
+    if (totalReqRooms > currentRooms) {
+      if (totalReqRooms >= 5) {
+        setProposedAdults(adults);
+        setProposedChildren(newChildren);
+        setShowGroupWarningModal(true);
+      } else {
+        setProposedAdults(adults);
+        setProposedChildren(newChildren);
+        setShowRecommendationModal(true);
+      }
+    } else {
+      setChildren(newChildren);
+    }
+  };
+
+  const handleCancelRecommendation = () => {
+    const currentRooms = selectedRooms.length;
+    setAdults(Math.min(adults, currentRooms * 2));
+    setChildren(Math.min(children, currentRooms * 3));
+    setProposedAdults(null);
+    setProposedChildren(null);
+    setShowRecommendationModal(false);
+  };
+
+  const handleCancelGroupWarning = () => {
+    setSelectedRooms(prev => prev.slice(0, 4));
+    setAdults(8);
+    setChildren(12);
+    setProposedAdults(null);
+    setProposedChildren(null);
+    setShowGroupWarningModal(false);
+  };
+
+  const handleAcceptGroupWarning = () => {
+    setDetailTab('group');
+    const reqRoomsForAdults = Math.ceil((proposedAdults || adults) / 2);
+    const reqRoomsForChildren = Math.ceil((proposedChildren || children) / 3);
+    const reqRooms = Math.max(reqRoomsForAdults, reqRoomsForChildren, 5);
+    setGroupRoomCount(reqRooms);
+    
+    if (proposedAdults !== null) setAdults(proposedAdults);
+    if (proposedChildren !== null) setChildren(proposedChildren);
+    setProposedAdults(null);
+    setProposedChildren(null);
+    setShowGroupWarningModal(false);
+  };
+
+  const handleAddRecommendedRoom = (room) => {
+    const updatedRooms = [...selectedRooms, room];
+    
+    if (updatedRooms.length >= 5) {
+      setShowRecommendationModal(false);
+      setShowGroupWarningModal(true);
+      return;
+    }
+
+    setSelectedRooms(updatedRooms);
+    
+    if (proposedAdults !== null) {
+      setAdults(proposedAdults);
+      setProposedAdults(null);
+    }
+    if (proposedChildren !== null) {
+      setChildren(proposedChildren);
+      setProposedChildren(null);
+    }
+    
+    setShowRecommendationModal(false);
+  };
 
   const handleGroupRoomCountChange = (count) => {
     const newCount = Math.max(5, parseInt(count) || 5);
@@ -500,6 +604,47 @@ function HotelDetailPage() {
   };
 
   // Handle checking room vacancies with validation
+  const validateGuestName = (value) => {
+    if (!value || !value.trim()) {
+      setGuestNameError("Full Name is required.");
+      return false;
+    }
+    const nameRegex = /^[\p{L}\s']{2,100}$/u;
+    if (!nameRegex.test(value.trim())) {
+      setGuestNameError("Full Name can only contain letters and spaces (minimum 2 characters).");
+      return false;
+    }
+    setGuestNameError("");
+    return true;
+  };
+
+  const validateGuestPhone = (value) => {
+    if (!value || !value.trim()) {
+      setGuestPhoneError("Phone Number is required.");
+      return false;
+    }
+    const phoneRegex = /^\+?[0-9]{10,11}$/;
+    if (!phoneRegex.test(value.trim())) {
+      setGuestPhoneError("Phone Number must contain only numbers (with optional + prefix) and be 10-11 digits long.");
+      return false;
+    }
+    setGuestPhoneError("");
+    return true;
+  };
+
+  const validateGuestIdNumber = (value) => {
+    if (!value || !value.trim()) {
+      setGuestIdNumberError("ID / Passport Number is required.");
+      return false;
+    }
+    const idRegex = /^[a-zA-Z0-9]{9,15}$/;
+    if (!idRegex.test(value.trim())) {
+      setGuestIdNumberError("ID / Passport Number must be alphanumeric (letters and numbers only) and between 9 to 15 characters.");
+      return false;
+    }
+    setGuestIdNumberError("");
+    return true;
+  };
   const handleCheckAvailability = async (e) => {
     if (e) e.preventDefault();
     setRoomsLoading(true);
@@ -547,9 +692,13 @@ function HotelDetailPage() {
     }
 
     setSelectedRoom(room);
+    setSelectedRooms([room]);
     setBookingDetails(null);
     setBookingStatus('');
     setBookingError('');
+    setGuestNameError('');
+    setGuestPhoneError('');
+    setGuestIdNumberError('');
     setPaymentMethod('ONLINE');
     setBookingSuccess('');
     setClientSecret('');
@@ -588,21 +737,93 @@ function HotelDetailPage() {
     }
   };
 
+  const handleVoucherSelect = async (v) => {
+    if (v.isUsed) return;
+    if (voucherCode === v.code) {
+      setVoucherCode('');
+      return;
+    }
+    if (v.isClaimed === false) {
+      setBookingError('');
+      setIsBookingInProgress(true);
+      try {
+        await BookingService.claimVoucher(v.code);
+        setAvailableVouchers(prev =>
+          prev.map(item =>
+            item.voucherId === v.voucherId
+              ? { ...item, isClaimed: true }
+              : item
+          )
+        );
+        setVoucherCode(v.code);
+      } catch (err) {
+        setBookingError(err.message || "Failed to claim voucher. Please try again.");
+      } finally {
+        setIsBookingInProgress(false);
+      }
+    } else {
+      setVoucherCode(v.code);
+    }
+  };
+
+  const getSubtotalAmount = () => {
+    const totalRoomRate = selectedRooms.reduce((sum, r) => sum + (r.price || r.pricePerNight || 0), 0);
+    const nights = calculateNights(checkIn, checkOut);
+    return totalRoomRate * nights;
+  };
+
+  const getEstimatedDiscount = () => {
+    if (!voucherCode) return 0;
+    const matchedVoucher = availableVouchers.find(v => v.code === voucherCode);
+    if (!matchedVoucher) return 0;
+    
+    const subtotal = getSubtotalAmount();
+    let discount = 0;
+    if (matchedVoucher.discountType === 'PERCENTAGE') {
+      const percentage = matchedVoucher.discountValue / 100;
+      discount = subtotal * percentage;
+      if (matchedVoucher.maxDiscount && discount > matchedVoucher.maxDiscount) {
+        discount = matchedVoucher.maxDiscount;
+      }
+    } else {
+      discount = matchedVoucher.discountValue;
+    }
+    
+    if (discount > subtotal) {
+      discount = subtotal;
+    }
+    return discount;
+  };
+
+  const getRecommendedRooms = () => {
+    if (!selectedRoom) return [];
+    
+    const getRoomDigits = (numStr) => parseInt(numStr?.replace(/\D/g, '')) || 0;
+    const selDigits = getRoomDigits(selectedRoom.roomNumber);
+
+    return rooms
+      .filter(r => r.roomId !== selectedRoom.roomId && !selectedRooms.some(sr => sr.roomId === r.roomId))
+      .sort((a, b) => {
+        const distA = Math.abs(getRoomDigits(a.roomNumber) - selDigits);
+        const distB = Math.abs(getRoomDigits(b.roomNumber) - selDigits);
+        
+        if (distA !== distB) {
+          return distA - distB;
+        }
+        
+        const priceA = a.price || a.pricePerNight || 0;
+        const priceB = b.price || b.pricePerNight || 0;
+        return priceA - priceB;
+      });
+  };
+
   const handleConfirmBookingCreation = async () => {
-    if (!guestName || !guestName.trim()) {
-      setBookingError("Họ và tên người đặt phòng không được để trống.");
-      return;
-    }
-    if (!guestPhone || !guestPhone.trim() || !/^(0[3|5|7|8|9])[0-9]{8}$/.test(guestPhone.trim())) {
-      setBookingError("Số điện thoại không hợp lệ. Vui lòng nhập số điện thoại Việt Nam gồm 10 chữ số (VD: 0912345678).");
-      return;
-    }
-    if (guestEmail && guestEmail.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(guestEmail.trim())) {
-      setBookingError("Địa chỉ email không đúng định dạng.");
-      return;
-    }
-    if (!guestIdNumber || !guestIdNumber.trim() || !/^[0-9]{9,12}$/.test(guestIdNumber.trim())) {
-      setBookingError("Số CCCD / CMND / Hộ chiếu không hợp lệ (Phải chứa từ 9 đến 12 chữ số).");
+    const isNameValid = validateGuestName(guestName);
+    const isPhoneValid = validateGuestPhone(guestPhone);
+    const isIdValid = validateGuestIdNumber(guestIdNumber);
+
+    if (!isNameValid || !isPhoneValid || !isIdValid) {
+      setBookingError("Please fix the validation errors in the form.");
       return;
     }
 
@@ -638,7 +859,9 @@ function HotelDetailPage() {
         finalAdults = groupMembers.filter(m => m.type === 'ADULT').length;
         finalChildren = groupMembers.filter(m => m.type === 'CHILD').length;
       } else {
-        if (selectedRoom && selectedRoom.roomId && typeof selectedRoom.roomId === 'number' && selectedRoom.roomId > 10) {
+        if (selectedRooms && selectedRooms.length > 0) {
+          targetRoomIds = selectedRooms.map(r => r.roomId);
+        } else if (selectedRoom && selectedRoom.roomId) {
           targetRoomIds = [selectedRoom.roomId];
         } else if (rooms && rooms.length > 0) {
           targetRoomIds = [rooms[0].roomId];
@@ -681,6 +904,12 @@ function HotelDetailPage() {
     } finally {
       setIsBookingInProgress(false);
     }
+  };
+
+  const handleSelectGateway = (newGateway) => {
+    setGateway(newGateway);
+    setClientSecret('');
+    setTransactionId('');
   };
 
   const handleOnlinePayment = async () => {
@@ -1335,86 +1564,172 @@ function HotelDetailPage() {
                           <div className="space-y-5">
                             <div>
                               <label className="text-xs font-bold text-slate-700 uppercase tracking-wide block mb-2">Full Name</label>
-                              <input type="text" className="w-full px-5 py-3.5 rounded-xl border border-slate-300 text-sm focus:outline-none focus:border-[#1A3B85] focus:ring-1 focus:ring-[#1A3B85] transition-all" value={guestName} onChange={(e) => setGuestName(e.target.value)} required placeholder="John Doe" />
+                              <input 
+                                type="text" 
+                                className={`w-full px-5 py-3.5 rounded-xl border text-sm focus:outline-none focus:ring-1 transition-all ${guestNameError ? 'border-red-500 focus:border-red-500 focus:ring-red-500 bg-red-50/10' : 'border-slate-300 focus:border-[#1A3B85] focus:ring-[#1A3B85]'}`} 
+                                value={guestName} 
+                                onChange={(e) => {
+                                  setGuestName(e.target.value);
+                                  validateGuestName(e.target.value);
+                                }} 
+                                required 
+                                placeholder="John Doe" 
+                              />
+                              {guestNameError && (
+                                <p className="text-[11px] text-red-500 font-semibold mt-1.5 flex items-center gap-1">
+                                  <span>⚠️</span> {guestNameError}
+                                </p>
+                              )}
                             </div>
                             <div className="grid grid-cols-2 gap-5">
                               <div>
                                 <label className="text-xs font-bold text-slate-700 uppercase tracking-wide block mb-2">Phone Number</label>
-                                <input type="text" className="w-full px-5 py-3.5 rounded-xl border border-slate-300 text-sm focus:outline-none focus:border-[#1A3B85] focus:ring-1 focus:ring-[#1A3B85] transition-all" value={guestPhone} onChange={(e) => setGuestPhone(e.target.value)} required placeholder="+1 234 567 890" />
+                                <input 
+                                  type="text" 
+                                  className={`w-full px-5 py-3.5 rounded-xl border text-sm focus:outline-none focus:ring-1 transition-all ${guestPhoneError ? 'border-red-500 focus:border-red-500 focus:ring-red-500 bg-red-50/10' : 'border-slate-300 focus:border-[#1A3B85] focus:ring-[#1A3B85]'}`} 
+                                  value={guestPhone} 
+                                  onChange={(e) => {
+                                    setGuestPhone(e.target.value);
+                                    validateGuestPhone(e.target.value);
+                                  }} 
+                                  required 
+                                  placeholder="0984986105" 
+                                />
+                                {guestPhoneError && (
+                                  <p className="text-[11px] text-red-500 font-semibold mt-1.5 flex items-center gap-1">
+                                    <span>⚠️</span> {guestPhoneError}
+                                  </p>
+                                )}
                               </div>
                               <div>
                                 <label className="text-xs font-bold text-slate-700 uppercase tracking-wide block mb-2">ID / Passport Number</label>
-                                <input type="text" className="w-full px-5 py-3.5 rounded-xl border border-slate-300 text-sm focus:outline-none focus:border-[#1A3B85] focus:ring-1 focus:ring-[#1A3B85] transition-all" value={guestIdNumber} onChange={(e) => setGuestIdNumber(e.target.value)} required placeholder="001206123456" />
+                                <input 
+                                  type="text" 
+                                  className={`w-full px-5 py-3.5 rounded-xl border text-sm focus:outline-none focus:ring-1 transition-all ${guestIdNumberError ? 'border-red-500 focus:border-red-500 focus:ring-red-500 bg-red-50/10' : 'border-slate-300 focus:border-[#1A3B85] focus:ring-[#1A3B85]'}`} 
+                                  value={guestIdNumber} 
+                                  onChange={(e) => {
+                                    setGuestIdNumber(e.target.value);
+                                    validateGuestIdNumber(e.target.value);
+                                  }} 
+                                  required 
+                                  placeholder="001206123456" 
+                                />
+                                {guestIdNumberError && (
+                                  <p className="text-[11px] text-red-500 font-semibold mt-1.5 flex items-center gap-1">
+                                    <span>⚠️</span> {guestIdNumberError}
+                                  </p>
+                                )}
                               </div>
                             </div>
                             <div>
-                              <label className="text-xs font-bold text-slate-700 uppercase tracking-wide block mb-2">Promo Code (Optional)</label>
-                              <div className="relative">
-                                <input type="text" className="w-full px-5 py-3.5 rounded-xl border border-slate-300 text-sm focus:outline-none focus:border-[#1A3B85] focus:ring-1 focus:ring-[#1A3B85] uppercase transition-all" value={voucherCode} onChange={(e) => setVoucherCode(e.target.value)} placeholder="Enter code or select below" />
-                              </div>
-                              {availableVouchers && availableVouchers.length > 0 && (
-                                <div className="mt-3 flex flex-wrap gap-2">
-                                  {availableVouchers.map(v => {
+                              <label className="text-xs font-bold text-slate-700 uppercase tracking-wide block mb-2 flex items-center justify-between">
+                                <span>Voucher Khuyến Mãi (Nhấp để chọn)</span>
+                                {voucherCode && (
+                                  <span className="px-2 py-0.5 bg-emerald-100 text-emerald-800 text-[10px] rounded-lg font-bold">
+                                    Đang áp dụng: {voucherCode}
+                                  </span>
+                                )}
+                              </label>
+                              <div className="mt-2">
+                                <select
+                                  value={voucherCode}
+                                  onChange={(e) => {
+                                    const code = e.target.value;
+                                    if (!code) {
+                                      setVoucherCode('');
+                                    } else {
+                                      const selectedVoucher = availableVouchers.find(v => v.code === code);
+                                      if (selectedVoucher) {
+                                        handleVoucherSelect(selectedVoucher);
+                                      }
+                                    }
+                                  }}
+                                  className="w-full px-5 py-3.5 rounded-xl border border-slate-300 text-sm focus:outline-none focus:border-[#1A3B85] focus:ring-1 focus:ring-[#1A3B85] bg-white transition-all cursor-pointer font-medium text-slate-700"
+                                >
+                                  <option value="">-- Chọn Voucher --</option>
+                                  {availableVouchers && availableVouchers.map(v => {
                                     const isExpired = v.endDate && new Date(v.endDate) < new Date();
                                     const isFullyUsed = v.maxUsage !== null && v.currentUsage >= v.maxUsage;
                                     
-                                    // Calculate subtotal to check minSpend
-                                    const nights = calculateNights(checkIn, checkOut);
-                                    const roomPrice = selectedRoom?.price || 0;
-                                    const roomTotal = roomPrice * nights;
-                                    const serviceFee = roomTotal * 0.05;
-                                    const taxes = roomTotal * 0.10;
-                                    const guestSurcharge = (adults + children > 2) ? 20 : 0;
-                                    const subtotal = roomTotal + serviceFee + taxes + guestSurcharge;
+                                    const subtotal = getSubtotalAmount() * 1.15;
 
                                     const isMinSpendMet = !v.minBookingValue || subtotal >= v.minBookingValue;
-                                    const isInvalid = isExpired || isFullyUsed || !isMinSpendMet;
+                                    const isInvalid = isExpired || isFullyUsed || !isMinSpendMet || v.isUsed;
                                     
-                                    if (isExpired || isFullyUsed) return null; // Don't even show expired ones here
+                                    // Hide fully used, expired, or already used vouchers
+                                    if (isExpired || isFullyUsed || v.isUsed) return null;
                                     
                                     const discountText = v.discountType === 'PERCENTAGE' ? `${v.discountValue}% OFF` : `$${v.discountValue} OFF`;
+                                    const spendText = v.minBookingValue ? ` (Min spend: $${v.minBookingValue})` : '';
+                                    const claimText = v.isClaimed === false ? ' [Nhận từ kho]' : '';
                                     
                                     return (
-                                      <button
+                                      <option
                                         key={v.voucherId}
-                                        type="button"
+                                        value={v.code}
                                         disabled={isInvalid}
-                                        onClick={() => setVoucherCode(v.code)}
-                                        className={`px-3 py-1.5 rounded-lg text-[10px] font-bold border transition-all ${
-                                          voucherCode === v.code
-                                            ? 'bg-blue-50 border-blue-200 text-blue-700 ring-1 ring-blue-500'
-                                            : isInvalid
-                                              ? 'bg-slate-50 border-slate-200 text-slate-400 cursor-not-allowed'
-                                              : 'bg-white border-slate-200 text-slate-600 hover:border-blue-300 hover:bg-blue-50 cursor-pointer'
-                                        }`}
-                                        title={!isMinSpendMet ? `Requires minimum spend of $${v.minBookingValue}` : ''}
                                       >
-                                        <span className="font-mono">{v.code}</span>
-                                        <span className="ml-1 px-1 bg-slate-100 rounded text-[9px]">{discountText}</span>
-                                      </button>
+                                        {v.code} - {discountText}{spendText}{claimText}
+                                      </option>
                                     );
                                   })}
-                                </div>
-                              )}
+                                </select>
+                              </div>
                             </div>
                             <div className="grid grid-cols-2 gap-5 mt-5">
                               <div>
                                 <label className="text-xs font-bold text-slate-700 uppercase tracking-wide block mb-2">Adults (≥ 1)</label>
                                 <div className="flex items-center gap-3">
-                                  <button type="button" onClick={() => setAdults(Math.max(1, adults - 1))} className="w-10 h-10 rounded-xl bg-slate-100 text-slate-600 font-bold hover:bg-slate-200 transition-colors">-</button>
+                                  <button type="button" onClick={() => handleUpdateAdults(Math.max(1, adults - 1))} className="w-10 h-10 rounded-xl bg-slate-100 text-slate-600 font-bold hover:bg-slate-200 transition-colors">-</button>
                                   <span className="font-semibold text-slate-800 text-center w-8">{adults}</span>
-                                  <button type="button" onClick={() => setAdults(adults + 1)} className="w-10 h-10 rounded-xl bg-slate-100 text-slate-600 font-bold hover:bg-slate-200 transition-colors">+</button>
+                                  <button type="button" onClick={() => handleUpdateAdults(adults + 1)} className="w-10 h-10 rounded-xl bg-slate-100 text-slate-600 font-bold hover:bg-slate-200 transition-colors">+</button>
                                 </div>
                               </div>
                               <div>
                                 <label className="text-xs font-bold text-slate-700 uppercase tracking-wide block mb-2">Children (≥ 0)</label>
                                 <div className="flex items-center gap-3">
-                                  <button type="button" onClick={() => setChildren(Math.max(0, children - 1))} className="w-10 h-10 rounded-xl bg-slate-100 text-slate-600 font-bold hover:bg-slate-200 transition-colors">-</button>
+                                  <button type="button" onClick={() => handleUpdateChildren(Math.max(0, children - 1))} className="w-10 h-10 rounded-xl bg-slate-100 text-slate-600 font-bold hover:bg-slate-200 transition-colors">-</button>
                                   <span className="font-semibold text-slate-800 text-center w-8">{children}</span>
-                                  <button type="button" onClick={() => setChildren(children + 1)} className="w-10 h-10 rounded-xl bg-slate-100 text-slate-600 font-bold hover:bg-slate-200 transition-colors">+</button>
+                                  <button type="button" onClick={() => handleUpdateChildren(children + 1)} className="w-10 h-10 rounded-xl bg-slate-100 text-slate-600 font-bold hover:bg-slate-200 transition-colors">+</button>
                                 </div>
                               </div>
                             </div>
+
+                            {selectedRooms.length > 1 && (
+                              <div className="mt-5 p-5 rounded-2xl bg-cyan-50 border border-cyan-200 text-cyan-900 space-y-3 shadow-sm animate-fade-in">
+                                <div className="flex items-center justify-between">
+                                  <div className="flex items-center space-x-2">
+                                    <span className="text-lg">🏨</span>
+                                    <span className="font-bold text-sm">Danh sách phòng đã chọn ({selectedRooms.length} phòng)</span>
+                                  </div>
+                                  <span className="text-[10px] bg-cyan-100 text-cyan-700 px-2 py-0.5 rounded font-extrabold uppercase border border-cyan-200">Sức chứa tối đa: {selectedRooms.length * 2} NL / {selectedRooms.length * 3} TE</span>
+                                </div>
+                                <div className="space-y-2">
+                                  {selectedRooms.map((r, idx) => (
+                                    <div key={r.roomId} className="bg-white p-3 rounded-xl border border-cyan-100 flex items-center justify-between">
+                                      <div>
+                                        <span className="font-bold text-xs text-slate-800">Phòng {idx + 1}: Số {r.roomNumber}</span>
+                                        <span className="block text-[10px] text-slate-500 uppercase">{r.roomType} - ${r.price || r.pricePerNight} / đêm</span>
+                                      </div>
+                                      {idx > 0 && (
+                                        <button 
+                                          type="button" 
+                                          onClick={() => {
+                                            const updated = selectedRooms.filter((_, i) => i !== idx);
+                                            setSelectedRooms(updated);
+                                            setAdults(prev => Math.min(prev, updated.length * 2));
+                                            setChildren(prev => Math.min(prev, updated.length * 3));
+                                          }} 
+                                          className="px-2 py-1.5 rounded-lg text-rose-600 hover:bg-rose-50 text-[11px] font-bold transition-colors cursor-pointer"
+                                        >
+                                          Gỡ phòng
+                                        </button>
+                                      )}
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
                             {/* Group Member List Manifest Form & Excel Import Widget */}
                             {detailTab === 'group' && (
                               <div className="pt-4 border-t border-slate-200/80 space-y-4">
@@ -1612,19 +1927,29 @@ function HotelDetailPage() {
                             <div className="grid grid-cols-2 gap-4">
                               <button
                                 type="button"
-                                onClick={() => setGateway('STRIPE')}
-                                className={`p-4 rounded-xl border-2 text-left transition-all ${gateway === 'STRIPE' ? 'border-[#1A3B85] bg-blue-50/30' : 'border-slate-200 hover:border-slate-300'}`}
+                                onClick={() => handleSelectGateway('STRIPE')}
+                                className={`p-5 rounded-2xl border-2 text-left transition-all flex items-center gap-3.5 cursor-pointer hover:-translate-y-0.5 active:translate-y-0 ${gateway === 'STRIPE' ? 'border-[#1A3B85] bg-blue-50/30 ring-2 ring-blue-900/10' : 'border-slate-200 hover:border-slate-350'}`}
                               >
-                                <span className="font-bold text-sm block">Stripe (International Cards)</span>
-                                <span className="text-xs text-slate-500">Pay with Visa, Mastercard, AMEX</span>
+                                <div className="w-20 h-12 flex items-center justify-center flex-shrink-0">
+                                  <img src="/images/Stripe-logo.png" alt="Stripe" className="max-w-full max-h-full object-contain mix-blend-multiply" />
+                                </div>
+                                <div className="space-y-0.5 min-w-0 flex-1">
+                                  <span className="font-extrabold text-slate-800 text-sm block">Stripe (International Cards)</span>
+                                  <span className="text-xs text-slate-500 block leading-relaxed">Pay with Visa, Mastercard, AMEX</span>
+                                </div>
                               </button>
                               <button
                                 type="button"
-                                onClick={() => setGateway('VNPAY')}
-                                className={`p-4 rounded-xl border-2 text-left transition-all ${gateway === 'VNPAY' ? 'border-[#1A3B85] bg-blue-50/30' : 'border-slate-200 hover:border-slate-300'}`}
+                                onClick={() => handleSelectGateway('VNPAY')}
+                                className={`p-5 rounded-2xl border-2 text-left transition-all flex items-center gap-3.5 cursor-pointer hover:-translate-y-0.5 active:translate-y-0 ${gateway === 'VNPAY' ? 'border-[#1A3B85] bg-blue-50/30 ring-2 ring-blue-900/10' : 'border-slate-200 hover:border-slate-350'}`}
                               >
-                                <span className="font-bold text-sm block">VNPAY (Simulator)</span>
-                                <span className="text-xs text-slate-500">Pay with ATM, QR Code, VNPAY Wallet</span>
+                                <div className="w-20 h-12 flex items-center justify-center flex-shrink-0">
+                                  <img src="/images/vnpay-logo.jpg" alt="VNPAY" className="max-w-full max-h-full object-contain mix-blend-multiply rounded-lg" />
+                                </div>
+                                <div className="space-y-0.5 min-w-0 flex-1">
+                                  <span className="font-extrabold text-slate-800 text-sm block">VNPAY (Simulator)</span>
+                                  <span className="text-xs text-slate-500 block leading-relaxed">Pay with ATM, QR Code, VNPAY Wallet</span>
+                                </div>
                               </button>
                             </div>
                           </div>
@@ -1668,44 +1993,7 @@ function HotelDetailPage() {
                             )}
                           </div>
 
-                          {/* VAT Invoice Checkbox */}
-                          <div className="space-y-3 border-t border-slate-100 pt-4">
-                            <label className="flex items-center gap-2.5 text-sm font-bold text-slate-700 cursor-pointer">
-                              <input
-                                type="checkbox"
-                                checked={requestInvoice}
-                                onChange={(e) => setRequestInvoice(e.target.checked)}
-                                className="rounded text-cyan-600 focus:ring-cyan-500 w-4 h-4"
-                              />
-                              Need Electronic VAT Invoice (Hóa đơn đỏ)
-                            </label>
 
-                            {requestInvoice && (
-                              <div className="mt-3 p-5 bg-slate-50 rounded-xl border border-slate-200 space-y-4">
-                                <h4 className="font-bold text-xs text-slate-500 uppercase tracking-wider">Company Invoice Information</h4>
-                                <div className="grid grid-cols-2 gap-4">
-                                  <div>
-                                    <label className="text-xs text-slate-600 block mb-1 font-semibold">Company Name</label>
-                                    <input type="text" className="w-full px-3 py-2 rounded-lg bg-white border border-slate-300 text-xs focus:outline-none focus:border-[#1A3B85]" value={companyName} onChange={(e) => setCompanyName(e.target.value)} required placeholder="e.g. Google Vietnam LLC" />
-                                  </div>
-                                  <div>
-                                    <label className="text-xs text-slate-655 block mb-1 font-semibold">Tax Code (MST)</label>
-                                    <input type="text" className="w-full px-3 py-2 rounded-lg bg-white border border-slate-300 text-xs focus:outline-none focus:border-[#1A3B85]" value={taxId} onChange={(e) => setTaxId(e.target.value)} required placeholder="e.g. 0102030405" />
-                                  </div>
-                                </div>
-                                <div className="grid grid-cols-2 gap-4">
-                                  <div>
-                                    <label className="text-xs text-slate-655 block mb-1 font-semibold">Company Address</label>
-                                    <input type="text" className="w-full px-3 py-2 rounded-lg bg-white border border-slate-300 text-xs focus:outline-none focus:border-[#1A3B85]" value={companyAddress} onChange={(e) => setCompanyAddress(e.target.value)} required placeholder="e.g. 123 Le Loi Street, D1, HCMC" />
-                                  </div>
-                                  <div>
-                                    <label className="text-xs text-slate-655 block mb-1 font-semibold">Billing Email</label>
-                                    <input type="email" className="w-full px-3 py-2 rounded-lg bg-white border border-slate-300 text-xs focus:outline-none focus:border-[#1A3B85]" value={companyEmail} onChange={(e) => setCompanyEmail(e.target.value)} required placeholder="e.g. finance@company.com" />
-                                  </div>
-                                </div>
-                              </div>
-                            )}
-                          </div>
 
                           {/* Payment Action */}
                           <div className="space-y-6 mt-4">
@@ -1717,7 +2005,7 @@ function HotelDetailPage() {
                               >
                                 {isBookingInProgress ? "Connecting securely..." : (
                                   <>
-                                    <span>Proceed to Card Entry</span>
+                                    <span>{gateway === 'STRIPE' ? "Proceed to Card Entry" : "Proceed to VNPAY Checkout"}</span>
                                     <span className="group-hover:translate-x-1 transition-transform">➔</span>
                                   </>
                                 )}
@@ -1762,7 +2050,7 @@ function HotelDetailPage() {
                                         setClientSecret('');
                                         if (typeof setBookingStatus === 'function') setBookingStatus('');
                                       }} 
-                                      amount={`$${((bookingDetails ? bookingDetails.finalPrice : (selectedRoom.pricePerNight * calculateNights(checkIn, checkOut)) * 1.15).toLocaleString())}`} 
+                                      amount={`$${((bookingDetails ? bookingDetails.finalPrice : getSubtotalAmount() * 1.15).toLocaleString())}`} 
                                     />
                                   </Elements>
                                 )}
@@ -1853,7 +2141,7 @@ function HotelDetailPage() {
                          <img src={hotel.images?.[0]?.imageUrl || 'https://via.placeholder.com/150'} className="w-full h-full object-cover hover:scale-110 transition-transform duration-500" alt="" />
                        </div>
                        <div>
-                         <h4 className="font-extrabold text-lg text-slate-900 leading-tight tracking-tight">{selectedRoom.roomType} Suite</h4>
+                         <h4 className="font-extrabold text-lg text-slate-900 leading-tight tracking-tight">{selectedRooms.map(r => r.roomType).join(" & ")} Suite</h4>
                          <p className="text-sm text-slate-500 mt-1">{hotel.name}</p>
                          <div className="flex gap-1 mt-2 text-amber-400 text-xs">
                            ★ ★ ★ ★ ★
@@ -1879,21 +2167,23 @@ function HotelDetailPage() {
                        <div className="flex justify-between items-center text-sm">
                          <span className="text-slate-500">Room Rate</span>
                          <span className="font-semibold text-slate-800">
-                           ${bookingDetails ? bookingDetails.totalAmount : ((selectedRoom.pricePerNight * calculateNights(checkIn, checkOut)) + (Math.max(0, adults - 2) * 20 + children * 10) * calculateNights(checkIn, checkOut)).toLocaleString()}
+                           ${bookingDetails 
+                             ? (bookingDetails.totalAmount - bookingDetails.serviceFee - bookingDetails.taxes).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) 
+                             : getSubtotalAmount().toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
                          </span>
                        </div>
                        
                        <div className="flex justify-between items-center text-sm">
                          <span className="text-slate-500">Service Fee (5%)</span>
                          <span className="font-semibold text-slate-800">
-                           ${bookingDetails ? bookingDetails.serviceFee : (((selectedRoom.pricePerNight * calculateNights(checkIn, checkOut)) + (Math.max(0, adults - 2) * 20 + children * 10) * calculateNights(checkIn, checkOut)) * 0.05).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                           ${bookingDetails ? bookingDetails.serviceFee.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) : (getSubtotalAmount() * 0.05).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
                          </span>
                        </div>
 
                        <div className="flex justify-between items-center text-sm">
                          <span className="text-slate-500">Taxes & Fees (10%)</span>
                          <span className="font-semibold text-slate-800">
-                           ${bookingDetails ? bookingDetails.taxes : (((selectedRoom.pricePerNight * calculateNights(checkIn, checkOut)) + (Math.max(0, adults - 2) * 20 + children * 10) * calculateNights(checkIn, checkOut)) * 0.10).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                           ${bookingDetails ? bookingDetails.taxes.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) : (getSubtotalAmount() * 0.10).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
                          </span>
                        </div>
 
@@ -1901,7 +2191,9 @@ function HotelDetailPage() {
                          <div className="flex justify-between items-center text-sm">
                            <span className="text-emerald-600 font-semibold">Discount {bookingDetails?.voucherCode || voucherCode}</span>
                            <span className="font-bold text-emerald-600">
-                             -${bookingDetails ? bookingDetails.discountAmount : '---'}
+                             -${bookingDetails 
+                               ? bookingDetails.discountAmount.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) 
+                               : getEstimatedDiscount().toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
                            </span>
                          </div>
                        )}
@@ -1910,9 +2202,22 @@ function HotelDetailPage() {
                      <div className="border-t border-slate-200 pt-4 flex justify-between items-end">
                        <span className="font-bold text-slate-800 uppercase tracking-widest text-sm">Total Amount</span>
                        <span className="text-3xl font-black text-[#1A3B85] tracking-tight">
-                         ${bookingDetails ? bookingDetails.finalPrice : (((selectedRoom.pricePerNight * calculateNights(checkIn, checkOut)) + (Math.max(0, adults - 2) * 20 + children * 10) * calculateNights(checkIn, checkOut)) * 1.15).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                         ${bookingDetails 
+                           ? bookingDetails.finalPrice.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) 
+                           : (getSubtotalAmount() * 1.15 - getEstimatedDiscount()).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
                        </span>
                      </div>
+
+                     {isDeposit && (
+                       <div className="pt-4 mt-4 border-t border-dashed border-slate-200">
+                         <div className="flex justify-between items-center text-sm font-bold text-amber-700 bg-amber-50 border border-amber-200 p-3.5 rounded-xl">
+                           <span>Required Deposit ({Number(depositRatio) * 100}%):</span>
+                           <span>
+                             ${((bookingDetails ? bookingDetails.finalPrice : (getSubtotalAmount() * 1.15 - getEstimatedDiscount())) * Number(depositRatio)).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                           </span>
+                         </div>
+                       </div>
+                     )}
 
                      {bookingDetails && (
                        <div className="bg-blue-50 border border-blue-100 p-4 rounded-xl text-center mt-6">
@@ -2193,6 +2498,97 @@ function HotelDetailPage() {
                 </button>
               </div>
             )}
+
+      {/* 1. MODAL KHUYẾN NGHỊ ĐẶT PHÒNG CẬN KỀ */}
+      {showRecommendationModal && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[200] flex items-center justify-center p-4 animate-fade-in">
+          <div className="bg-white rounded-3xl max-w-2xl w-full p-8 shadow-2xl border border-slate-100 max-h-[90vh] overflow-y-auto space-y-6 transform transition-all scale-100">
+            <div className="flex items-start space-x-4 bg-amber-50 p-5 rounded-2xl border border-amber-200">
+              <span className="text-3xl">⚠️</span>
+              <div>
+                <h3 className="font-extrabold text-amber-900 text-lg">Khuyến nghị đặt thêm phòng cận kề</h3>
+                <p className="text-xs text-amber-700 mt-2 leading-relaxed font-medium">
+                  Sức chứa tối đa tiêu chuẩn của mỗi phòng là <strong>2 người lớn</strong> và <strong>3 trẻ em</strong>.
+                  Để đảm bảo không gian nghỉ ngơi thoải mái và tuân thủ đúng nội quy khách sạn, chúng tôi khuyến nghị bạn đặt thêm phòng bên cạnh.
+                </p>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <span className="block text-xs font-bold text-slate-500 uppercase tracking-widest">
+                Các phòng trống cận kề có thể lựa chọn:
+              </span>
+
+              {getRecommendedRooms().length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {getRecommendedRooms().map(r => (
+                    <div key={r.roomId} className="bg-slate-50 p-4 rounded-2xl border border-slate-200/80 flex items-center justify-between shadow-sm hover:border-cyan-300 transition-colors">
+                      <div className="min-w-0 pr-2">
+                        <span className="block font-black text-slate-800 text-sm">Phòng {r.roomNumber}</span>
+                        <span className="block text-[10px] text-slate-500 font-bold uppercase tracking-wider mt-0.5 truncate" title={r.roomType}>{r.roomType}</span>
+                        <span className="block text-[11px] text-cyan-600 font-extrabold mt-1">${(r.price || r.pricePerNight || 0).toFixed(0)} / đêm</span>
+                      </div>
+                      <button 
+                        type="button" 
+                        onClick={() => handleAddRecommendedRoom(r)} 
+                        className="px-4 py-2 rounded-xl bg-[#1A3B85] hover:bg-[#122A60] text-white text-xs font-bold shadow-md shadow-blue-900/10 transition-all cursor-pointer whitespace-nowrap flex-shrink-0 ml-2"
+                      >
+                        + Đặt phòng này
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 text-center text-xs text-slate-500 italic">
+                  Hiện tại không còn phòng trống cận kề nào khác.
+                </div>
+              )}
+            </div>
+
+            <div className="pt-4 border-t border-slate-100 flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={handleCancelRecommendation}
+                className="px-6 py-3 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-bold transition-colors cursor-pointer"
+              >
+                Hủy & Quay lại
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 2. MODAL CẢNH BÁO ĐẶT PHÒNG THEO ĐOÀN */}
+      {showGroupWarningModal && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[200] flex items-center justify-center p-4 animate-fade-in">
+          <div className="bg-white rounded-3xl max-w-md w-full p-8 shadow-2xl border border-slate-100 space-y-6 text-center">
+            <div className="w-16 h-16 bg-indigo-50 text-indigo-600 rounded-full flex items-center justify-center text-3xl mx-auto border border-indigo-100">
+              🏢
+            </div>
+            
+            <div className="space-y-2">
+              <h3 className="font-extrabold text-slate-800 text-lg">Thông báo Đặt phòng theo đoàn</h3>
+              <p className="text-xs text-slate-500 leading-relaxed font-medium">
+                Số lượng phòng yêu cầu của bạn đã đạt từ <strong>5 phòng trở lên</strong>. Hệ thống tự động chuyển sang luồng đặt phòng theo đoàn (Group Booking) để quản lý thông tin khách dễ dàng hơn.
+              </p>
+            </div>
+
+            <div className="flex flex-col gap-2 pt-2">
+              <button
+                type="button"
+                onClick={handleAcceptGroupWarning}
+                className="w-full py-3.5 rounded-xl bg-[#1A3B85] hover:bg-[#122A60] text-white text-sm font-bold shadow-md shadow-blue-900/10 transition-all cursor-pointer"
+              >
+                Đồng ý & Chuyển sang đặt phòng đoàn
+              </button>
+              <button
+                type="button"
+                onClick={handleCancelGroupWarning}
+                className="w-full py-3.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-bold transition-all cursor-pointer"
+              >
+                Không đồng ý (Giới hạn tối đa 4 phòng)
+              </button>
+            </div>
           </div>
         </div>
       )}

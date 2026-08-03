@@ -43,9 +43,9 @@ public class RoomServiceImpl implements RoomService {
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "Hotel not found or inactive: " + request.getHotelId()));
 
-        // Normalise dates to start/end of day for full-day booking semantics
-        LocalDateTime checkIn  = request.getCheckIn().atStartOfDay();
-        LocalDateTime checkOut = request.getCheckOut().atTime(LocalTime.MAX);
+        // Normalise dates to 12:00 (noon) check-in/out semantics
+        LocalDateTime checkIn  = request.getCheckIn().atTime(12, 0);
+        LocalDateTime checkOut = request.getCheckOut().atTime(12, 0);
 
         List<Room> availableRooms = roomRepository.findAvailableRooms(
                 request.getHotelId(), checkIn, checkOut);

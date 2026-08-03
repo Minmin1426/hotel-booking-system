@@ -19,8 +19,8 @@ public class VoucherController {
 
     @GetMapping
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<List<VoucherResponse>> getAllActiveVouchers() {
-        List<VoucherResponse> vouchers = voucherService.getAllActiveVouchers();
+    public ResponseEntity<List<VoucherResponse>> getAllActiveVouchers(@com.hotelbooking.security.CurrentUser Long userId) {
+        List<VoucherResponse> vouchers = voucherService.getAllActiveVouchersForUser(userId);
         return ResponseEntity.ok(vouchers);
     }
 

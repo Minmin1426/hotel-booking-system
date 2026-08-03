@@ -8,6 +8,7 @@ import { HotelService } from '../services/HotelService';
 import { PaymentService } from '../services/PaymentService';
 import { LoyaltyService } from '../services/LoyaltyService';
 import { Validators } from '../utils/validators';
+import { VoucherService } from '../services/VoucherService';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
 
@@ -75,6 +76,35 @@ export default function AdminDashboardPage() {
   const [lockDuration, setLockDuration] = useState(10);
   const [isSavingLockDuration, setIsSavingLockDuration] = useState(false);
   const [lockDurationMessage, setLockDurationMessage] = useState('');
+
+  // Voucher Management States
+  const [vouchers, setVouchers] = useState([]);
+  const [vouchersPage, setVouchersPage] = useState(0);
+  const [vouchersTotalPages, setVouchersTotalPages] = useState(0);
+  const [vouchersTotalElements, setVouchersTotalElements] = useState(0);
+  const [voucherStatusFilter, setVoucherStatusFilter] = useState('ALL');
+  const [voucherAccountTypeFilter, setVoucherAccountTypeFilter] = useState('ALL');
+
+  // Voucher Modal states
+  const [isVoucherModalOpen, setIsVoucherModalOpen] = useState(false);
+  const [editingVoucher, setEditingVoucher] = useState(null);
+  const [isStatsModalOpen, setIsStatsModalOpen] = useState(false);
+  const [selectedVoucherStats, setSelectedVoucherStats] = useState(null);
+
+  // Voucher Form fields
+  const [voucherFormCode, setVoucherFormCode] = useState('');
+  const [voucherName, setVoucherName] = useState('');
+  const [voucherDescription, setVoucherDescription] = useState('');
+  const [voucherDiscountType, setVoucherDiscountType] = useState('PERCENTAGE');
+  const [voucherDiscountValue, setVoucherDiscountValue] = useState('');
+  const [voucherMinBookingValue, setVoucherMinBookingValue] = useState('');
+  const [voucherMaxDiscount, setVoucherMaxDiscount] = useState('');
+  const [voucherMaxUsage, setVoucherMaxUsage] = useState('');
+  const [voucherStartDate, setVoucherStartDate] = useState('');
+  const [voucherEndDate, setVoucherEndDate] = useState('');
+  const [voucherTypeState, setVoucherTypeState] = useState('STANDARD');
+  const [voucherComboMealBenefit, setVoucherComboMealBenefit] = useState('');
+  const [voucherForAccountType, setVoucherForAccountType] = useState('ALL');
 
   // User CUD Modal States
   const [isUserModalOpen, setIsUserModalOpen] = useState(false);
@@ -203,6 +233,20 @@ export default function AdminDashboardPage() {
     }
   }, [activeTab, selectedHotelId]);
 
+  // Fetch Vouchers when tab, page or filters change
+  useEffect(() => {
+    if (activeTab === 'vouchers') {
+      loadVouchers();
+    }
+  }, [activeTab, vouchersPage, voucherStatusFilter, voucherAccountTypeFilter]);
+
+  // Reset vouchers page when filters change
+  useEffect(() => {
+    if (vouchersPage !== 0) {
+      setVouchersPage(0);
+    }
+  }, [voucherStatusFilter, voucherAccountTypeFilter]);
+
   useEffect(() => {
     const token = sessionStorage.getItem("accessToken");
     const role = sessionStorage.getItem("userRole");
@@ -222,6 +266,129 @@ export default function AdminDashboardPage() {
     };
     loadAdminProfile();
   }, []);
+
+  const loadVouchers = async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const data = await VoucherService.listAdminVouchers(
+        voucherStatusFilter,
+        voucherAccountTypeFilter,
+        vouchersPage,
+        10
+      );
+      setVouchers(data.content || []);
+      setVouchersTotalPages(data.totalPages || 0);
+      setVouchersTotalElements(data.totalElements || 0);
+    } catch (err) {
+      setError("Failed to load vouchers: " + err.message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleCreateVoucherClick = () => {
+    setEditingVoucher(null);
+    setVoucherFormCode('');
+    setVoucherName('');
+    setVoucherDescription('');
+    setVoucherDiscountType('PERCENTAGE');
+    setVoucherDiscountValue('');
+    setVoucherMinBookingValue('');
+    setVoucherMaxDiscount('');
+    setVoucherMaxUsage('');
+    setVoucherStartDate('');
+    setVoucherEndDate('');
+    setVoucherTypeState('STANDARD');
+    setVoucherComboMealBenefit('');
+    setVoucherForAccountType('ALL');
+    setError(null);
+    setIsVoucherModalOpen(true);
+  };
+
+  const handleEditVoucherClick = (voucher) => {
+    setEditingVoucher(voucher);
+    setVoucherFormCode(voucher.code || '');
+    setVoucherName(voucher.name || '');
+    setVoucherDescription(voucher.description || '');
+    setVoucherDiscountType(voucher.discountType || 'PERCENTAGE');
+    setVoucherDiscountValue(voucher.discountValue ? voucher.discountValue.toString() : '');
+    setVoucherMinBookingValue(voucher.minBookingValue ? voucher.minBookingValue.toString() : '');
+    setVoucherMaxDiscount(voucher.maxDiscount ? voucher.maxDiscount.toString() : '');
+    setVoucherMaxUsage(voucher.maxUsage ? voucher.maxUsage.toString() : '');
+    setVoucherStartDate(voucher.startDate ? voucher.startDate.slice(0, 16) : '');
+    setVoucherEndDate(voucher.endDate ? voucher.endDate.slice(0, 16) : '');
+    setVoucherTypeState(voucher.voucherType || 'STANDARD');
+    setVoucherComboMealBenefit(voucher.comboMealBenefit || '');
+    setVoucherForAccountType(voucher.forAccountType || 'ALL');
+    setError(null);
+    setIsVoucherModalOpen(true);
+  };
+
+  const handleSaveVoucher = async (e) => {
+    e.preventDefault();
+    setIsLoading(true);
+    setError(null);
+
+    const voucherData = {
+      code: voucherFormCode.trim(),
+      name: voucherName.trim(),
+      description: voucherDescription.trim(),
+      discountType: voucherDiscountType,
+      discountValue: Number(voucherDiscountValue),
+      minBookingValue: voucherMinBookingValue ? Number(voucherMinBookingValue) : null,
+      maxDiscount: voucherMaxDiscount ? Number(voucherMaxDiscount) : null,
+      maxUsage: voucherMaxUsage ? Number(voucherMaxUsage) : null,
+      startDate: voucherStartDate ? `${voucherStartDate}:00` : null,
+      endDate: voucherEndDate ? `${voucherEndDate}:00` : null,
+      voucherType: voucherTypeState,
+      comboMealBenefit: voucherComboMealBenefit ? voucherComboMealBenefit.trim() : null,
+      forAccountType: voucherForAccountType
+    };
+
+    try {
+      if (!editingVoucher) {
+        await VoucherService.createAdminVoucher(voucherData);
+      } else {
+        await VoucherService.updateAdminVoucher(editingVoucher.voucherId, voucherData);
+      }
+      setIsVoucherModalOpen(false);
+      loadVouchers();
+    } catch (err) {
+      setError(err.message || "Failed to save voucher");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleDeactivateVoucher = async (voucherId) => {
+    if (window.confirm("Are you sure you want to deactivate/delete this voucher campaign?")) {
+      setIsLoading(true);
+      setError(null);
+      try {
+        await VoucherService.deactivateAdminVoucher(voucherId);
+        loadVouchers();
+      } catch (err) {
+        setError(err.message || "Failed to deactivate voucher");
+      } finally {
+        setIsLoading(false);
+      }
+    }
+  };
+
+  const handleViewVoucherStats = async (voucherId) => {
+    setActionLoadingId(voucherId);
+    setError(null);
+    try {
+      const stats = await VoucherService.getAdminVoucherStats(voucherId);
+      setSelectedVoucherStats(stats);
+      setIsStatsModalOpen(true);
+    } catch (err) {
+      setError("Failed to fetch voucher stats: " + err.message);
+    } finally {
+      setActionLoadingId(null);
+    }
+  };
 
   const loadUsers = async (page = usersPage) => {
     setIsLoading(true);
@@ -904,6 +1071,7 @@ export default function AdminDashboardPage() {
               <h1 className="text-3xl font-bold tracking-tight text-[#1d1d1f]">
                 {activeTab === 'users' && 'User Management'}
                 {activeTab === 'bookings' && 'Booking Management'}
+                {activeTab === 'vouchers' && 'Voucher Management'}
                 {activeTab === 'hotels' && 'Hotel Management'}
                 {activeTab === 'rooms' && 'Room Management'}
                 {activeTab === 'reports' && 'Operations & Reports'}
@@ -912,6 +1080,7 @@ export default function AdminDashboardPage() {
               <p className="text-xs text-[#86868b] mt-1">
                 {activeTab === 'users' && 'Admin console to manage registered user accounts'}
                 {activeTab === 'bookings' && 'Manage hotel reservations, payments, and offline manual booking processing'}
+                {activeTab === 'vouchers' && 'Create, edit, deactivate, and track customer discount voucher campaigns'}
                 {activeTab === 'hotels' && 'Create, edit, delete, and configure hotel profiles'}
                 {activeTab === 'rooms' && 'Manage hotel rooms, pricing, room types, and toggle real-time availability'}
                 {activeTab === 'reports' && 'Operational statistics, room occupancy reports, and Excel exporting'}
@@ -967,6 +1136,18 @@ export default function AdminDashboardPage() {
                   }`}
                 >
                   Bookings
+                </button>
+              )}
+              {isAdmin && (
+                <button
+                  onClick={() => navigate('/admin/users?tab=vouchers')}
+                  className={`px-4 py-2 text-xs font-bold rounded-lg transition-all ${
+                    activeTab === 'vouchers' 
+                      ? 'bg-white text-[#1d1d1f] shadow-sm' 
+                      : 'text-[#86868b] hover:text-[#1d1d1f]'
+                  }`}
+                >
+                  Vouchers
                 </button>
               )}
               <button
@@ -2056,6 +2237,166 @@ export default function AdminDashboardPage() {
             </div>
           )}
 
+          {/* Tab Content: Vouchers */}
+          {activeTab === 'vouchers' && (
+            <div className="animate-fadeIn text-left">
+              {/* Voucher Stats Summary */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+                <div className="bg-[#f5f5f7] p-4 rounded-[12px] text-left border border-[#e8e8ed]">
+                  <span className="text-xs text-[#86868b] uppercase tracking-wider block font-semibold">Total Campaigns</span>
+                  <span className="text-2xl font-bold text-[#1d1d1f] mt-1 block">{vouchersTotalElements}</span>
+                </div>
+                <div className="bg-[#f5f5f7] p-4 rounded-[12px] text-left border border-[#e8e8ed]">
+                  <span className="text-xs text-[#86868b] uppercase tracking-wider block font-semibold">Voucher Mode</span>
+                  <span className="text-sm font-bold text-indigo-600 mt-2 inline-block px-3 py-1 bg-indigo-50 rounded-full">ACTIVE CAMPAIGNS</span>
+                </div>
+              </div>
+
+              {/* Filters & Add Button */}
+              <div className="flex flex-col md:flex-row gap-4 mb-6">
+                <div className="flex-1 flex gap-4">
+                  <div className="flex-1">
+                    <select
+                      className="w-full h-[40px] px-4 rounded-xl border border-[#e8e8ed] text-xs font-semibold bg-white focus:outline-none focus:border-[#0066cc]"
+                      value={voucherStatusFilter}
+                      onChange={(e) => setVoucherStatusFilter(e.target.value)}
+                    >
+                      <option value="ALL">All Statuses (Active & Expired)</option>
+                      <option value="ACTIVE">Active only</option>
+                      <option value="INACTIVE">Inactive only</option>
+                    </select>
+                  </div>
+                  <div className="flex-1">
+                    <select
+                      className="w-full h-[40px] px-4 rounded-xl border border-[#e8e8ed] text-xs font-semibold bg-white focus:outline-none focus:border-[#0066cc]"
+                      value={voucherAccountTypeFilter}
+                      onChange={(e) => setVoucherAccountTypeFilter(e.target.value)}
+                    >
+                      <option value="ALL">All Account Types</option>
+                      <option value="USER">Standard User (CUSTOMER)</option>
+                      <option value="CORPORATE">Corporate Member</option>
+                    </select>
+                  </div>
+                </div>
+                <button
+                  onClick={handleCreateVoucherClick}
+                  className="h-[40px] px-5 rounded-xl bg-indigo-600 text-white text-xs font-bold hover:brightness-105 active:scale-95 transition-all shadow-sm flex items-center gap-1.5 cursor-pointer"
+                >
+                  <span>➕</span> Add Voucher
+                </button>
+              </div>
+
+              {/* Vouchers Table */}
+              <div className="overflow-x-auto border border-[#e8e8ed] rounded-xl bg-white">
+                {isLoading ? (
+                  <div className="text-center py-20 text-[#86868b] apple-body">
+                    Loading vouchers...
+                  </div>
+                ) : vouchers.length === 0 ? (
+                  <div className="text-center py-20 text-[#86868b] apple-body">
+                    No vouchers found matching current filters.
+                  </div>
+                ) : (
+                  <table className="w-full text-left border-collapse">
+                    <thead>
+                      <tr className="bg-[#f5f5f7] border-b border-[#e8e8ed]">
+                        <th className="p-4 text-xs font-semibold uppercase text-[#86868b] tracking-wider w-[120px]">Voucher Code</th>
+                        <th className="p-4 text-xs font-semibold uppercase text-[#86868b] tracking-wider">Discount Type & Value</th>
+                        <th className="p-4 text-xs font-semibold uppercase text-[#86868b] tracking-wider">Min Spend / Max Disc</th>
+                        <th className="p-4 text-xs font-semibold uppercase text-[#86868b] tracking-wider w-[120px]">Usage</th>
+                        <th className="p-4 text-xs font-semibold uppercase text-[#86868b] tracking-wider">Validity Period</th>
+                        <th className="p-4 text-xs font-semibold uppercase text-[#86868b] tracking-wider text-right w-[200px]">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-[#e8e8ed]">
+                      {vouchers.map((v) => {
+                        const isExpired = v.endDate && new Date(v.endDate) < new Date();
+                        const isLimitReached = v.maxUsage !== null && v.currentUsage >= v.maxUsage;
+                        
+                        return (
+                          <tr key={v.voucherId} className="hover:bg-[#fafafc] transition-colors">
+                            <td className="p-4 text-sm font-bold text-indigo-600 font-mono">
+                              {v.code}
+                            </td>
+                            <td className="p-4 text-xs text-[#1d1d1f]">
+                              <div className="font-semibold text-sm">
+                                {v.discountType === 'PERCENTAGE' ? `${v.discountValue}% OFF` : `$${v.discountValue} OFF`}
+                              </div>
+                              <div className="text-[#86868b] text-[10px] uppercase font-bold mt-0.5">{v.voucherType}</div>
+                              {v.comboMealBenefit && (
+                                <div className="text-cyan-600 text-[10px] mt-0.5 font-medium">Meal: {v.comboMealBenefit}</div>
+                              )}
+                            </td>
+                            <td className="p-4 text-xs font-mono text-[#515154]">
+                              <div>Min Spend: ${v.minBookingValue || '0.00'}</div>
+                              {v.discountType === 'PERCENTAGE' && (
+                                <div className="mt-0.5 text-[#86868b]">Max Disc: ${v.maxDiscount || 'N/A'}</div>
+                              )}
+                            </td>
+                            <td className="p-4 text-xs font-mono text-[#1d1d1f]">
+                              <div className="font-semibold">{v.currentUsage || 0} / {v.maxUsage || '∞'}</div>
+                              <div className="text-[10px] text-[#86868b] mt-0.5">redemptions</div>
+                            </td>
+                            <td className="p-4 text-xs text-[#515154] font-medium leading-normal">
+                              <div>Start: <span className="font-semibold">{v.startDate ? new Date(v.startDate).toLocaleString('vi-VN') : 'Immediate'}</span></div>
+                              <div className="mt-0.5">End: <span className="font-semibold">{v.endDate ? new Date(v.endDate).toLocaleString('vi-VN') : 'Never'}</span></div>
+                            </td>
+                            <td className="p-4 text-right">
+                              <div className="flex gap-1.5 justify-end items-center">
+                                <button
+                                  onClick={() => handleViewVoucherStats(v.voucherId)}
+                                  disabled={actionLoadingId === v.voucherId}
+                                  className="px-2.5 py-1.5 rounded-full text-[10px] font-semibold bg-emerald-50 text-emerald-600 hover:bg-emerald-100 active:scale-95 transition-all cursor-pointer"
+                                >
+                                  {actionLoadingId === v.voucherId ? '...' : 'Stats'}
+                                </button>
+                                <button
+                                  onClick={() => handleEditVoucherClick(v)}
+                                  className="px-2.5 py-1.5 rounded-full text-[10px] font-semibold bg-blue-50 text-blue-600 hover:bg-blue-100 active:scale-95 transition-all cursor-pointer"
+                                >
+                                  Edit
+                                </button>
+                                <button
+                                  onClick={() => handleDeactivateVoucher(v.voucherId)}
+                                  className="px-2.5 py-1.5 rounded-full text-[10px] font-semibold bg-rose-50 text-rose-600 hover:bg-rose-100 active:scale-95 transition-all cursor-pointer"
+                                >
+                                  Delete
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                )}
+              </div>
+
+              {/* Vouchers Pagination */}
+              {vouchersTotalElements > 0 && (
+                <div className="flex justify-center items-center gap-6 mt-8">
+                  <button
+                    onClick={() => setVouchersPage(p => Math.max(0, p - 1))}
+                    disabled={vouchersPage === 0 || isLoading}
+                    className="px-4 py-2 rounded-full border border-[#d2d2d7] text-xs font-semibold hover:bg-[#f5f5f7] active:scale-95 disabled:opacity-40 transition-all bg-white"
+                  >
+                    Previous
+                  </button>
+                  <span className="text-sm font-semibold text-[#1d1d1f] font-mono bg-[#f5f5f7] px-3.5 py-1.5 rounded-full border border-[#e8e8ed]">
+                    {vouchersPage + 1}/{Math.max(1, vouchersTotalPages)}
+                  </span>
+                  <button
+                    onClick={() => setVouchersPage(p => Math.min(vouchersTotalPages - 1, p + 1))}
+                    disabled={vouchersPage >= vouchersTotalPages - 1 || isLoading}
+                    className="px-4 py-2 rounded-full border border-[#d2d2d7] text-xs font-semibold hover:bg-[#f5f5f7] active:scale-95 disabled:opacity-40 transition-all bg-white"
+                  >
+                    Next
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+
         </div>
       </main>
 
@@ -2436,6 +2777,286 @@ export default function AdminDashboardPage() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Voucher CUD Modal */}
+      {isVoucherModalOpen && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-white rounded-3xl w-full max-w-lg my-8 overflow-hidden shadow-2xl border border-[#e8e8ed] animate-fadeIn text-left">
+            <div className="px-8 py-6 border-b border-[#f5f5f7] flex justify-between items-center bg-[#f5f5f7]/50">
+              <h2 className="text-xl font-bold text-[#1d1d1f]">
+                {editingVoucher ? "Edit Voucher Details" : "Create New Voucher"}
+              </h2>
+              <button 
+                onClick={() => setIsVoucherModalOpen(false)}
+                className="text-[#86868b] hover:text-[#1d1d1f] transition-colors p-1"
+              >
+                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveVoucher} className="p-8 space-y-4 max-h-[70vh] overflow-y-auto">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-[#86868b] mb-1.5 uppercase tracking-wider">Campaign Name *</label>
+                  <input
+                    type="text"
+                    required
+                    className="w-full h-[40px] px-4 rounded-xl border border-[#e8e8ed] text-sm focus:outline-none focus:border-[#0066cc] transition-all bg-[#f5f5f7] focus:bg-white"
+                    value={voucherName}
+                    onChange={(e) => setVoucherName(e.target.value)}
+                    placeholder="e.g. Summer Promo"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-[#86868b] mb-1.5 uppercase tracking-wider">Eligible Account Type *</label>
+                  <select
+                    className="w-full h-[40px] px-4 rounded-xl border border-[#e8e8ed] text-sm focus:outline-none focus:border-[#0066cc] bg-[#f5f5f7] focus:bg-white"
+                    value={voucherForAccountType}
+                    onChange={(e) => setVoucherForAccountType(e.target.value)}
+                  >
+                    <option value="ALL">All Account Types</option>
+                    <option value="CUSTOMER">Standard Customers Only</option>
+                    <option value="CORPORATE_MEMBER">Corporate Members Only</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-[#86868b] mb-1.5 uppercase tracking-wider">Campaign Description</label>
+                <textarea
+                  rows="2"
+                  className="w-full p-4 rounded-xl border border-[#e8e8ed] text-sm focus:outline-none focus:border-[#0066cc] transition-all bg-[#f5f5f7] focus:bg-white resize-none animate-fadeIn"
+                  value={voucherDescription}
+                  onChange={(e) => setVoucherDescription(e.target.value)}
+                  placeholder="Describe this promotion campaign..."
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-[#86868b] mb-1.5 uppercase tracking-wider">Voucher Code *</label>
+                  <input
+                    type="text"
+                    required
+                    disabled={!!editingVoucher}
+                    className="w-full h-[40px] px-4 rounded-xl border border-[#e8e8ed] text-sm focus:outline-none focus:border-[#0066cc] transition-all bg-[#f5f5f7] focus:bg-white disabled:opacity-60"
+                    value={voucherFormCode}
+                    onChange={(e) => setVoucherFormCode(e.target.value)}
+                    placeholder="e.g. SUMMER20"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-[#86868b] mb-1.5 uppercase tracking-wider">Voucher Type *</label>
+                  <select
+                    className="w-full h-[40px] px-4 rounded-xl border border-[#e8e8ed] text-sm focus:outline-none focus:border-[#0066cc] bg-[#f5f5f7] focus:bg-white"
+                    value={voucherTypeState}
+                    onChange={(e) => setVoucherTypeState(e.target.value)}
+                  >
+                    <option value="STANDARD">Standard (STANDARD)</option>
+                    <option value="CAMPAIGN">Campaign (CAMPAIGN)</option>
+                    <option value="MEMBER">Member Exclusive (MEMBER)</option>
+                    <option value="MEAL_COMBO">Meal Combo (MEAL_COMBO)</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-[#86868b] mb-1.5 uppercase tracking-wider">Discount Type *</label>
+                  <select
+                    className="w-full h-[40px] px-4 rounded-xl border border-[#e8e8ed] text-sm focus:outline-none focus:border-[#0066cc] bg-[#f5f5f7] focus:bg-white"
+                    value={voucherDiscountType}
+                    onChange={(e) => setVoucherDiscountType(e.target.value)}
+                  >
+                    <option value="PERCENTAGE">Percentage (%)</option>
+                    <option value="FIXED_AMOUNT">Fixed Amount ($)</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-[#86868b] mb-1.5 uppercase tracking-wider">Discount Value *</label>
+                  <input
+                    type="number"
+                    min="1"
+                    required
+                    className="w-full h-[40px] px-4 rounded-xl border border-[#e8e8ed] text-sm focus:outline-none focus:border-[#0066cc] transition-all bg-[#f5f5f7] focus:bg-white"
+                    value={voucherDiscountValue}
+                    onChange={(e) => setVoucherDiscountValue(e.target.value)}
+                    placeholder={voucherDiscountType === 'PERCENTAGE' ? "e.g. 15 (for 15%)" : "e.g. 50 (for $50)"}
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-[#86868b] mb-1.5 uppercase tracking-wider">Min Booking Value ($)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    className="w-full h-[40px] px-4 rounded-xl border border-[#e8e8ed] text-sm focus:outline-none focus:border-[#0066cc] transition-all bg-[#f5f5f7] focus:bg-white"
+                    value={voucherMinBookingValue}
+                    onChange={(e) => setVoucherMinBookingValue(e.target.value)}
+                    placeholder="e.g. 100"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-[#86868b] mb-1.5 uppercase tracking-wider">Max Discount Amount ($)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    disabled={voucherDiscountType !== 'PERCENTAGE'}
+                    className="w-full h-[40px] px-4 rounded-xl border border-[#e8e8ed] text-sm focus:outline-none focus:border-[#0066cc] transition-all bg-[#f5f5f7] focus:bg-white disabled:opacity-50"
+                    value={voucherMaxDiscount}
+                    onChange={(e) => setVoucherMaxDiscount(e.target.value)}
+                    placeholder="e.g. 50 (Cap for %)"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-[#86868b] mb-1.5 uppercase tracking-wider">Max Usage Limit</label>
+                  <input
+                    type="number"
+                    min="1"
+                    className="w-full h-[40px] px-4 rounded-xl border border-[#e8e8ed] text-sm focus:outline-none focus:border-[#0066cc] transition-all bg-[#f5f5f7] focus:bg-white"
+                    value={voucherMaxUsage}
+                    onChange={(e) => setVoucherMaxUsage(e.target.value)}
+                    placeholder="e.g. 500 (Empty for unlimited)"
+                  />
+                </div>
+
+                {voucherTypeState === 'MEAL_COMBO' && (
+                  <div>
+                    <label className="block text-xs font-bold text-[#86868b] mb-1.5 uppercase tracking-wider">Combo Meal Benefit *</label>
+                    <input
+                      type="text"
+                      required
+                      className="w-full h-[40px] px-4 rounded-xl border border-[#e8e8ed] text-sm focus:outline-none focus:border-[#0066cc] transition-all bg-[#f5f5f7] focus:bg-white"
+                      value={voucherComboMealBenefit}
+                      onChange={(e) => setVoucherComboMealBenefit(e.target.value)}
+                      placeholder="e.g. FREE_BUFFET"
+                    />
+                  </div>
+                )}
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-[#86868b] mb-1.5 uppercase tracking-wider">Start Date</label>
+                  <input
+                    type="datetime-local"
+                    className="w-full h-[40px] px-4 rounded-xl border border-[#e8e8ed] text-sm focus:outline-none focus:border-[#0066cc] transition-all bg-[#f5f5f7] focus:bg-white"
+                    value={voucherStartDate}
+                    onChange={(e) => setVoucherStartDate(e.target.value)}
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-[#86868b] mb-1.5 uppercase tracking-wider">End Date</label>
+                  <input
+                    type="datetime-local"
+                    className="w-full h-[40px] px-4 rounded-xl border border-[#e8e8ed] text-sm focus:outline-none focus:border-[#0066cc] transition-all bg-[#f5f5f7] focus:bg-white"
+                    value={voucherEndDate}
+                    onChange={(e) => setVoucherEndDate(e.target.value)}
+                  />
+                </div>
+              </div>
+
+              {error && (
+                <div className="text-red-500 text-xs font-semibold bg-red-50 p-3 rounded-xl border border-red-100 text-center">
+                  {error}
+                </div>
+              )}
+
+              <div className="flex justify-end gap-3 pt-6 border-t border-[#f5f5f7] mt-8">
+                <button
+                  type="button"
+                  onClick={() => setIsVoucherModalOpen(false)}
+                  className="h-[44px] px-6 rounded-xl border border-[#d2d2d7] text-sm font-semibold text-[#1d1d1f] hover:bg-[#f5f5f7] active:scale-95 transition-all bg-white"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isLoading}
+                  className="h-[44px] px-6 rounded-xl bg-[#0066cc] hover:bg-[#0055b3] text-sm font-semibold text-white transition-all disabled:opacity-50 flex items-center justify-center min-w-[120px]"
+                >
+                  {isLoading ? "Saving..." : "Save Voucher"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Voucher Stats Modal */}
+      {isStatsModalOpen && selectedVoucherStats && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl w-full max-w-md overflow-hidden shadow-2xl border border-[#e8e8ed] animate-fadeIn text-left">
+            <div className="px-8 py-6 border-b border-[#f5f5f7] flex justify-between items-center bg-[#f5f5f7]/50">
+              <h2 className="text-xl font-bold text-[#1d1d1f]">
+                Campaign Stats: {selectedVoucherStats.code}
+              </h2>
+              <button 
+                onClick={() => setIsStatsModalOpen(false)}
+                className="text-[#86868b] hover:text-[#1d1d1f] transition-colors p-1"
+              >
+                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            <div className="p-8 space-y-6">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
+                  <span className="text-[10px] text-[#86868b] font-bold uppercase tracking-wider block">Total Claims</span>
+                  <span className="text-2xl font-extrabold text-slate-800 mt-1 block">{selectedVoucherStats.totalClaims || 0}</span>
+                  <span className="text-[9px] text-[#86868b] block mt-0.5">user wallets</span>
+                </div>
+                <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
+                  <span className="text-[10px] text-[#86868b] font-bold uppercase tracking-wider block">Total Redemptions</span>
+                  <span className="text-2xl font-extrabold text-indigo-600 mt-1 block">{selectedVoucherStats.totalRedemptions || 0}</span>
+                  <span className="text-[9px] text-indigo-500/80 block mt-0.5">completed bookings</span>
+                </div>
+              </div>
+
+              <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
+                <span className="text-[10px] text-[#86868b] font-bold uppercase tracking-wider block">Total Discount Given</span>
+                <span className="text-3xl font-black text-emerald-600 mt-1 block">${selectedVoucherStats.totalDiscountGiven ? selectedVoucherStats.totalDiscountGiven.toFixed(2) : '0.00'}</span>
+                <span className="text-[10px] text-[#86868b] block mt-0.5">saved by customers</span>
+              </div>
+
+              <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 grid grid-cols-2 gap-2 text-xs text-[#515154]">
+                <div>
+                  <span className="font-semibold text-[#86868b] block mb-0.5">Remaining Usage:</span>
+                  <span className="font-bold text-slate-800 text-sm">{selectedVoucherStats.remainingUsage !== null ? selectedVoucherStats.remainingUsage : 'Unlimited'}</span>
+                </div>
+                <div>
+                  <span className="font-semibold text-[#86868b] block mb-0.5">Limit Cap:</span>
+                  <span className="font-bold text-slate-800 text-sm">{selectedVoucherStats.maxUsage || 'Unlimited'}</span>
+                </div>
+              </div>
+
+              <div className="flex justify-end pt-4 border-t border-[#f5f5f7]">
+                <button
+                  type="button"
+                  onClick={() => setIsStatsModalOpen(false)}
+                  className="h-[40px] px-6 rounded-xl bg-slate-800 hover:bg-slate-900 text-xs font-bold text-white transition-all active:scale-95 shadow-sm"
+                >
+                  Close Stats
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}

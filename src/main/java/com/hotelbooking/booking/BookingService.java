@@ -4,6 +4,7 @@ import com.hotelbooking.booking.dto.BookingConfirmResponse;
 import com.hotelbooking.booking.dto.BookingHistoryResponse;
 import com.hotelbooking.booking.dto.BookingRequest;
 import com.hotelbooking.booking.dto.BookingResponse;
+import com.hotelbooking.booking.dto.BookingTicketDTO;
 import com.hotelbooking.booking.dto.CancelBookingResponse;
 import com.hotelbooking.booking.dto.DateValidationResponse;
 import com.hotelbooking.booking.dto.UpdateBookingStatusRequest;
@@ -40,4 +41,9 @@ public interface BookingService {
     BookingResponse adminCreateBooking(AdminCreateBookingRequest request);
     BookingResponse adminUpdateBooking(Long bookingId, AdminUpdateBookingRequest request);
     void adminDeleteBooking(Long bookingId);
+
+    // E-Ticket Pass & Check-in QR features
+    BookingTicketDTO getBookingTicket(Long bookingId);
+    void resendBookingTicketEmail(Long bookingId);
+    BookingTicketDTO scanCheckInQr(String qrCode);
 }

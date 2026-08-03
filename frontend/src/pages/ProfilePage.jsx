@@ -7,6 +7,7 @@ import { ReviewService } from '../services/ReviewService';
 import { LoyaltyService } from '../services/LoyaltyService';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
+import CheckInTicketModal from '../components/CheckInTicketModal';
 
 export default function ProfilePage() {
   const location = useLocation();
@@ -42,6 +43,9 @@ export default function ProfilePage() {
   const [reviewComment, setReviewComment] = useState('');
   const [reviewSubmitting, setReviewSubmitting] = useState(false);
   const [reviewError, setReviewError] = useState(null);
+
+  // E-Ticket Modal State
+  const [selectedTicketBookingId, setSelectedTicketBookingId] = useState(null);
 
   // Vouchers state
   const [vouchers, setVouchers] = useState([]);
@@ -275,6 +279,26 @@ export default function ProfilePage() {
     setTimeout(() => {
       setCopiedCode(null);
     }, 2000);
+  };
+
+  const handleVoucherAction = async (v) => {
+    if (v.isClaimed === false) {
+      setError(null);
+      try {
+        await BookingService.claimVoucher(v.code);
+        setVouchers(prev =>
+          prev.map(item =>
+            item.voucherId === v.voucherId
+              ? { ...item, isClaimed: true }
+              : item
+          )
+        );
+      } catch (err) {
+        setError(err.message || "Failed to claim voucher");
+      }
+    } else {
+      handleCopyCode(v.code);
+    }
   };
 
   useEffect(() => {
@@ -704,9 +728,24 @@ export default function ProfilePage() {
                 ) : (
                   bookings.map((booking) => {
                     let statusColor = "text-slate-650 bg-slate-50 border-slate-100";
-                    if (booking.status === 'PENDING') statusColor = "text-amber-600 bg-amber-50 border-amber-100 animate-pulse";
-                    else if (booking.status === 'CONFIRMED' || booking.status === 'COMPLETED') statusColor = "text-emerald-650 bg-emerald-50 border-emerald-100";
-                    else if (booking.status === 'CANCELLED') statusColor = "text-red-650 bg-red-50 border-red-100";
+                    let statusLabel = booking.status;
+                    
+                    if (booking.status === 'PENDING') {
+                      statusColor = "text-amber-600 bg-amber-50 border-amber-100 animate-pulse";
+                    } else if (booking.status === 'CONFIRMED' || booking.status === 'COMPLETED') {
+                      statusColor = "text-emerald-650 bg-emerald-50 border-emerald-100";
+                    } else if (booking.status === 'CANCELLED') {
+                      if (booking.paymentStatus === 'REFUND_PENDING') {
+                        statusColor = "text-amber-700 bg-amber-50 border-amber-200";
+                        statusLabel = "CANCELLED (Refund Pending)";
+                      } else if (booking.paymentStatus === 'REFUNDED') {
+                        statusColor = "text-emerald-700 bg-emerald-50 border-emerald-200";
+                        statusLabel = "CANCELLED (Refunded)";
+                      } else {
+                        statusColor = "text-red-650 bg-red-50 border-red-100";
+                        statusLabel = "CANCELLED";
+                      }
+                    }
 
                     const formatDate = (dateStr) => {
                       if (!dateStr) return '';
@@ -722,11 +761,11 @@ export default function ProfilePage() {
                             <span className="text-[10px] text-slate-405 block font-medium">📍 {booking.hotelLocation}</span>
                           </div>
                           <span className={`text-[10px] font-semibold px-2.5 py-0.5 rounded-full border ${statusColor}`}>
-                            {booking.status}
+                            {statusLabel}
                           </span>
                         </div>
                         
-                        <div className="grid grid-cols-3 gap-2 pt-3 border-t border-[#f5f5fa] text-xs">
+                        <div className="grid grid-cols-4 gap-2 pt-3 border-t border-[#f5f5fa] text-xs">
                           <div>
                             <span className="text-[9px] uppercase tracking-wider text-[#86868b] block font-semibold">Check-In</span>
                             <span className="text-[#1d1d1f] font-medium mt-0.5 block">{formatDate(booking.checkInDate)}</span>
@@ -737,19 +776,31 @@ export default function ProfilePage() {
                           </div>
                           <div>
                             <span className="text-[9px] uppercase tracking-wider text-[#86868b] block font-semibold">Total Price</span>
-                            <span className="text-[#1d1d1f] font-bold mt-0.5 block">${booking.totalAmount}</span>
+                            <span className="text-[#1d1d1f] font-bold mt-0.5 block">${(booking.totalAmount - (booking.discountAmount || 0)).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
+                          </div>
+                          <div>
+                            <span className="text-[9px] uppercase tracking-wider text-[#86868b] block font-semibold">Paid Amount</span>
+                            <span className="text-[#1A3B85] font-bold mt-0.5 block">${(booking.paidAmount || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
                           </div>
                         </div>
 
                         {(booking.status === 'PENDING' || booking.status === 'CONFIRMED') && (
-                          <div className="mt-4 pt-3 border-t border-[#f5f5fa] flex justify-end gap-2">
+                          <div className="mt-4 pt-3 border-t border-[#f5f5fa] flex flex-wrap justify-end gap-2">
                             {booking.status === 'CONFIRMED' && (
-                              <button
-                                onClick={() => handleDownloadInvoice(booking.bookingId, booking.bookingCode)}
-                                className="px-3 py-1 rounded-full bg-blue-50 text-blue-600 border border-blue-100 hover:bg-blue-100 text-[10px] font-bold transition-all cursor-pointer"
-                              >
-                                📄 Download Invoice PDF
-                              </button>
+                              <>
+                                <button
+                                  onClick={() => setSelectedTicketBookingId(booking.bookingId)}
+                                  className="px-3 py-1 rounded-full bg-amber-500/10 text-amber-600 border border-amber-500/30 hover:bg-amber-500/20 text-[10px] font-bold transition-all cursor-pointer flex items-center gap-1"
+                                >
+                                  🎟️ Xem Vé Check-in (Mã QR)
+                                </button>
+                                <button
+                                  onClick={() => handleDownloadInvoice(booking.bookingId, booking.bookingCode)}
+                                  className="px-3 py-1 rounded-full bg-blue-50 text-blue-600 border border-blue-100 hover:bg-blue-100 text-[10px] font-bold transition-all cursor-pointer"
+                                >
+                                  📄 Download Invoice PDF
+                                </button>
+                              </>
                             )}
                             {cancelingBookingId === booking.bookingId ? (
                               <div className="flex gap-2 items-center">
@@ -779,7 +830,13 @@ export default function ProfilePage() {
                         )}
 
                         {booking.status === 'COMPLETED' && (
-                          <div className="mt-4 pt-3 border-t border-[#f5f5fa] flex justify-end gap-2">
+                          <div className="mt-4 pt-3 border-t border-[#f5f5fa] flex flex-wrap justify-end gap-2">
+                            <button
+                              onClick={() => setSelectedTicketBookingId(booking.bookingId)}
+                              className="px-3 py-1 rounded-full bg-amber-500/10 text-amber-600 border border-amber-500/30 hover:bg-amber-500/20 text-[10px] font-bold transition-all cursor-pointer flex items-center gap-1"
+                            >
+                              🎟️ Xem Vé Check-in (Mã QR)
+                            </button>
                             <button
                               onClick={() => handleDownloadInvoice(booking.bookingId, booking.bookingCode)}
                               className="px-3 py-1 rounded-full bg-blue-50 text-blue-600 border border-blue-100 hover:bg-blue-100 text-[10px] font-bold transition-all cursor-pointer"
@@ -847,8 +904,9 @@ export default function ProfilePage() {
                     const minSpendStr = v.minBookingValue > 0 ? `Min spend $${v.minBookingValue}` : 'No minimum spend';
                     const expiryDate = v.endDate ? new Date(v.endDate).toLocaleDateString('vi-VN') : 'No expiry';
                     const isExpired = v.endDate && new Date(v.endDate) < new Date();
+                    const isFullyUsed = v.maxUsage !== null && v.currentUsage >= v.maxUsage;
                     const isUsed = v.isUsed === true;
-                    const isInvalid = isExpired || isUsed;
+                    const isInvalid = isExpired || isFullyUsed || isUsed;
 
                     return (
                       <div
@@ -884,17 +942,29 @@ export default function ProfilePage() {
                             {v.voucherCode}
                           </div>
                           <button
-                            onClick={() => !isInvalid && handleCopyCode(v.voucherCode)}
+                            onClick={() => !isInvalid && handleVoucherAction(v)}
                             disabled={isInvalid}
                             className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
                               isInvalid 
                                 ? 'bg-slate-200 text-slate-500 cursor-not-allowed'
-                                : copiedCode === v.code
-                                  ? 'bg-green-600 text-white shadow-sm active:scale-95 cursor-pointer'
-                                  : 'bg-[#0066cc] hover:bg-[#0055b3] text-white shadow-sm active:scale-95 cursor-pointer'
+                                : v.isClaimed === false
+                                  ? 'bg-amber-500 hover:bg-amber-600 text-white shadow-sm active:scale-95 cursor-pointer'
+                                  : copiedCode === v.code
+                                    ? 'bg-green-600 text-white shadow-sm active:scale-95 cursor-pointer'
+                                    : 'bg-[#0066cc] hover:bg-[#0055b3] text-white shadow-sm active:scale-95 cursor-pointer'
                             }`}
                           >
-                            {isExpired ? 'Expired' : isUsed ? 'Used' : copiedCode === v.code ? '✓ Copied' : 'Copy Code'}
+                            {isExpired 
+                              ? 'Expired' 
+                              : v.isUsed 
+                                ? 'Already Used' 
+                                : isFullyUsed 
+                                  ? 'Fully Used' 
+                                  : v.isClaimed === false 
+                                    ? 'Claim Code' 
+                                    : copiedCode === v.code 
+                                      ? '✓ Copied' 
+                                      : 'Copy Code'}
                           </button>
                         </div>
                       </div>
@@ -1422,6 +1492,13 @@ export default function ProfilePage() {
           </div>
         </div>
       )}
+
+      {/* E-Ticket Pass Modal */}
+      <CheckInTicketModal
+        bookingId={selectedTicketBookingId}
+        isOpen={!!selectedTicketBookingId}
+        onClose={() => setSelectedTicketBookingId(null)}
+      />
 
       <Footer />
     </div>

@@ -13,6 +13,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -22,6 +23,7 @@ public class VoucherServiceImpl implements VoucherService {
 
     private final VoucherRepository voucherRepository;
     private final BookingRepository bookingRepository;
+    private final UserVoucherRepository userVoucherRepository;
 
     @Override
     @Transactional
@@ -39,6 +41,14 @@ public class VoucherServiceImpl implements VoucherService {
 
         Voucher voucher = voucherRepository.findByCode(voucherCode)
                 .orElseThrow(() -> new BusinessException("Voucher does not exist."));
+
+        // Check if claimed in user's wallet
+        UserVoucher userVoucher = userVoucherRepository.findByUserUserIdAndVoucherCode(booking.getUser().getUserId(), voucherCode)
+                .orElseThrow(() -> new BusinessException("VOUCHER_NOT_CLAIMED: Voucher is not in your wallet"));
+
+        if (Boolean.TRUE.equals(userVoucher.getIsUsed())) {
+            throw new BusinessException("Voucher has already been used.");
+        }
 
         LocalDateTime now = LocalDateTime.now();
 
@@ -95,7 +105,38 @@ public class VoucherServiceImpl implements VoucherService {
                 .filter(v -> (v.getEndDate() == null || now.isBefore(v.getEndDate())))
                 .filter(v -> (v.getMaxUsage() == null || v.getMaxUsage() == 0 ||
                              v.getCurrentUsage() == null || v.getCurrentUsage() < v.getMaxUsage()))
-                .map(this::mapToResponse)
+                .map(v -> {
+                    VoucherResponse resp = mapToResponse(v);
+                    resp.setIsClaimed(false);
+                    resp.setIsUsed(false);
+                    return resp;
+                })
+                .toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<VoucherResponse> getAllActiveVouchersForUser(Long userId) {
+        log.info("Retrieving all active vouchers for user: {}", userId);
+        LocalDateTime now = LocalDateTime.now();
+
+        return voucherRepository.findAll().stream()
+                .filter(v -> (v.getStartDate() == null || now.isAfter(v.getStartDate())))
+                .filter(v -> (v.getEndDate() == null || now.isBefore(v.getEndDate())))
+                .filter(v -> (v.getMaxUsage() == null || v.getMaxUsage() == 0 ||
+                             v.getCurrentUsage() == null || v.getCurrentUsage() < v.getMaxUsage()))
+                .map(v -> {
+                    VoucherResponse resp = mapToResponse(v);
+                    Optional<UserVoucher> uvOpt = userVoucherRepository.findByUserUserIdAndVoucherVoucherId(userId, v.getVoucherId());
+                    if (uvOpt.isPresent()) {
+                        resp.setIsClaimed(true);
+                        resp.setIsUsed(uvOpt.get().getIsUsed());
+                    } else {
+                        resp.setIsClaimed(false);
+                        resp.setIsUsed(false);
+                    }
+                    return resp;
+                })
                 .toList();
     }
 

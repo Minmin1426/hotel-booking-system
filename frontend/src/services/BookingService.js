@@ -249,5 +249,45 @@ export const BookingService = {
       throw new Error(json.message || "Failed to load active vouchers");
     }
     return (json.data && json.data.content) ? json.data.content : (json.data || []);
+  },
+
+  claimVoucher: async (code) => {
+    const response = await fetch(`${API_BASE_URL}/users/me/vouchers/claim/${code}`, {
+      method: "POST",
+      headers: getHeaders(),
+    });
+
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.message || "Failed to claim voucher");
+    }
+    return data.data || data;
+  },
+
+  getTicket: async (bookingId) => {
+    const response = await fetch(`${API_BASE_URL}/bookings/${bookingId}/ticket`, {
+      method: "GET",
+      headers: getHeaders(),
+    });
+
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.message || "Failed to fetch ticket");
+    }
+    return data.data;
+  },
+
+  resendTicketEmail: async (bookingId) => {
+    const response = await fetch(`${API_BASE_URL}/bookings/${bookingId}/resend-email`, {
+      method: "POST",
+      headers: getHeaders(),
+    });
+
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.message || "Failed to resend ticket email");
+    }
+    return data;
+>>>>>>> origin/vu
   }
 };

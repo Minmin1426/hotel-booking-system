@@ -21,4 +21,6 @@ public class VoucherResponse {
     private Integer currentUsage;
     private String voucherType;
     private String comboMealBenefit;
+    private Boolean isClaimed;
+    private Boolean isUsed;
 }

@@ -76,4 +76,7 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
             @Param("startDate") LocalDateTime startDate,
             @Param("endDate") LocalDateTime endDate
     );
+
+    @Query("SELECT p FROM Payment p WHERE p.status = :status AND p.countdownEndTime < :now")
+    List<Payment> findExpiredPayments(@Param("status") String status, @Param("now") LocalDateTime now);
 }

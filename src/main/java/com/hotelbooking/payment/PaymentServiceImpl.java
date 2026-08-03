@@ -19,6 +19,16 @@ import com.stripe.net.Webhook;
 import com.stripe.param.PaymentIntentCreateParams;
 import com.stripe.param.RefundCreateParams;
 
+import com.hotelbooking.voucher.VoucherStoreService;
+import com.hotelbooking.payment.refund.RefundPolicyRepository;
+import com.hotelbooking.payment.refund.RefundAuditLogRepository;
+import com.hotelbooking.payment.refund.RefundPolicy;
+import com.hotelbooking.payment.refund.RefundAuditLog;
+import com.hotelbooking.wallet.WalletService;
+import com.hotelbooking.wallet.WalletRepository;
+import com.hotelbooking.wallet.Wallet;
+import com.hotelbooking.wallet.WalletType;
+
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -28,6 +38,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -50,7 +61,11 @@ public class PaymentServiceImpl implements PaymentService {
     private final PayoutRepository payoutRepository;
     private final com.hotelbooking.mealticket.MealTicketService mealTicketService;
     private final LoyaltyService loyaltyService;
-
+    private final VoucherStoreService voucherStoreService;
+    private final RefundPolicyRepository refundPolicyRepository;
+    private final RefundAuditLogRepository refundAuditLogRepository;
+    private final WalletService walletService;
+    private final WalletRepository walletRepository;
 
     @Value("${stripe.api.key}")
     private String stripeApiKey;
@@ -76,6 +91,13 @@ public class PaymentServiceImpl implements PaymentService {
         BigDecimal originalAmount = booking.getFinalPrice() != null ? booking.getFinalPrice() : booking.getTotalAmount();
         boolean isDeposit = requestDTO.getIsDeposit() != null && requestDTO.getIsDeposit();
         BigDecimal depositRatio = isDeposit ? (requestDTO.getDepositRatio() != null ? requestDTO.getDepositRatio() : new BigDecimal("0.30")) : BigDecimal.ONE;
+        
+        if (isDeposit) {
+            if (depositRatio.compareTo(new BigDecimal("0.30")) < 0 || depositRatio.compareTo(new BigDecimal("0.50")) > 0) {
+                throw new BusinessException("Deposit ratio must be between 0.30 and 0.50");
+            }
+        }
+
         BigDecimal amountToPay = originalAmount.multiply(depositRatio);
 
         String companyName = requestDTO.getCompanyName();
@@ -84,24 +106,36 @@ public class PaymentServiceImpl implements PaymentService {
         String companyEmail = requestDTO.getCompanyEmail();
         LocalDateTime countdownEndTime = LocalDateTime.now().plusMinutes(10);
 
+        // Retrieve existing PENDING payment to avoid duplicates
+        List<Payment> existingPayments = paymentRepository.findByBookingBookingId(booking.getBookingId());
+        Payment payment = null;
+        for (Payment p : existingPayments) {
+            if ("PENDING".equalsIgnoreCase(p.getStatus())) {
+                payment = p;
+                break;
+            }
+        }
+        if (payment == null) {
+            payment = new Payment();
+            payment.setBooking(booking);
+        }
+
         if ("CASH".equalsIgnoreCase(requestDTO.getPaymentMethod())) {
             String transactionId = "CASH-" + UUID.randomUUID().toString();
 
-            Payment payment = Payment.builder()
-                    .booking(booking)
-                    .paymentMethod("CASH")
-                    .amount(amountToPay)
-                    .status("PENDING")
-                    .transactionId(transactionId)
-                    .gateway("CASH")
-                    .isDeposit(isDeposit)
-                    .depositRatio(depositRatio)
-                    .countdownEndTime(countdownEndTime)
-                    .invoiceCompanyName(companyName)
-                    .invoiceTaxId(taxId)
-                    .invoiceCompanyAddress(companyAddress)
-                    .invoiceCompanyEmail(companyEmail)
-                    .build();
+            payment.setPaymentMethod("CASH");
+            payment.setAmount(amountToPay);
+            payment.setStatus("PENDING");
+            payment.setTransactionId(transactionId);
+            payment.setGateway("CASH");
+            payment.setIsDeposit(isDeposit);
+            payment.setDepositRatio(depositRatio);
+            payment.setCountdownEndTime(countdownEndTime);
+            payment.setInvoiceCompanyName(companyName);
+            payment.setInvoiceTaxId(taxId);
+            payment.setInvoiceCompanyAddress(companyAddress);
+            payment.setInvoiceCompanyEmail(companyEmail);
+            
             paymentRepository.save(payment);
             
             booking.setPaymentStatus("PENDING");
@@ -130,21 +164,19 @@ public class PaymentServiceImpl implements PaymentService {
         if ("BANK_TRANSFER".equalsIgnoreCase(requestDTO.getPaymentMethod())) {
             String transactionId = "BT-" + UUID.randomUUID().toString();
 
-            Payment payment = Payment.builder()
-                    .booking(booking)
-                    .paymentMethod("BANK_TRANSFER")
-                    .amount(amountToPay)
-                    .status("PENDING")
-                    .transactionId(transactionId)
-                    .gateway("MANUAL_BANK")
-                    .isDeposit(isDeposit)
-                    .depositRatio(depositRatio)
-                    .countdownEndTime(countdownEndTime)
-                    .invoiceCompanyName(companyName)
-                    .invoiceTaxId(taxId)
-                    .invoiceCompanyAddress(companyAddress)
-                    .invoiceCompanyEmail(companyEmail)
-                    .build();
+            payment.setPaymentMethod("BANK_TRANSFER");
+            payment.setAmount(amountToPay);
+            payment.setStatus("PENDING");
+            payment.setTransactionId(transactionId);
+            payment.setGateway("MANUAL_BANK");
+            payment.setIsDeposit(isDeposit);
+            payment.setDepositRatio(depositRatio);
+            payment.setCountdownEndTime(countdownEndTime);
+            payment.setInvoiceCompanyName(companyName);
+            payment.setInvoiceTaxId(taxId);
+            payment.setInvoiceCompanyAddress(companyAddress);
+            payment.setInvoiceCompanyEmail(companyEmail);
+            
             paymentRepository.save(payment);
             
             booking.setPaymentStatus("PENDING");
@@ -178,21 +210,19 @@ public class PaymentServiceImpl implements PaymentService {
         if ("VNPAY".equalsIgnoreCase(requestDTO.getPaymentMethod())) {
             String transactionId = "VNPAY-" + UUID.randomUUID().toString();
 
-            Payment payment = Payment.builder()
-                    .booking(booking)
-                    .paymentMethod("VNPAY")
-                    .amount(amountToPay)
-                    .status("PENDING")
-                    .transactionId(transactionId)
-                    .gateway("VNPAY")
-                    .isDeposit(isDeposit)
-                    .depositRatio(depositRatio)
-                    .countdownEndTime(countdownEndTime)
-                    .invoiceCompanyName(companyName)
-                    .invoiceTaxId(taxId)
-                    .invoiceCompanyAddress(companyAddress)
-                    .invoiceCompanyEmail(companyEmail)
-                    .build();
+            payment.setPaymentMethod("VNPAY");
+            payment.setAmount(amountToPay);
+            payment.setStatus("PENDING");
+            payment.setTransactionId(transactionId);
+            payment.setGateway("VNPAY");
+            payment.setIsDeposit(isDeposit);
+            payment.setDepositRatio(depositRatio);
+            payment.setCountdownEndTime(countdownEndTime);
+            payment.setInvoiceCompanyName(companyName);
+            payment.setInvoiceTaxId(taxId);
+            payment.setInvoiceCompanyAddress(companyAddress);
+            payment.setInvoiceCompanyEmail(companyEmail);
+            
             paymentRepository.save(payment);
 
             booking.setPaymentStatus("PENDING");
@@ -229,21 +259,18 @@ public class PaymentServiceImpl implements PaymentService {
             PaymentIntent intent = PaymentIntent.create(params);
             String transactionId = intent.getId();
 
-            Payment payment = Payment.builder()
-                    .booking(booking)
-                    .paymentMethod(requestDTO.getPaymentMethod())
-                    .amount(amountToPay)
-                    .status("PENDING")
-                    .transactionId(transactionId)
-                    .gateway("STRIPE")
-                    .isDeposit(isDeposit)
-                    .depositRatio(depositRatio)
-                    .countdownEndTime(countdownEndTime)
-                    .invoiceCompanyName(companyName)
-                    .invoiceTaxId(taxId)
-                    .invoiceCompanyAddress(companyAddress)
-                    .invoiceCompanyEmail(companyEmail)
-                    .build();
+            payment.setPaymentMethod(requestDTO.getPaymentMethod());
+            payment.setAmount(amountToPay);
+            payment.setStatus("PENDING");
+            payment.setTransactionId(transactionId);
+            payment.setGateway("STRIPE");
+            payment.setIsDeposit(isDeposit);
+            payment.setDepositRatio(depositRatio);
+            payment.setCountdownEndTime(countdownEndTime);
+            payment.setInvoiceCompanyName(companyName);
+            payment.setInvoiceTaxId(taxId);
+            payment.setInvoiceCompanyAddress(companyAddress);
+            payment.setInvoiceCompanyEmail(companyEmail);
 
             paymentRepository.save(payment);
 
@@ -315,7 +342,16 @@ public class PaymentServiceImpl implements PaymentService {
         paymentRepository.save(payment);
 
         Booking booking = payment.getBooking();
-        booking.setPaymentStatus("SUCCESS");
+        if (payment.getIsDeposit() != null && payment.getIsDeposit()) {
+            BigDecimal ratio = payment.getDepositRatio() != null ? payment.getDepositRatio() : new BigDecimal("0.30");
+            if (ratio.compareTo(new BigDecimal("0.30")) == 0) {
+                booking.setPaymentStatus("DEPOSIT_30_PAID");
+            } else {
+                booking.setPaymentStatus("PARTIALLY_PAID");
+            }
+        } else {
+            booking.setPaymentStatus("SUCCESS");
+        }
         booking.setStatus("CONFIRMED");
         
         if (booking.getVoucher() != null) {
@@ -326,8 +362,18 @@ public class PaymentServiceImpl implements PaymentService {
                 voucher.setCurrentUsage(voucher.getCurrentUsage() + 1);
             }
             voucherRepository.save(voucher);
+            
+            try {
+                voucherStoreService.applyVoucherUsage(booking.getUser().getUserId(), voucher.getVoucherId(), booking.getBookingId());
+            } catch (Exception e) {
+                log.error("Failed to apply user voucher usage for booking ID: {}", booking.getBookingId(), e);
+            }
         }
         
+        if (booking.getCheckinQrCode() == null) {
+            booking.setCheckinQrCode("CHK-" + booking.getBookingCode());
+            booking.setCheckinQrSignature(java.util.UUID.randomUUID().toString().replace("-", ""));
+        }
         bookingRepository.save(booking);
         if (mealTicketService != null) {
             mealTicketService.autoIssueMealTicketsForBooking(booking);
@@ -343,7 +389,7 @@ public class PaymentServiceImpl implements PaymentService {
             }
         }
 
-        emailService.sendBookingConfirmationEmail(booking.getUser().getEmail(), booking.getBookingCode());
+        emailService.sendBookingTicketEmail(booking, payment);
 
         PaymentAuditLog auditLog = PaymentAuditLog.builder()
                 .transactionId(transactionId)
@@ -454,7 +500,8 @@ public class PaymentServiceImpl implements PaymentService {
         Booking booking = bookingRepository.findById(bookingId)
                 .orElseThrow(() -> new ResourceNotFoundException("Booking", "id", bookingId.toString()));
 
-        if (!"SUCCESS".equals(booking.getPaymentStatus())) {
+        String payStatus = booking.getPaymentStatus();
+        if (!"SUCCESS".equals(payStatus) && !"DEPOSIT_30_PAID".equals(payStatus) && !"PARTIALLY_PAID".equals(payStatus) && !"REFUND_PENDING".equals(payStatus)) {
             throw new BusinessException("Cannot refund a booking that has not been paid.");
         }
 
@@ -469,30 +516,47 @@ public class PaymentServiceImpl implements PaymentService {
             throw new BusinessException("Refund is already processed or pending in gateway.");
         }
 
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime cancelDate = payment.getUpdatedAt() != null ? payment.getUpdatedAt() : LocalDateTime.now();
         LocalDateTime checkIn = booking.getCheckInDate();
         BigDecimal refundRatio = BigDecimal.ZERO;
+        Long matchedPolicyId = null;
 
         if (checkIn != null) {
-            if (now.isBefore(checkIn.minusDays(7))) {
-                refundRatio = BigDecimal.ONE; // 100%
-            } else if (now.isBefore(checkIn.minusDays(3))) {
-                refundRatio = new BigDecimal("0.50"); // 50%
-            } else {
-                refundRatio = BigDecimal.ZERO; // 0%
+            long daysRemaining = ChronoUnit.DAYS.between(cancelDate.toLocalDate(), checkIn.toLocalDate());
+            int daysRemainingInt = (int) daysRemaining;
+            List<RefundPolicy> policies = refundPolicyRepository.findMatchingPoliciesOrdered(daysRemainingInt);
+            if (!policies.isEmpty()) {
+                RefundPolicy matchedPolicy = policies.get(0);
+                refundRatio = matchedPolicy.getRefundPercentage().divide(BigDecimal.valueOf(100));
+                matchedPolicyId = matchedPolicy.getPolicyId();
             }
         }
 
         BigDecimal refundAmount = payment.getAmount().multiply(refundRatio);
+        String previousStatus = payment.getStatus();
 
         if (refundAmount.compareTo(BigDecimal.ZERO) == 0) {
             payment.setStatus("REFUNDED");
             payment.setRefundAmount(BigDecimal.ZERO);
-            payment.setRefundTime(now);
+            payment.setRefundTime(LocalDateTime.now());
             paymentRepository.save(payment);
 
             booking.setStatus("CANCELLED");
+            booking.setPaymentStatus("REFUNDED");
             bookingRepository.save(booking);
+
+            // Log in refund_audit_logs
+            RefundAuditLog refundAuditLog = RefundAuditLog.builder()
+                    .bookingId(bookingId)
+                    .paymentId(payment.getPaymentId())
+                    .originalAmount(payment.getAmount())
+                    .refundPercentage(BigDecimal.ZERO)
+                    .refundAmount(BigDecimal.ZERO)
+                    .previousPaymentStatus(previousStatus)
+                    .newPaymentStatus("REFUNDED")
+                    .policyId(matchedPolicyId)
+                    .build();
+            refundAuditLogRepository.save(refundAuditLog);
 
             PaymentAuditLog auditLog = PaymentAuditLog.builder()
                     .transactionId(UUID.randomUUID().toString())
@@ -506,9 +570,55 @@ public class PaymentServiceImpl implements PaymentService {
         String refundTxnId = UUID.randomUUID().toString();
         payment.setRefundTransactionId(refundTxnId);
         payment.setRefundAmount(refundAmount);
-        payment.setStatus("REFUND_PENDING");
 
+        if (!"STRIPE".equalsIgnoreCase(payment.getGateway())) {
+            // Simulated inline refund (VNPay, Cash, Bank Transfer, PayPal)
+            payment.setStatus("REFUNDED");
+            payment.setRefundTime(LocalDateTime.now());
+            paymentRepository.save(payment);
+
+            booking.setStatus("CANCELLED");
+            booking.setPaymentStatus("REFUNDED");
+            bookingRepository.save(booking);
+
+            emailService.sendRefundConfirmationEmail(booking.getUser().getEmail(), booking.getBookingCode(), refundAmount);
+
+            RefundAuditLog refundAuditLog = RefundAuditLog.builder()
+                    .bookingId(bookingId)
+                    .paymentId(payment.getPaymentId())
+                    .originalAmount(payment.getAmount())
+                    .refundPercentage(refundRatio.multiply(new BigDecimal("100")))
+                    .refundAmount(refundAmount)
+                    .previousPaymentStatus(previousStatus)
+                    .newPaymentStatus("REFUNDED")
+                    .policyId(matchedPolicyId)
+                    .build();
+            refundAuditLogRepository.save(refundAuditLog);
+
+            PaymentAuditLog auditLog = PaymentAuditLog.builder()
+                    .transactionId(refundTxnId)
+                    .action("REFUND_SUCCESS_SIMULATED")
+                    .requestPayload("Booking ID: " + bookingId + ", Amount: " + refundAmount)
+                    .build();
+            auditLogRepository.save(auditLog);
+            return;
+        }
+
+        // Stripe gateway refund
+        payment.setStatus("REFUND_PENDING");
         paymentRepository.save(payment);
+
+        RefundAuditLog refundAuditLog = RefundAuditLog.builder()
+                .bookingId(bookingId)
+                .paymentId(payment.getPaymentId())
+                .originalAmount(payment.getAmount())
+                .refundPercentage(refundRatio.multiply(new BigDecimal("100")))
+                .refundAmount(refundAmount)
+                .previousPaymentStatus(previousStatus)
+                .newPaymentStatus("REFUND_PENDING")
+                .policyId(matchedPolicyId)
+                .build();
+        refundAuditLogRepository.save(refundAuditLog);
 
         PaymentAuditLog auditLog = PaymentAuditLog.builder()
                 .transactionId(refundTxnId)
@@ -538,7 +648,10 @@ public class PaymentServiceImpl implements PaymentService {
                 
                 Booking booking = payment.getBooking();
                 booking.setStatus("CANCELLED");
+                booking.setPaymentStatus("REFUNDED");
                 bookingRepository.save(booking);
+                
+                emailService.sendRefundConfirmationEmail(booking.getUser().getEmail(), booking.getBookingCode(), payment.getRefundAmount());
                 
                 log.info("Simulated refund successful for gateway {} on txn {}", payment.getGateway(), payment.getTransactionId());
                 
@@ -565,6 +678,7 @@ public class PaymentServiceImpl implements PaymentService {
                     
                     Booking booking = payment.getBooking();
                     booking.setStatus("CANCELLED");
+                    booking.setPaymentStatus("REFUNDED");
                     bookingRepository.save(booking);
                     
                     emailService.sendRefundConfirmationEmail(booking.getUser().getEmail(), booking.getBookingCode(), payment.getRefundAmount());
@@ -630,9 +744,7 @@ public class PaymentServiceImpl implements PaymentService {
     @Transactional
     public void checkExpiredPaymentHolds() {
         log.debug("Checking for expired payment holds");
-        List<Payment> pendingPayments = paymentRepository.findAll().stream()
-                .filter(p -> "PENDING".equals(p.getStatus()) && p.getCountdownEndTime() != null && p.getCountdownEndTime().isBefore(LocalDateTime.now()))
-                .toList();
+        List<Payment> pendingPayments = paymentRepository.findExpiredPayments("PENDING", LocalDateTime.now());
 
         for (Payment payment : pendingPayments) {
             payment.setStatus("FAILED");
@@ -677,6 +789,22 @@ public class PaymentServiceImpl implements PaymentService {
         payment.setMealRefundAmount(unusedAmount);
         payment.setRefundAmount(newTotalRefund);
         paymentRepository.save(payment);
+
+        // Credit to customer's personal E-Wallet
+        Long userId = booking.getUser().getUserId();
+        Wallet wallet = walletRepository.findByOwnerUserUserIdAndWalletType(userId, WalletType.PERSONAL)
+                .orElseGet(() -> {
+                    log.info("Creating personal wallet for user ID: {}", userId);
+                    return walletService.createPersonalWallet(userId);
+                });
+
+        try {
+            walletService.refundToWallet(wallet.getWalletId(), bookingId, unusedAmount);
+            log.info("Successfully credited refund of {} to wallet ID: {} for user ID: {}", unusedAmount, wallet.getWalletId(), userId);
+        } catch (Exception e) {
+            log.error("Failed to credit refund to e-wallet for user ID: {}", userId, e);
+            throw new BusinessException("Failed to credit refund to E-Wallet: " + e.getMessage());
+        }
 
         PaymentAuditLog auditLog = PaymentAuditLog.builder()
                 .transactionId(payment.getTransactionId())
@@ -786,6 +914,35 @@ public class PaymentServiceImpl implements PaymentService {
     @Transactional(readOnly = true)
     public List<Payout> getPayoutsByHotel(Long hotelId) {
         return payoutRepository.findByHotelId(hotelId);
+    }
+
+    @Override
+    @Transactional
+    public Map<String, Object> verifyPaymentDetails(String paymentIntentId) {
+        String status = verifyPayment(paymentIntentId);
+        
+        Payment payment = paymentRepository.findByTransactionId(paymentIntentId)
+                .orElseThrow(() -> new ResourceNotFoundException("Payment", "transactionId", paymentIntentId));
+        com.hotelbooking.booking.Booking booking = payment.getBooking();
+        
+        boolean isDeposit = Boolean.TRUE.equals(payment.getIsDeposit());
+        BigDecimal depositRatio = payment.getDepositRatio();
+        BigDecimal totalAmount = booking.getFinalPrice() != null ? booking.getFinalPrice() : booking.getTotalAmount();
+        
+        if (!isDeposit && payment.getAmount().compareTo(totalAmount) < 0 && totalAmount.compareTo(BigDecimal.ZERO) > 0) {
+            isDeposit = true;
+            depositRatio = payment.getAmount().divide(totalAmount, 2, java.math.RoundingMode.HALF_UP);
+        }
+        
+        Map<String, Object> response = new java.util.HashMap<>();
+        response.put("status", status);
+        response.put("bookingId", booking.getBookingId());
+        response.put("bookingCode", booking.getBookingCode());
+        response.put("isDeposit", isDeposit);
+        response.put("depositRatio", depositRatio);
+        response.put("amount", payment.getAmount());
+        response.put("totalAmount", totalAmount);
+        return response;
     }
 }
 
