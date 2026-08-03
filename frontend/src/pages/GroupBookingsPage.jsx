@@ -78,13 +78,21 @@ export default function GroupBookingsPage() {
 
   // Helper: status badge styling
   const getStatusBadge = (status) => {
-    switch (status) {
+    const s = status ? status.toUpperCase() : 'PENDING';
+    switch (s) {
       case 'CHECKED_IN':
         return { bg: 'bg-blue-50', text: 'text-blue-700', border: 'border-blue-200', icon: '🔵', label: 'CHECKED-IN' };
       case 'CHECKED_OUT':
         return { bg: 'bg-slate-100', text: 'text-slate-500', border: 'border-slate-300', icon: '⚫', label: 'CHECKED-OUT' };
-      default:
+      case 'CONFIRMED':
         return { bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-200', icon: '🟢', label: 'CONFIRMED' };
+      case 'CANCELLED':
+        return { bg: 'bg-red-50', text: 'text-red-700', border: 'border-red-200', icon: '❌', label: 'CANCELLED' };
+      case 'FAILED':
+        return { bg: 'bg-red-50', text: 'text-red-700', border: 'border-red-200', icon: '❌', label: 'FAILED' };
+      case 'PENDING':
+      default:
+        return { bg: 'bg-amber-50', text: 'text-amber-700', border: 'border-amber-200', icon: '⏳', label: 'PENDING' };
     }
   };
 
@@ -248,7 +256,7 @@ export default function GroupBookingsPage() {
                     👁️ Xem Chi Tiết
                   </button>
                   <div className="flex items-center gap-2">
-                    {b.status === 'CONFIRMED' && (
+                    {b.status?.toUpperCase() === 'CONFIRMED' && (
                       <button
                         onClick={() => navigate('/receptionist/group-checkin', { state: { booking: b } })}
                         className="px-5 py-2.5 rounded-xl bg-cyan-600 hover:bg-cyan-700 text-white text-xs font-bold shadow-sm transition-all cursor-pointer flex items-center gap-1.5"
@@ -256,7 +264,7 @@ export default function GroupBookingsPage() {
                         <span>⚡</span> Check-in
                       </button>
                     )}
-                    {b.status === 'CHECKED_IN' && (
+                    {b.status?.toUpperCase() === 'CHECKED_IN' && (
                       <>
                         <button
                           onClick={() => navigate('/receptionist/group-checkin', { state: { booking: b } })}
@@ -272,7 +280,7 @@ export default function GroupBookingsPage() {
                         </button>
                       </>
                     )}
-                    {b.status === 'CHECKED_OUT' && (
+                    {b.status?.toUpperCase() === 'CHECKED_OUT' && (
                       <>
                         <button
                           onClick={() => navigate('/receptionist/group-checkin', { state: { booking: b } })}

@@ -1073,6 +1073,12 @@ public class BookingServiceImpl implements BookingService {
 
                 payment.setStatus(newStatus);
                 savedBooking.setPaymentStatus(newStatus);
+                if ("SUCCESS".equalsIgnoreCase(newStatus) || "COMPLETED".equalsIgnoreCase(newStatus)) {
+                    if ("FAILED".equalsIgnoreCase(savedBooking.getStatus()) || "PENDING".equalsIgnoreCase(savedBooking.getStatus())) {
+                        savedBooking.setStatus("CONFIRMED");
+                        savedBooking.setConfirmedAt(LocalDateTime.now());
+                    }
+                }
                 bookingRepository.save(savedBooking);
 
                 PaymentAuditLog auditLog = PaymentAuditLog.builder()
