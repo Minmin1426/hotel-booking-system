@@ -477,7 +477,7 @@ function HotelsPage() {
         <section className="lg:col-span-3 space-y-6">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">
-              {loading ? t('hotels.searching') : (i18n.language && i18n.language.startsWith('vi') ? `Tìm thấy ${hotels.length} khách sạn` : `Found ${hotels.length} luxury hotel${hotels.length !== 1 ? 's' : ''}`)}
+              {loading ? t('hotels.searching') : `Tìm thấy ${hotels.length} khách sạn`}
             </span>
           </div>
 
@@ -593,18 +593,6 @@ function HotelsPage() {
           )}
         </section>
       </main>
-
-      {/* AI Assistant Chatbot Floating Widget (SCR-503) */}
-      <div className="fixed bottom-6 right-6 z-50">
-        <button
-          type="button"
-          onClick={() => alert(t('hotels.aiChatbotAlert'))}
-          className="p-4 rounded-full bg-gradient-to-r from-cyan-600 to-indigo-600 text-white font-extrabold shadow-2xl shadow-cyan-600/40 hover:scale-105 active:scale-95 transition-all flex items-center gap-2 border border-white/40 cursor-pointer"
-        >
-          <span className="text-xl">🤖</span>
-          <span className="text-xs font-bold hidden sm:inline">{t('hotels.aiChatbotBtn')}</span>
-        </button>
-      </div>
     </div>
   );
 }

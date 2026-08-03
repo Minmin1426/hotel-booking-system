@@ -2,7 +2,6 @@
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import LanguageSelector from './LanguageSelector';
 
 export default function Header({ fullName, role }) {
   const { t } = useTranslation();
@@ -173,9 +172,8 @@ export default function Header({ fullName, role }) {
             )}
           </nav>
 
-          {/* Language Selector & User Profile Area */}
+          {/* User Profile Area */}
           <div className="flex items-center gap-4">
-            <LanguageSelector />
 
             {isAuthenticated ? (
               <Link 

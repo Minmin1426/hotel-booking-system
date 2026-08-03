@@ -126,9 +126,7 @@
     "perkQr": "QR Suất ăn tự động",
     "priceFrom": "Giá từ",
     "pricePerNight": "/đêm",
-    "btnBookNow": "Đặt Ngay / Chi Tiết",
-    "aiChatbotBtn": "AI Tư Vấn Đặt Đoàn",
-    "aiChatbotAlert": "🤖 AI LuxuryStay Assistant: Tôi có thể giúp bạn gợi ý Khách sạn có dịch vụ Đặt đoàn 10-50 phòng, xuất hóa đơn VAT CTP và hỗ trợ trọn gói Buffet Sáng/Tối!"
+    "btnBookNow": "Đặt Ngay / Chi Tiết"
   },
   "hotelDetail": {
     "titleSection": "Đặt Phòng & Dịch Vụ Suất Ăn",
