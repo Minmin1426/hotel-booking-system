@@ -9,6 +9,7 @@
 -- NOTE: Dev-only approach — existing wallet data is lost.
 -- ============================
 DROP TABLE IF EXISTS customer_wallets CASCADE;
+DROP TABLE IF EXISTS wallets CASCADE;
 CREATE TABLE IF NOT EXISTS wallets (
     wallet_id BIGSERIAL PRIMARY KEY,
     user_id BIGINT NOT NULL UNIQUE REFERENCES users(user_id) ON DELETE CASCADE,
