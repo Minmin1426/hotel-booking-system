@@ -24,6 +24,9 @@ CREATE INDEX IF NOT EXISTS idx_wallet_user ON wallets(user_id);
 -- 1. PAYMENT AUDIT LOG fixes
 -- V16 dropped action and response_payload; restore them.
 -- ============================
+CREATE TABLE IF NOT EXISTS payment_audit_logs (
+    log_id BIGSERIAL PRIMARY KEY
+);
 ALTER TABLE payment_audit_logs ADD COLUMN IF NOT EXISTS action VARCHAR(100);
 ALTER TABLE payment_audit_logs ADD COLUMN IF NOT EXISTS response_payload TEXT;
 
@@ -31,6 +34,9 @@ ALTER TABLE payment_audit_logs ADD COLUMN IF NOT EXISTS response_payload TEXT;
 -- 2. VOUCHERS column fixes
 -- V9 never added voucher_type, for_account_type, combo_meal_benefit columns.
 -- ============================
+CREATE TABLE IF NOT EXISTS vouchers (
+    voucher_id BIGSERIAL PRIMARY KEY
+);
 ALTER TABLE vouchers ADD COLUMN IF NOT EXISTS voucher_type VARCHAR(50) DEFAULT 'ROOM';
 ALTER TABLE vouchers ADD COLUMN IF NOT EXISTS for_account_type VARCHAR(30) DEFAULT 'ALL';
 ALTER TABLE vouchers ADD COLUMN IF NOT EXISTS combo_meal_benefit VARCHAR(255);
@@ -38,6 +44,9 @@ ALTER TABLE vouchers ADD COLUMN IF NOT EXISTS combo_meal_benefit VARCHAR(255);
 -- ============================
 -- 3. PAYMENTS column fixes
 -- ============================
+CREATE TABLE IF NOT EXISTS payments (
+    payment_id BIGSERIAL PRIMARY KEY
+);
 ALTER TABLE payments ADD COLUMN IF NOT EXISTS is_deposit BOOLEAN NOT NULL DEFAULT FALSE;
 ALTER TABLE payments ADD COLUMN IF NOT EXISTS gateway_ref VARCHAR(255);
 ALTER TABLE payments ADD COLUMN IF NOT EXISTS refund_status VARCHAR(50);
@@ -46,12 +55,18 @@ ALTER TABLE payments ADD COLUMN IF NOT EXISTS refund_status VARCHAR(50);
 -- 4. USER_VOUCHERS column fix
 -- V23 created 'status' but entity uses 'is_used'.
 -- ============================
+CREATE TABLE IF NOT EXISTS user_vouchers (
+    id BIGSERIAL PRIMARY KEY
+);
 ALTER TABLE user_vouchers ADD COLUMN IF NOT EXISTS is_used BOOLEAN NOT NULL DEFAULT FALSE;
 
 -- ============================
 -- 5. WALLET_TRANSACTIONS column fixes
 -- V25 created table without balance_before and related_booking_id.
 -- ============================
+CREATE TABLE IF NOT EXISTS wallet_transactions (
+    transaction_id BIGSERIAL PRIMARY KEY
+);
 ALTER TABLE wallet_transactions ADD COLUMN IF NOT EXISTS balance_before DECIMAL(18,2) NOT NULL DEFAULT 0;
 ALTER TABLE wallet_transactions ADD COLUMN IF NOT EXISTS related_booking_id BIGINT;
 
@@ -61,6 +76,13 @@ ALTER TABLE wallet_transactions ADD COLUMN IF NOT EXISTS related_booking_id BIGI
 -- discount_percentage, perk_description. Entity TierDefinition expects additional columns.
 -- Add missing entity columns to existing table (idempotent).
 -- ============================
+CREATE TABLE IF NOT EXISTS loyalty_tier_configs (
+    tier_name VARCHAR(20) PRIMARY KEY,
+    min_points INT NOT NULL DEFAULT 0,
+    min_spent DECIMAL(18,2) NOT NULL DEFAULT 0,
+    discount_percentage DECIMAL(5,2) DEFAULT 0.00,
+    perk_description TEXT
+);
 ALTER TABLE loyalty_tier_configs ADD COLUMN IF NOT EXISTS tier_id BIGSERIAL;
 ALTER TABLE loyalty_tier_configs ADD COLUMN IF NOT EXISTS account_type VARCHAR(30) NOT NULL DEFAULT 'CUSTOMER';
 ALTER TABLE loyalty_tier_configs ADD COLUMN IF NOT EXISTS min_annual_spend DECIMAL(18,2) NOT NULL DEFAULT 0;
@@ -194,6 +216,9 @@ CREATE INDEX IF NOT EXISTS idx_st_user_group ON spending_tracking(user_id, group
 -- V30 created payouts with only user_id; entity expects hotel_id,
 -- period_start, period_end, total_revenue, commission_rate, payout_amount.
 -- ============================
+CREATE TABLE IF NOT EXISTS payouts (
+    payout_id BIGSERIAL PRIMARY KEY
+);
 ALTER TABLE payouts ADD COLUMN IF NOT EXISTS hotel_id BIGINT;
 ALTER TABLE payouts ADD COLUMN IF NOT EXISTS period_start TIMESTAMP;
 ALTER TABLE payouts ADD COLUMN IF NOT EXISTS period_end TIMESTAMP;
@@ -208,7 +233,7 @@ ALTER TABLE payouts ADD COLUMN IF NOT EXISTS payout_amount DECIMAL(18,2);
 -- event_type, event_summary, event_metadata, actor_user_id, created_at.
 -- ============================
 DROP TABLE IF EXISTS customer_activity_logs;
-CREATE TABLE customer_activity_events (
+CREATE TABLE IF NOT EXISTS customer_activity_events (
     event_id BIGSERIAL PRIMARY KEY,
     user_id BIGINT NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
     event_type VARCHAR(50) NOT NULL,
@@ -281,6 +306,13 @@ CREATE INDEX IF NOT EXISTS idx_tuh_created ON topup_history(created_at DESC);
 -- 19. OPS_MEAL_TICKETS column fix
 -- V33 created the table but missing valid_from, valid_until, updated_at.
 -- ============================
+CREATE TABLE IF NOT EXISTS ops_meal_tickets (
+    id BIGSERIAL PRIMARY KEY,
+    ticket_code VARCHAR(100) NOT NULL UNIQUE,
+    meal_package_id BIGINT,
+    total_meals INT NOT NULL DEFAULT 1,
+    remaining_meals INT NOT NULL DEFAULT 1
+);
 ALTER TABLE ops_meal_tickets ADD COLUMN IF NOT EXISTS valid_from TIMESTAMP;
 ALTER TABLE ops_meal_tickets ADD COLUMN IF NOT EXISTS valid_until TIMESTAMP;
 
