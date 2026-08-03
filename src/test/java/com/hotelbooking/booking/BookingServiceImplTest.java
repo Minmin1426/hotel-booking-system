@@ -59,6 +59,8 @@ class BookingServiceImplTest {
     private PaymentRepository paymentRepository;
     @Mock
     private ReviewRepository reviewRepository;
+    @Mock
+    private com.hotelbooking.payment.PaymentAuditLogRepository paymentAuditLogRepository;
 
     @InjectMocks
     private BookingServiceImpl bookingService;

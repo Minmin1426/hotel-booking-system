@@ -16,6 +16,8 @@ import com.hotelbooking.hotel.HotelRepository;
 import com.hotelbooking.hotel.ReviewRepository;
 import com.hotelbooking.payment.Payment;
 import com.hotelbooking.payment.PaymentRepository;
+import com.hotelbooking.payment.PaymentAuditLog;
+import com.hotelbooking.payment.PaymentAuditLogRepository;
 import com.hotelbooking.payment.dto.PaymentConfirmRequest;
 import com.hotelbooking.room.Room;
 import com.hotelbooking.room.RoomLock;
@@ -72,6 +74,7 @@ public class BookingServiceImpl implements BookingService {
     private final com.hotelbooking.mealticket.MealTicketService mealTicketService;
     private final UserVoucherRepository userVoucherRepository;
     private final EmailService emailService;
+    private final PaymentAuditLogRepository paymentAuditLogRepository;
 
     @Override
     @Transactional(readOnly = true)
@@ -1031,7 +1034,54 @@ public class BookingServiceImpl implements BookingService {
         }
 
         if (request.getPaymentStatus() != null) {
-            payment.setStatus(request.getPaymentStatus().toUpperCase());
+            String newStatus = request.getPaymentStatus().toUpperCase();
+            String oldStatus = payment.getStatus() != null ? payment.getStatus().toUpperCase() : "PENDING";
+            if (!newStatus.equals(oldStatus)) {
+                if (request.getPaymentUpdateReason() == null || request.getPaymentUpdateReason().trim().isEmpty()) {
+                    throw new BusinessException("Lý do cập nhật trạng thái thanh toán là bắt buộc khi thay đổi trạng thái.");
+                }
+
+                // Get authenticated admin details
+                org.springframework.security.core.Authentication auth = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+                Long adminId = null;
+                if (auth != null && auth.getPrincipal() instanceof com.hotelbooking.user.User u) {
+                    adminId = u.getUserId();
+                }
+
+                // Get Client IP Address
+                String clientIp = "UNKNOWN";
+                try {
+                    jakarta.servlet.http.HttpServletRequest httpRequest = ((org.springframework.web.context.request.ServletRequestAttributes) org.springframework.web.context.request.RequestContextHolder.currentRequestAttributes()).getRequest();
+                    clientIp = httpRequest.getHeader("X-Forwarded-For");
+                    if (clientIp == null || clientIp.isEmpty() || "unknown".equalsIgnoreCase(clientIp)) {
+                        clientIp = httpRequest.getRemoteAddr();
+                    }
+                } catch (Exception e) {
+                    log.warn("Failed to get client IP for audit log: {}", e.getMessage());
+                }
+
+                // Log Audit Record
+                String auditPayload = String.format(
+                    "{\"adminId\":%s,\"oldStatus\":\"%s\",\"newStatus\":\"%s\",\"reason\":\"%s\",\"ipAddress\":\"%s\",\"timestamp\":\"%s\"}",
+                    adminId != null ? adminId.toString() : "null",
+                    oldStatus,
+                    newStatus,
+                    request.getPaymentUpdateReason().replace("\"", "\\\""),
+                    clientIp,
+                    java.time.LocalDateTime.now().toString()
+                );
+
+                payment.setStatus(newStatus);
+                savedBooking.setPaymentStatus(newStatus);
+                bookingRepository.save(savedBooking);
+
+                PaymentAuditLog auditLog = PaymentAuditLog.builder()
+                        .transactionId(payment.getTransactionId())
+                        .action("MANUAL_PAYMENT_OVERRIDE")
+                        .requestPayload(auditPayload)
+                        .build();
+                paymentAuditLogRepository.save(auditLog);
+            }
         }
 
         payment.setAmount(savedBooking.getFinalPrice() != null ? savedBooking.getFinalPrice() : savedBooking.getTotalAmount());

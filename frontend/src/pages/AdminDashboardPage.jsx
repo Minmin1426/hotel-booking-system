@@ -148,6 +148,7 @@ export default function AdminDashboardPage() {
   const [bookingPaymentStatus, setBookingPaymentStatus] = useState('PENDING');
   const [bookingStatusState, setBookingStatusState] = useState('PENDING');
   const [bookingVoucherCode, setBookingVoucherCode] = useState('');
+  const [bookingPaymentUpdateReason, setBookingPaymentUpdateReason] = useState('');
 
   // State for Hotels
   const [hotels, setHotels] = useState([]);
@@ -695,6 +696,7 @@ export default function AdminDashboardPage() {
     setBookingPaymentStatus('PENDING');
     setBookingStatusState('PENDING');
     setBookingVoucherCode('');
+    setBookingPaymentUpdateReason('');
     setError(null);
     setIsBookingModalOpen(true);
   };
@@ -720,6 +722,7 @@ export default function AdminDashboardPage() {
       setBookingPaymentStatus(paymentStatus);
       setBookingStatusState(detail.status || 'PENDING');
       setBookingVoucherCode(detail.voucherCode || '');
+      setBookingPaymentUpdateReason('');
       setIsBookingModalOpen(true);
     } catch (err) {
       setError("Failed to load booking details: " + err.message);
@@ -852,6 +855,14 @@ export default function AdminDashboardPage() {
     if (editingBooking) {
       bookingData.status = bookingStatusState;
       bookingData.paymentStatus = bookingPaymentStatus;
+      if (bookingPaymentStatus !== editingBooking.paymentStatus) {
+        if (!bookingPaymentUpdateReason || !bookingPaymentUpdateReason.trim()) {
+          setError("Lý do cập nhật trạng thái thanh toán là bắt buộc khi thay đổi trạng thái.");
+          setIsLoading(false);
+          return;
+        }
+        bookingData.paymentUpdateReason = bookingPaymentUpdateReason.trim();
+      }
     }
 
     try {
@@ -2872,6 +2883,21 @@ export default function AdminDashboardPage() {
                         )}
                       </select>
                     </div>
+
+                    {bookingPaymentStatus !== editingBooking.paymentStatus && (
+                      <div className="col-span-2">
+                        <label className="block text-xs font-bold text-red-500 mb-1.5 uppercase tracking-wider">
+                          Lý do cập nhật trạng thái thanh toán *
+                        </label>
+                        <textarea
+                          required
+                          placeholder="Nhập lý do thay đổi trạng thái thanh toán thủ công (Ví dụ: Đối chiếu giao dịch Stripe ID, số tham chiếu ngân hàng, biên lai tiền mặt...)"
+                          className="w-full min-h-[80px] p-3 rounded-xl border border-red-200 text-sm focus:outline-none focus:border-red-500 transition-all bg-red-50/10 focus:bg-white text-slate-800"
+                          value={bookingPaymentUpdateReason}
+                          onChange={(e) => setBookingPaymentUpdateReason(e.target.value)}
+                        />
+                      </div>
+                    )}
 
                     <div>
                       <label className="block text-xs font-bold text-[#86868b] mb-1.5 uppercase tracking-wider">Booking Status</label>

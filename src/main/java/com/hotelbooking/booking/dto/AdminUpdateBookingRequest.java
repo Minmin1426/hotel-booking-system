@@ -29,6 +29,8 @@ public class AdminUpdateBookingRequest {
 
     private String voucherCode;
 
+    private String paymentUpdateReason;
+
     public LocalDate getCheckInDate() { return checkInDate; }
     public void setCheckInDate(LocalDate checkInDate) { this.checkInDate = checkInDate; }
     public LocalDate getCheckOutDate() { return checkOutDate; }
@@ -43,4 +45,6 @@ public class AdminUpdateBookingRequest {
     public void setPaymentStatus(String paymentStatus) { this.paymentStatus = paymentStatus; }
     public String getVoucherCode() { return voucherCode; }
     public void setVoucherCode(String voucherCode) { this.voucherCode = voucherCode; }
+    public String getPaymentUpdateReason() { return paymentUpdateReason; }
+    public void setPaymentUpdateReason(String paymentUpdateReason) { this.paymentUpdateReason = paymentUpdateReason; }
 }
