@@ -17,12 +17,18 @@ import java.math.BigDecimal;
 import java.time.format.DateTimeFormatter;
 import java.util.concurrent.CompletableFuture;
 
+import org.springframework.beans.factory.annotation.Value;
+
 @Service
 @RequiredArgsConstructor
 @Slf4j
 public class EmailServiceImpl implements EmailService {
 
     private final JavaMailSender mailSender;
+
+    @Value("${spring.mail.username:luxurystay67@gmail.com}")
+    private String fromEmail;
+
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
 
     @Override
@@ -300,6 +306,8 @@ public class EmailServiceImpl implements EmailService {
             try {
                 MimeMessage mimeMessage = mailSender.createMimeMessage();
                 MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, true, "UTF-8");
+                String sender = (fromEmail != null && !fromEmail.isBlank()) ? fromEmail : "luxurystay67@gmail.com";
+                helper.setFrom(sender, "Luxury Stay");
                 helper.setTo(to);
                 helper.setSubject(subject);
                 helper.setText(htmlContent, true);

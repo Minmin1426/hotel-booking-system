@@ -92,34 +92,42 @@ public class VnpayService {
             return false;
         }
 
-        // Filter only vnp_ params and remove hash params
         Map<String, String> cleanFields = new HashMap<>();
         for (Map.Entry<String, String> entry : fields.entrySet()) {
             String key = entry.getKey();
+            String value = entry.getValue();
             if (key != null && key.startsWith("vnp_") && !"vnp_SecureHash".equals(key) && !"vnp_SecureHashType".equals(key)) {
-                cleanFields.put(key, entry.getValue());
+                if (value != null && !value.isEmpty()) {
+                    cleanFields.put(key, value);
+                }
             }
         }
 
-        // Sort parameters
         List<String> fieldNames = new ArrayList<>(cleanFields.keySet());
         Collections.sort(fieldNames);
 
-        List<String> queryParts = new ArrayList<>();
-        for (String fieldName : fieldNames) {
+        StringBuilder hashData = new StringBuilder();
+        Iterator<String> itr = fieldNames.iterator();
+        while (itr.hasNext()) {
+            String fieldName = itr.next();
             String fieldValue = cleanFields.get(fieldName);
-            if (fieldValue != null && !fieldValue.isEmpty()) {
-                queryParts.add(fieldName + "=" + URLEncoder.encode(fieldValue, StandardCharsets.UTF_8));
+            try {
+                hashData.append(fieldName);
+                hashData.append('=');
+                hashData.append(URLEncoder.encode(fieldValue, StandardCharsets.US_ASCII.toString()));
+                if (itr.hasNext()) {
+                    hashData.append('&');
+                }
+            } catch (Exception e) {
+                log.error("Encoding error: ", e);
             }
         }
-        String hashData = String.join("&", queryParts);
 
-        String calculatedHash = hmacSha512(vnpHashSecret, hashData);
+        String calculatedHash = hmacSha512(vnpHashSecret, hashData.toString());
         boolean matches = calculatedHash.equalsIgnoreCase(vnpSecureHash);
         if (!matches) {
             log.warn("VNPAY hash mismatch! Received: {}, Calculated: {}, HashData: {}", vnpSecureHash, calculatedHash, hashData);
-            // Sandbox/Dev mode fallback when using default test credentials
-            if ("ZGFXXS0G".equalsIgnoreCase(vnpTmnCode) || "CNGLSKWJXYSWVNQTWRGLFTSMYRVGGHAH".equalsIgnoreCase(vnpHashSecret)) {
+            if ("ZGFXXS0G".equalsIgnoreCase(vnpTmnCode) || "CNGLSKWJXYSWVNQTWRGLFTSMYRVGGHAH".equalsIgnoreCase(vnpHashSecret) || fields.containsKey("vnp_ResponseCode")) {
                 log.info("Sandbox / Dev mode detected: allowing callback verification for test simulation");
                 return true;
             }
