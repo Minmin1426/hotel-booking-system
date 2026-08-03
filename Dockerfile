@@ -4,11 +4,11 @@ WORKDIR /app
 
 # Sao chép file pom.xml để tải dependencies trước (tận dụng Docker cache)
 COPY pom.xml .
-RUN mvn dependency:go-offline -B
+RUN mvn dependency:resolve -B
 
 # Sao chép mã nguồn và thực hiện build jar file (bỏ qua chạy test để build nhanh hơn)
 COPY src ./src
-RUN mvn clean package -DskipTests -B
+RUN mvn package -DskipTests -B
 
 # --- Stage 2: Run Stage ---
 FROM eclipse-temurin:17-jre-jammy
