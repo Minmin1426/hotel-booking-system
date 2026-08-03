@@ -734,6 +734,28 @@ export default function ProfilePage() {
 
                         {(booking.status === 'PENDING' || booking.status === 'CONFIRMED') && (
                           <div className="mt-4 pt-3 border-t border-[#f5f5fa] flex flex-wrap justify-end gap-2">
+                            {booking.status === 'PENDING' && (
+                              <button
+                                onClick={async () => {
+                                  try {
+                                    setBookingsLoading(true);
+                                    const targetTxn = booking.transactionId || booking.bookingCode;
+                                    await PaymentService.verifyPayment(targetTxn);
+                                    setMessage(`Đơn hàng #${booking.bookingCode} đã được xác nhận thanh toán thành công!`);
+                                    await loadBookingHistory();
+                                  } catch (err) {
+                                    console.error("Manual verify failed:", err);
+                                    setError("Chưa thể xác nhận thanh toán tự động. Vui lòng thử lại sau.");
+                                  } finally {
+                                    setBookingsLoading(false);
+                                  }
+                                }}
+                                className="px-3.5 py-1 rounded-full bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] font-bold transition-all cursor-pointer shadow-sm flex items-center gap-1"
+                              >
+                                ⚡ Xác nhận thanh toán & Nhận vé
+                              </button>
+                            )}
+
                             {booking.status === 'CONFIRMED' && (
                               <>
                                 <button

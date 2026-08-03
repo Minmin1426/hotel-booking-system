@@ -29,4 +29,5 @@ public class BookingHistoryResponse {
     private Boolean isReviewed;
     private String paymentStatus;
     private BigDecimal paidAmount;
+    private String transactionId;
 }

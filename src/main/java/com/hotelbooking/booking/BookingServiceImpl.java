@@ -1,4 +1,5 @@
 package com.hotelbooking.booking;
+import java.util.Objects;
 import com.hotelbooking.booking.dto.AdminBookingResponse;
 import com.hotelbooking.booking.dto.BookingConfirmResponse;
 import com.hotelbooking.booking.dto.BookingHistoryResponse;
@@ -646,6 +647,11 @@ public class BookingServiceImpl implements BookingService {
 
     private BookingHistoryResponse toHistoryResponse(Booking booking) {
         boolean reviewed = reviewRepository.existsByBookingBookingId(booking.getBookingId());
+        String txnId = paymentRepository.findByBookingBookingId(booking.getBookingId()).stream()
+                .map(Payment::getTransactionId)
+                .filter(Objects::nonNull)
+                .findFirst()
+                .orElse(null);
         return BookingHistoryResponse.builder()
                 .bookingId(booking.getBookingId())
                 .bookingCode(booking.getBookingCode())
@@ -663,6 +669,7 @@ public class BookingServiceImpl implements BookingService {
                 .isReviewed(reviewed)
                 .paymentStatus(booking.getPaymentStatus())
                 .paidAmount(getPaidAmount(booking))
+                .transactionId(txnId)
                 .build();
     }
 
