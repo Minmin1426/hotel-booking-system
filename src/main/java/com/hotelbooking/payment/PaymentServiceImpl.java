@@ -208,7 +208,7 @@ public class PaymentServiceImpl implements PaymentService {
         }
 
         if ("VNPAY".equalsIgnoreCase(requestDTO.getPaymentMethod())) {
-            String transactionId = "VNPAY-" + UUID.randomUUID().toString();
+            String transactionId = "VNP" + System.currentTimeMillis() + (int)(Math.random() * 1000);
 
             payment.setPaymentMethod("VNPAY");
             payment.setAmount(amountToPay);
@@ -325,6 +325,15 @@ public class PaymentServiceImpl implements PaymentService {
 
     private void handlePaymentSuccess(String transactionId, String payload) {
         Payment payment = paymentRepository.findByTransactionIdForUpdate(transactionId)
+                .or(() -> paymentRepository.findByTransactionId(transactionId))
+                .or(() -> {
+                    if (transactionId != null && !transactionId.isBlank()) {
+                        return paymentRepository.findAll().stream()
+                                .filter(p -> p.getTransactionId() != null && p.getTransactionId().startsWith(transactionId))
+                                .findFirst();
+                    }
+                    return java.util.Optional.empty();
+                })
                 .orElseThrow(() -> new BusinessException("Payment not found for transaction: " + transactionId));
 
         if ("SUCCESS".equals(payment.getStatus())) {
