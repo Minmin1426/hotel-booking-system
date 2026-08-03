@@ -136,8 +136,6 @@ function PaymentStatusPage({ status }) {
               )}
 
               <Link 
-                to="/profile?tab=bookings" 
-              <Link
                 to="/profile?tab=bookings"
                 className="w-full sm:w-auto px-6 py-3.5 rounded-2xl bg-[#0066cc] hover:bg-[#0055b3] text-white font-bold tracking-wide transition-all shadow-md flex items-center justify-center space-x-2"
               >
