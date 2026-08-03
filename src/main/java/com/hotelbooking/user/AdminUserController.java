@@ -1,8 +1,6 @@
 package com.hotelbooking.user;
 import com.hotelbooking.common.dto.ApiResponse;
 import com.hotelbooking.common.security.JwtService;
-import com.hotelbooking.user.ctp.CtpService;
-import com.hotelbooking.user.ctp.dto.*;
 import com.hotelbooking.user.dto.*;
 
 import jakarta.validation.Valid;
@@ -21,7 +19,6 @@ import org.springframework.web.bind.annotation.*;
 public class AdminUserController {
 
     private final AdminUserService adminUserService;
-    private final CtpService ctpService;
     private final JwtService jwtService;
 
     @GetMapping
@@ -62,36 +59,6 @@ public class AdminUserController {
             @Valid @RequestBody UpdateUserStatusRequest request) {
         UserResponse updatedUser = adminUserService.updateUserStatus(userId, request);
         return ResponseEntity.ok(updatedUser);
-    }
-
-    // 007-customer-portal-profile: CTP Verification Admin endpoints
-
-    @GetMapping("/ctp-verifications")
-    public ResponseEntity<Page<CtpVerificationSummary>> listCtpVerifications(
-            @RequestParam(required = false) String ctpStatus,
-            @PageableDefault(size = 20) Pageable pageable) {
-        Page<CtpVerificationSummary> verifications = ctpService.listVerifications(ctpStatus, pageable);
-        return ResponseEntity.ok(verifications);
-    }
-
-    @PostMapping("/{userId}/ctp/approve")
-    public ResponseEntity<ApiResponse<CorporateProfileResponse>> approveCtp(
-            @PathVariable Long userId,
-            @RequestHeader("Authorization") String authorizationHeader,
-            @RequestBody(required = false) ApproveCtpRequest request) {
-        Long adminId = extractAdminId(authorizationHeader);
-        CorporateProfileResponse response = ctpService.approveProfile(userId, adminId, request);
-        return ResponseEntity.ok(ApiResponse.success("Corporate tax profile approved", response));
-    }
-
-    @PostMapping("/{userId}/ctp/reject")
-    public ResponseEntity<ApiResponse<CorporateProfileResponse>> rejectCtp(
-            @PathVariable Long userId,
-            @RequestHeader("Authorization") String authorizationHeader,
-            @Valid @RequestBody RejectCtpRequest request) {
-        Long adminId = extractAdminId(authorizationHeader);
-        CorporateProfileResponse response = ctpService.rejectProfile(userId, adminId, request);
-        return ResponseEntity.ok(ApiResponse.success("Corporate tax profile rejected", response));
     }
 
     private Long extractAdminId(String authorizationHeader) {

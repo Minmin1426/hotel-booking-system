@@ -34,12 +34,6 @@ public class CustomerDetail360Response {
     private Long totalBookings;
     private Long loyaltyPoints;
 
-    // Corporate CTP
-    private String ctpStatus;
-    private String companyName;
-    private String taxCode;
-    private LocalDateTime ctpVerifiedAt;
-
     // Wallet
     private BigDecimal walletBalance;
     private BigDecimal groupWalletBalance;

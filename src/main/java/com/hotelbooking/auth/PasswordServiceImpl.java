@@ -19,6 +19,7 @@ import java.util.UUID;
 @Slf4j
 @Transactional
 public class PasswordServiceImpl implements PasswordService {
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(PasswordServiceImpl.class);
 
     private final UserRepository userRepository;
     private final PasswordResetTokenRepository tokenRepository;

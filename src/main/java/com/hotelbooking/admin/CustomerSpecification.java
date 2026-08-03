@@ -20,7 +20,6 @@ public class CustomerSpecification {
     private String accountType;
     private String tier;
     private String status;
-    private String ctpStatus;
     private Boolean isVip;
     private LocalDateTime createdAfter;
     private LocalDateTime createdBefore;
@@ -51,10 +50,6 @@ public class CustomerSpecification {
 
             if (status != null && !status.isBlank()) {
                 predicates.add(cb.equal(root.get("status"), status));
-            }
-
-            if (ctpStatus != null && !ctpStatus.isBlank()) {
-                predicates.add(cb.equal(root.get("ctpStatus"), ctpStatus));
             }
 
             if (isVip != null) {

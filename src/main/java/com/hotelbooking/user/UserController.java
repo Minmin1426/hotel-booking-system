@@ -1,7 +1,6 @@
 package com.hotelbooking.user;
 import com.hotelbooking.common.dto.ApiResponse;
 import com.hotelbooking.common.security.JwtService;
-import com.hotelbooking.user.ctp.CtpService;
 import com.hotelbooking.user.dto.*;
 
 import jakarta.validation.Valid;
@@ -18,7 +17,6 @@ import org.springframework.web.bind.annotation.*;
 public class UserController {
 
     private final UserService userService;
-    private final CtpService ctpService;
     private final JwtService jwtService;
 
     @PutMapping("/me/profile")
@@ -40,29 +38,6 @@ public class UserController {
         Long userId = extractUserIdFromToken(authorizationHeader);
         UserProfileResponse profile = userService.getProfile(userId);
         return ResponseEntity.ok(ApiResponse.success("Profile retrieved successfully", profile));
-    }
-
-    // 007-customer-portal-profile: Corporate Tax Profile endpoints
-
-    @GetMapping("/me/corporate-profile")
-    @PreAuthorize("hasAnyRole('CUSTOMER', 'ADMIN', 'DIRECTOR')")
-    public ResponseEntity<ApiResponse<CorporateProfileResponse>> getCorporateProfile(
-            @RequestHeader("Authorization") String authorizationHeader) {
-
-        Long userId = extractUserIdFromToken(authorizationHeader);
-        CorporateProfileResponse profile = ctpService.getProfile(userId);
-        return ResponseEntity.ok(ApiResponse.success("Corporate profile retrieved", profile));
-    }
-
-    @PutMapping("/me/corporate-profile")
-    @PreAuthorize("hasAnyRole('CUSTOMER', 'ADMIN', 'DIRECTOR')")
-    public ResponseEntity<ApiResponse<CorporateProfileResponse>> submitCorporateProfile(
-            @RequestHeader("Authorization") String authorizationHeader,
-            @Valid @RequestBody CorporateProfileRequest request) {
-
-        Long userId = extractUserIdFromToken(authorizationHeader);
-        CorporateProfileResponse response = ctpService.submitProfile(userId, request);
-        return ResponseEntity.ok(ApiResponse.success(response.getMessage(), response));
     }
 
     private Long extractUserIdFromToken(String authorizationHeader) {

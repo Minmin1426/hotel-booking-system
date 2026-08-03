@@ -51,4 +51,19 @@ public class UserVoucher {
         this.booking = booking;
         this.usedAt = LocalDateTime.now();
     }
+
+    public Long getId() { return id; }
+    public void setId(Long id) { this.id = id; }
+    public User getUser() { return user; }
+    public void setUser(User user) { this.user = user; }
+    public Voucher getVoucher() { return voucher; }
+    public void setVoucher(Voucher voucher) { this.voucher = voucher; }
+    public LocalDateTime getClaimedAt() { return claimedAt; }
+    public void setClaimedAt(LocalDateTime claimedAt) { this.claimedAt = claimedAt; }
+    public Boolean getIsUsed() { return isUsed; }
+    public void setIsUsed(Boolean isUsed) { this.isUsed = isUsed; }
+    public Booking getBooking() { return booking; }
+    public void setBooking(Booking booking) { this.booking = booking; }
+    public LocalDateTime getUsedAt() { return usedAt; }
+    public void setUsedAt(LocalDateTime usedAt) { this.usedAt = usedAt; }
 }

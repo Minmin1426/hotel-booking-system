@@ -108,4 +108,41 @@ public class Voucher {
     public void incrementUsage() {
         this.currentUsage = (this.currentUsage == null ? 1 : this.currentUsage + 1);
     }
+
+    public Long getVoucherId() { return voucherId; }
+    public void setVoucherId(Long voucherId) { this.voucherId = voucherId; }
+    public String getCode() { return code; }
+    public void setCode(String code) { this.code = code; }
+    public String getDiscountType() { return discountType; }
+    public void setDiscountType(String discountType) { this.discountType = discountType; }
+    public BigDecimal getDiscountValue() { return discountValue; }
+    public void setDiscountValue(BigDecimal discountValue) { this.discountValue = discountValue; }
+    public BigDecimal getMinBookingValue() { return minBookingValue; }
+    public void setMinBookingValue(BigDecimal minBookingValue) { this.minBookingValue = minBookingValue; }
+    public BigDecimal getMaxDiscount() { return maxDiscount; }
+    public void setMaxDiscount(BigDecimal maxDiscount) { this.maxDiscount = maxDiscount; }
+    public LocalDateTime getStartDate() { return startDate; }
+    public void setStartDate(LocalDateTime startDate) { this.startDate = startDate; }
+    public LocalDateTime getEndDate() { return endDate; }
+    public void setEndDate(LocalDateTime endDate) { this.endDate = endDate; }
+    public Integer getMaxUsage() { return maxUsage; }
+    public void setMaxUsage(Integer maxUsage) { this.maxUsage = maxUsage; }
+    public Integer getCurrentUsage() { return currentUsage; }
+    public void setCurrentUsage(Integer currentUsage) { this.currentUsage = currentUsage; }
+    public String getName() { return name; }
+    public void setName(String name) { this.name = name; }
+    public String getDescription() { return description; }
+    public void setDescription(String description) { this.description = description; }
+    public String getForAccountType() { return forAccountType; }
+    public void setForAccountType(String forAccountType) { this.forAccountType = forAccountType; }
+    public String getVoucherType() { return voucherType; }
+    public void setVoucherType(String voucherType) { this.voucherType = voucherType; }
+    public Boolean getIsActive() { return isActive; }
+    public void setIsActive(Boolean isActive) { this.isActive = isActive; }
+    public Integer getPointsCost() { return pointsCost; }
+    public void setPointsCost(Integer pointsCost) { this.pointsCost = pointsCost; }
+    public LocalDateTime getCreatedAt() { return createdAt; }
+    public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
+    public LocalDateTime getUpdatedAt() { return updatedAt; }
+    public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
 }

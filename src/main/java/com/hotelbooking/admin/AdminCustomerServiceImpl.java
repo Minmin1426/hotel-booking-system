@@ -133,10 +133,6 @@ public class AdminCustomerServiceImpl implements AdminCustomerService {
                 .lifetimeSpend(BigDecimal.ZERO) // TODO: sum from payment history
                 .totalBookings(bookingCount)
                 .loyaltyPoints(loyaltyPoints)
-                .ctpStatus(user.getCtpStatus())
-                .companyName(user.getCompanyName())
-                .taxCode(user.getTaxCode())
-                .ctpVerifiedAt(user.getCtpVerifiedAt())
                 .walletBalance(walletBalance)
                 .groupWalletBalance(groupBalance)
                 .isVip(user.getIsVip())

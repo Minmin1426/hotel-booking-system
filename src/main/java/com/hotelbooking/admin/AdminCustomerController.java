@@ -31,7 +31,6 @@ public class AdminCustomerController {
             @RequestParam(required = false) String accountType,
             @RequestParam(required = false) String tier,
             @RequestParam(required = false) String status,
-            @RequestParam(required = false) String ctpStatus,
             @RequestParam(required = false) Boolean isVip,
             @RequestParam(required = false) LocalDateTime createdAfter,
             @RequestParam(required = false) LocalDateTime createdBefore,
@@ -43,7 +42,6 @@ public class AdminCustomerController {
                 .accountType(accountType)
                 .tier(tier)
                 .status(status)
-                .ctpStatus(ctpStatus)
                 .isVip(isVip)
                 .createdAfter(createdAfter)
                 .createdBefore(createdBefore)

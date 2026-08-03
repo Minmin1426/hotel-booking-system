@@ -55,6 +55,7 @@ import java.util.stream.Collectors;
 @Slf4j
 @Transactional
 public class BookingServiceImpl implements BookingService {
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(BookingServiceImpl.class);
 
     private static final int MAX_PAGE_SIZE = 20;
 

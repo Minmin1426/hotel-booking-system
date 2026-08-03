@@ -36,4 +36,21 @@ public class BookingRequest {
 
     @NotNull(message = "Children count cannot be null")
     private Integer children;
+
+    public Long getHotelId() { return hotelId; }
+    public void setHotelId(Long hotelId) { this.hotelId = hotelId; }
+    public LocalDate getCheckInDate() { return checkInDate; }
+    public void setCheckInDate(LocalDate checkInDate) { this.checkInDate = checkInDate; }
+    public LocalDate getCheckOutDate() { return checkOutDate; }
+    public void setCheckOutDate(LocalDate checkOutDate) { this.checkOutDate = checkOutDate; }
+    public List<Long> getRoomIds() { return roomIds; }
+    public void setRoomIds(List<Long> roomIds) { this.roomIds = roomIds; }
+    public String getPaymentMethod() { return paymentMethod; }
+    public void setPaymentMethod(String paymentMethod) { this.paymentMethod = paymentMethod; }
+    public String getVoucherCode() { return voucherCode; }
+    public void setVoucherCode(String voucherCode) { this.voucherCode = voucherCode; }
+    public Integer getAdults() { return adults; }
+    public void setAdults(Integer adults) { this.adults = adults; }
+    public Integer getChildren() { return children; }
+    public void setChildren(Integer children) { this.children = children; }
 }

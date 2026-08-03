@@ -16,6 +16,7 @@ import java.util.Date;
 @RequiredArgsConstructor
 @Slf4j
 public class TokenBlacklistService {
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(TokenBlacklistService.class);
 
     private final RevokedTokenRepository revokedTokenRepository;
     private final JwtService jwtService;

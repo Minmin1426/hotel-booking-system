@@ -110,13 +110,51 @@ public class Booking {
     private LocalDateTime updatedAt;
 
     public Long getBookingId() { return bookingId; }
+    public void setBookingId(Long bookingId) { this.bookingId = bookingId; }
     public String getBookingCode() { return bookingCode; }
+    public void setBookingCode(String bookingCode) { this.bookingCode = bookingCode; }
     public User getUser() { return user; }
     public void setUser(User user) { this.user = user; }
     public Hotel getHotel() { return hotel; }
+    public void setHotel(Hotel hotel) { this.hotel = hotel; }
     public LocalDateTime getCheckInDate() { return checkInDate; }
+    public void setCheckInDate(LocalDateTime checkInDate) { this.checkInDate = checkInDate; }
     public LocalDateTime getCheckOutDate() { return checkOutDate; }
+    public void setCheckOutDate(LocalDateTime checkOutDate) { this.checkOutDate = checkOutDate; }
     public BigDecimal getTotalAmount() { return totalAmount; }
+    public void setTotalAmount(BigDecimal totalAmount) { this.totalAmount = totalAmount; }
     public String getStatus() { return status; }
+    public void setStatus(String status) { this.status = status; }
+    public LocalDateTime getConfirmedAt() { return confirmedAt; }
+    public void setConfirmedAt(LocalDateTime confirmedAt) { this.confirmedAt = confirmedAt; }
+    public String getNotes() { return notes; }
+    public void setNotes(String notes) { this.notes = notes; }
+    public String getCheckinQrCode() { return checkinQrCode; }
+    public void setCheckinQrCode(String checkinQrCode) { this.checkinQrCode = checkinQrCode; }
+    public String getCheckinQrSignature() { return checkinQrSignature; }
+    public void setCheckinQrSignature(String checkinQrSignature) { this.checkinQrSignature = checkinQrSignature; }
+    public String getPaymentStatus() { return paymentStatus; }
+    public void setPaymentStatus(String paymentStatus) { this.paymentStatus = paymentStatus; }
+    public Voucher getVoucher() { return voucher; }
+    public void setVoucher(Voucher voucher) { this.voucher = voucher; }
+    public BigDecimal getDiscountAmount() { return discountAmount; }
+    public void setDiscountAmount(BigDecimal discountAmount) { this.discountAmount = discountAmount; }
+    public BigDecimal getFinalPrice() { return finalPrice; }
+    public void setFinalPrice(BigDecimal finalPrice) { this.finalPrice = finalPrice; }
+    public BigDecimal getServiceFee() { return serviceFee; }
+    public void setServiceFee(BigDecimal serviceFee) { this.serviceFee = serviceFee; }
+    public BigDecimal getTaxes() { return taxes; }
+    public void setTaxes(BigDecimal taxes) { this.taxes = taxes; }
+    public Integer getAdults() { return adults; }
+    public void setAdults(Integer adults) { this.adults = adults; }
+    public Integer getChildren() { return children; }
+    public void setChildren(Integer children) { this.children = children; }
+    public List<BookingRoom> getBookingRooms() { return bookingRooms; }
+    public void setBookingRooms(List<BookingRoom> bookingRooms) { this.bookingRooms = bookingRooms; }
+    public List<Payment> getPayments() { return payments; }
+    public void setPayments(List<Payment> payments) { this.payments = payments; }
     public LocalDateTime getCreatedAt() { return createdAt; }
+    public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
+    public LocalDateTime getUpdatedAt() { return updatedAt; }
+    public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
 }

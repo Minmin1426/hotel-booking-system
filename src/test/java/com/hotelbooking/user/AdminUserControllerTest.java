@@ -48,9 +48,6 @@ public class AdminUserControllerTest {
     private AdminUserService adminUserService;
 
     @MockBean
-    private com.hotelbooking.user.ctp.CtpService ctpService;
-
-    @MockBean
     private JwtService jwtService;
 
     @MockBean

@@ -34,4 +34,15 @@ public class RoomLock {
 
     @Column(name = "expires_at", nullable = false)
     private LocalDateTime expiresAt;
+
+    public Long getLockId() { return lockId; }
+    public void setLockId(Long lockId) { this.lockId = lockId; }
+    public Room getRoom() { return room; }
+    public void setRoom(Room room) { this.room = room; }
+    public Booking getBooking() { return booking; }
+    public void setBooking(Booking booking) { this.booking = booking; }
+    public LocalDateTime getLockedAt() { return lockedAt; }
+    public void setLockedAt(LocalDateTime lockedAt) { this.lockedAt = lockedAt; }
+    public LocalDateTime getExpiresAt() { return expiresAt; }
+    public void setExpiresAt(LocalDateTime expiresAt) { this.expiresAt = expiresAt; }
 }

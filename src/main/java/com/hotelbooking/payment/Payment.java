@@ -94,4 +94,104 @@ public class Payment {
     @UpdateTimestamp
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
+
+    public Long getPaymentId() { return paymentId; }
+    public void setPaymentId(Long paymentId) { this.paymentId = paymentId; }
+    public Booking getBooking() { return booking; }
+    public void setBooking(Booking booking) { this.booking = booking; }
+    public String getPaymentMethod() { return paymentMethod; }
+    public void setPaymentMethod(String paymentMethod) { this.paymentMethod = paymentMethod; }
+    public BigDecimal getAmount() { return amount; }
+    public void setAmount(BigDecimal amount) { this.amount = amount; }
+    public String getStatus() { return status; }
+    public void setStatus(String status) { this.status = status; }
+    public String getTransactionId() { return transactionId; }
+    public void setTransactionId(String transactionId) { this.transactionId = transactionId; }
+    public String getGateway() { return gateway; }
+    public void setGateway(String gateway) { this.gateway = gateway; }
+    public LocalDateTime getPaymentTime() { return paymentTime; }
+    public void setPaymentTime(LocalDateTime paymentTime) { this.paymentTime = paymentTime; }
+    public String getRefundStatus() { return refundStatus; }
+    public void setRefundStatus(String refundStatus) { this.refundStatus = refundStatus; }
+    public BigDecimal getRefundAmount() { return refundAmount; }
+    public void setRefundAmount(BigDecimal refundAmount) { this.refundAmount = refundAmount; }
+    public LocalDateTime getRefundTime() { return refundTime; }
+    public void setRefundTime(LocalDateTime refundTime) { this.refundTime = refundTime; }
+    public String getRefundTransactionId() { return refundTransactionId; }
+    public void setRefundTransactionId(String refundTransactionId) { this.refundTransactionId = refundTransactionId; }
+    public Integer getRefundRetryCount() { return refundRetryCount; }
+    public void setRefundRetryCount(Integer refundRetryCount) { this.refundRetryCount = refundRetryCount; }
+    public Boolean getIsDeposit() { return isDeposit; }
+    public void setIsDeposit(Boolean isDeposit) { this.isDeposit = isDeposit; }
+    public BigDecimal getDepositRatio() { return depositRatio; }
+    public void setDepositRatio(BigDecimal depositRatio) { this.depositRatio = depositRatio; }
+    public LocalDateTime getCountdownEndTime() { return countdownEndTime; }
+    public void setCountdownEndTime(LocalDateTime countdownEndTime) { this.countdownEndTime = countdownEndTime; }
+    public BigDecimal getMealRefundAmount() { return mealRefundAmount; }
+    public void setMealRefundAmount(BigDecimal mealRefundAmount) { this.mealRefundAmount = mealRefundAmount; }
+    public LocalDateTime getCreatedAt() { return createdAt; }
+    public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
+    public LocalDateTime getUpdatedAt() { return updatedAt; }
+    public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
+
+    public static PaymentBuilder builder() { return new PaymentBuilder(); }
+
+    public static class PaymentBuilder {
+        private Long paymentId;
+        private Booking booking;
+        private String paymentMethod;
+        private BigDecimal amount;
+        private String status;
+        private String transactionId;
+        private String gateway;
+        private LocalDateTime paymentTime;
+        private String refundStatus;
+        private BigDecimal refundAmount;
+        private LocalDateTime refundTime;
+        private String refundTransactionId;
+        private Integer refundRetryCount = 0;
+        private Boolean isDeposit = false;
+        private BigDecimal depositRatio = BigDecimal.ONE;
+        private LocalDateTime countdownEndTime;
+        private BigDecimal mealRefundAmount;
+
+        public PaymentBuilder paymentId(Long paymentId) { this.paymentId = paymentId; return this; }
+        public PaymentBuilder booking(Booking booking) { this.booking = booking; return this; }
+        public PaymentBuilder paymentMethod(String paymentMethod) { this.paymentMethod = paymentMethod; return this; }
+        public PaymentBuilder amount(BigDecimal amount) { this.amount = amount; return this; }
+        public PaymentBuilder status(String status) { this.status = status; return this; }
+        public PaymentBuilder transactionId(String transactionId) { this.transactionId = transactionId; return this; }
+        public PaymentBuilder gateway(String gateway) { this.gateway = gateway; return this; }
+        public PaymentBuilder paymentTime(LocalDateTime paymentTime) { this.paymentTime = paymentTime; return this; }
+        public PaymentBuilder refundStatus(String refundStatus) { this.refundStatus = refundStatus; return this; }
+        public PaymentBuilder refundAmount(BigDecimal refundAmount) { this.refundAmount = refundAmount; return this; }
+        public PaymentBuilder refundTime(LocalDateTime refundTime) { this.refundTime = refundTime; return this; }
+        public PaymentBuilder refundTransactionId(String refundTransactionId) { this.refundTransactionId = refundTransactionId; return this; }
+        public PaymentBuilder refundRetryCount(Integer refundRetryCount) { this.refundRetryCount = refundRetryCount; return this; }
+        public PaymentBuilder isDeposit(Boolean isDeposit) { this.isDeposit = isDeposit; return this; }
+        public PaymentBuilder depositRatio(BigDecimal depositRatio) { this.depositRatio = depositRatio; return this; }
+        public PaymentBuilder countdownEndTime(LocalDateTime countdownEndTime) { this.countdownEndTime = countdownEndTime; return this; }
+        public PaymentBuilder mealRefundAmount(BigDecimal mealRefundAmount) { this.mealRefundAmount = mealRefundAmount; return this; }
+        public Payment build() {
+            Payment p = new Payment();
+            p.setPaymentId(paymentId);
+            p.setBooking(booking);
+            p.setPaymentMethod(paymentMethod);
+            p.setAmount(amount);
+            p.setStatus(status);
+            p.setTransactionId(transactionId);
+            p.setGateway(gateway);
+            p.setPaymentTime(paymentTime);
+            p.setRefundStatus(refundStatus);
+            p.setRefundAmount(refundAmount);
+            p.setRefundTime(refundTime);
+            p.setRefundTransactionId(refundTransactionId);
+            p.setRefundRetryCount(refundRetryCount != null ? refundRetryCount : 0);
+            p.setIsDeposit(isDeposit != null ? isDeposit : false);
+            p.setDepositRatio(depositRatio != null ? depositRatio : BigDecimal.ONE);
+            p.setCountdownEndTime(countdownEndTime);
+            p.setMealRefundAmount(mealRefundAmount);
+            return p;
+        }
+    }
 }

@@ -79,29 +79,6 @@ public class User implements UserDetails {
     @Column(name = "otp_expiry")
     private LocalDateTime otpExpiry;
 
-    // --- Corporate Tax Profile (CTP) fields ---
-    @Column(name = "company_name")
-    private String companyName;
-
-    @Column(name = "tax_code")
-    private String taxCode;
-
-    @Column(name = "company_address", columnDefinition = "TEXT")
-    private String companyAddress;
-
-    @Column(name = "billing_email")
-    private String billingEmail;
-
-    @Column(name = "ctp_status")
-    @Builder.Default
-    private String ctpStatus = "NOT_SUBMITTED"; // "NOT_SUBMITTED" | "PENDING" | "VERIFIED" | "REJECTED"
-
-    @Column(name = "ctp_verified_at")
-    private LocalDateTime ctpVerifiedAt;
-
-    @Column(name = "ctp_verified_by")
-    private Long ctpVerifiedBy;
-
     // 011-loyalty-membership-tiers: Loyalty tier fields
     @Column(name = "current_tier")
     @Builder.Default
@@ -126,10 +103,6 @@ public class User implements UserDetails {
     // --- Helper methods ---
     public boolean isCorporateMember() {
         return "CORPORATE_MEMBER".equalsIgnoreCase(accountType);
-    }
-
-    public boolean isCtpVerified() {
-        return "VERIFIED".equalsIgnoreCase(ctpStatus);
     }
 
     public boolean isBronzeTier() {
@@ -217,4 +190,28 @@ public class User implements UserDetails {
 
     public LocalDateTime getLastLoginAt() { return lastLoginAt; }
     public void setLastLoginAt(LocalDateTime lastLoginAt) { this.lastLoginAt = lastLoginAt; }
+
+    public Integer getFailedLoginAttempts() { return failedLoginAttempts != null ? failedLoginAttempts : 0; }
+    public void setFailedLoginAttempts(int failedLoginAttempts) { this.failedLoginAttempts = failedLoginAttempts; }
+
+    public LocalDateTime getLastLogoutAt() { return lastLogoutAt; }
+    public void setLastLogoutAt(LocalDateTime lastLogoutAt) { this.lastLogoutAt = lastLogoutAt; }
+
+    public String getGoogleSubjectId() { return googleSubjectId; }
+    public void setGoogleSubjectId(String googleSubjectId) { this.googleSubjectId = googleSubjectId; }
+
+    public String getOtpCode() { return otpCode; }
+    public void setOtpCode(String otpCode) { this.otpCode = otpCode; }
+
+    public LocalDateTime getOtpExpiry() { return otpExpiry; }
+    public void setOtpExpiry(LocalDateTime otpExpiry) { this.otpExpiry = otpExpiry; }
+
+    public LocalDateTime getTierEvaluatedAt() { return tierEvaluatedAt; }
+    public void setTierEvaluatedAt(LocalDateTime tierEvaluatedAt) { this.tierEvaluatedAt = tierEvaluatedAt; }
+
+    public LocalDateTime getVipMarkedAt() { return vipMarkedAt; }
+    public void setVipMarkedAt(LocalDateTime vipMarkedAt) { this.vipMarkedAt = vipMarkedAt; }
+
+    public Long getVipMarkedBy() { return vipMarkedBy; }
+    public void setVipMarkedBy(Long vipMarkedBy) { this.vipMarkedBy = vipMarkedBy; }
 }

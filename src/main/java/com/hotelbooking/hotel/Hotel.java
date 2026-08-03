@@ -68,4 +68,25 @@ public class Hotel {
     @OneToMany(mappedBy = "hotel", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     @Builder.Default
     private List<Room> rooms = new ArrayList<>();
+
+    public Long getHotelId() { return hotelId; }
+    public void setHotelId(Long hotelId) { this.hotelId = hotelId; }
+    public String getName() { return name; }
+    public void setName(String name) { this.name = name; }
+    public String getLocation() { return location; }
+    public void setLocation(String location) { this.location = location; }
+    public String getDescription() { return description; }
+    public void setDescription(String description) { this.description = description; }
+    public Boolean getIsActive() { return isActive; }
+    public void setIsActive(Boolean isActive) { this.isActive = isActive; }
+    public java.math.BigDecimal getRating() { return rating; }
+    public void setRating(java.math.BigDecimal rating) { this.rating = rating; }
+    public LocalDateTime getCreatedAt() { return createdAt; }
+    public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
+    public LocalDateTime getUpdatedAt() { return updatedAt; }
+    public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
+    public List<HotelImage> getImages() { return images; }
+    public void setImages(List<HotelImage> images) { this.images = images; }
+    public List<Room> getRooms() { return rooms; }
+    public void setRooms(List<Room> rooms) { this.rooms = rooms; }
 }

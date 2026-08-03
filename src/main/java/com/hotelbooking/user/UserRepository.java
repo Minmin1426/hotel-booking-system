@@ -30,10 +30,8 @@ public interface UserRepository extends JpaRepository<User, Long>, JpaSpecificat
     @Query("UPDATE User u SET u.status = :status WHERE u.userId = :userId")
     void updateStatus(@Param("userId") Long userId, @Param("status") String status);
 
-    // 007-customer-portal-profile: CTP admin queries
+    // 007-customer-portal-profile: Account type admin queries
     Page<User> findByAccountType(String accountType, Pageable pageable);
-
-    Page<User> findByAccountTypeAndCtpStatus(String accountType, String ctpStatus, Pageable pageable);
 
     Optional<User> findByGoogleSubjectId(String googleSubjectId);
 }
