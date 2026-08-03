@@ -114,6 +114,8 @@ export default function AdminDashboardPage() {
   // State for Hotels
   const [hotels, setHotels] = useState([]);
   const [hotelsLoading, setHotelsLoading] = useState(false);
+  const [hotelStatusFilter, setHotelStatusFilter] = useState('ALL'); // 'ALL' | 'ACTIVE' | 'INACTIVE'
+  const [hotelSearchQuery, setHotelSearchQuery] = useState('');
   const [isHotelModalOpen, setIsHotelModalOpen] = useState(false);
   const [editingHotel, setEditingHotel] = useState(null);
   const [hotelName, setHotelName] = useState('');
@@ -124,6 +126,8 @@ export default function AdminDashboardPage() {
   // State for Rooms
   const [rooms, setRooms] = useState([]);
   const [roomsLoading, setRoomsLoading] = useState(false);
+  const [roomStatusFilter, setRoomStatusFilter] = useState('ALL'); // 'ALL' | 'AVAILABLE' | 'UNAVAILABLE'
+  const [roomSearchQuery, setRoomSearchQuery] = useState('');
   const [selectedHotelId, setSelectedHotelId] = useState('');
   const [isRoomModalOpen, setIsRoomModalOpen] = useState(false);
   const [editingRoom, setEditingRoom] = useState(null);
@@ -185,12 +189,12 @@ export default function AdminDashboardPage() {
     }
   }, [activeTab, reviewsPage, reviewsFilter]);
 
-  // Load hotels when Hotels or Rooms tab is active
+  // Load hotels when Hotels or Rooms tab is active or status/search filters change
   useEffect(() => {
     if (activeTab === 'hotels' || activeTab === 'rooms') {
       loadHotels();
     }
-  }, [activeTab]);
+  }, [activeTab, hotelStatusFilter, hotelSearchQuery]);
 
   // Load rooms when Selected Hotel changes and Rooms tab is active
   useEffect(() => {
@@ -676,7 +680,12 @@ export default function AdminDashboardPage() {
     setHotelsLoading(true);
     setError(null);
     try {
-      const data = await HotelService.getHotels({});
+      const filterParams = {};
+      if (hotelStatusFilter === 'ACTIVE') filterParams.isActive = true;
+      if (hotelStatusFilter === 'INACTIVE') filterParams.isActive = false;
+      if (hotelSearchQuery.trim() !== '') filterParams.keyword = hotelSearchQuery.trim();
+
+      const data = await HotelService.getHotels(filterParams);
       setHotels(data || []);
       if (data && data.length > 0 && !selectedHotelId) {
         setSelectedHotelId(data[0].hotelId.toString());
@@ -753,17 +762,23 @@ export default function AdminDashboardPage() {
     }
   };
 
-  const handleDeleteHotel = async (hotelId) => {
-    if (window.confirm("Are you sure you want to delete this hotel? This will soft-delete the hotel if there are no active bookings.")) {
-      setIsLoading(true);
+  const handleToggleHotelStatus = async (hotelId, currentStatus) => {
+    const newActive = !currentStatus;
+    const actionLabel = newActive ? "MỞ KHOÁ" : "KHOÁ";
+    const promptMsg = newActive
+      ? "Bạn có chắc chắn muốn MỞ KHOÁ khách sạn này để hoạt động lại?"
+      : "Bạn có chắc chắn muốn KHOÁ khách sạn này? Khách sạn bị khoá sẽ tạm ngưng nhận các lượt đặt mới.";
+
+    if (window.confirm(promptMsg)) {
+      setActionLoadingId(hotelId);
       setError(null);
       try {
-        await HotelService.deleteHotel(hotelId);
+        await HotelService.toggleHotelStatus(hotelId, newActive);
         loadHotels();
       } catch (err) {
-        setError(err.message || "Failed to delete hotel");
+        setError("Cập nhật trạng thái khách sạn thất bại: " + err.message);
       } finally {
-        setIsLoading(false);
+        setActionLoadingId(null);
       }
     }
   };
@@ -851,6 +866,31 @@ export default function AdminDashboardPage() {
     }
   };
 
+  // Client-side rooms filter by status & room number/type
+  const filteredRooms = rooms.filter(room => {
+    if (roomStatusFilter !== 'ALL' && room.status !== roomStatusFilter) {
+      return false;
+    }
+    if (roomSearchQuery.trim() !== '') {
+      const term = roomSearchQuery.trim().toLowerCase();
+      const numMatch = room.roomNumber ? room.roomNumber.toLowerCase().includes(term) : false;
+      const typeMatch = room.roomType ? room.roomType.toLowerCase().includes(term) : false;
+      if (!numMatch && !typeMatch) {
+        return false;
+      }
+    }
+    return true;
+  });
+  const filteredUsers = users.filter(user => {
+    const fullNameMatches = (user.fullName || '').toLowerCase().includes(searchQuery.toLowerCase());
+    const emailMatches = (user.email || '').toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesSearch = fullNameMatches || emailMatches;
+    
+    const matchesRole = roleFilter === 'ALL' || user.role === roleFilter;
+    const matchesStatus = statusFilter === 'ALL' || user.status === statusFilter;
+    
+    return matchesSearch && matchesRole && matchesStatus;
+  });
   return (
     <div className="min-h-screen bg-gradient-to-tr from-[#f4f3f0] via-[#f5f7fa] to-[#eef1f6] flex flex-col">
       <Header fullName={adminName} role={userRole} />
@@ -1755,11 +1795,36 @@ export default function AdminDashboardPage() {
                 </div>
               </div>
 
-              {/* Add Hotel Header Actions */}
-              <div className="flex justify-end mb-6">
+              {/* Hotel Controls: Search, Status Filter & Add Hotel */}
+              <div className="flex flex-col sm:flex-row justify-between items-center gap-4 mb-6">
+                <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
+                  {/* Status Filter */}
+                  <select
+                    value={hotelStatusFilter}
+                    onChange={(e) => setHotelStatusFilter(e.target.value)}
+                    className="h-[40px] px-3.5 py-2 rounded-xl border border-[#e8e8ed] text-xs font-semibold bg-white focus:outline-none focus:border-[#0066cc]"
+                  >
+                    <option value="ALL">Tất cả trạng thái</option>
+                    <option value="ACTIVE">🟢 Đang hoạt động (ACTIVE)</option>
+                    <option value="INACTIVE">🔴 Tạm khoá (INACTIVE)</option>
+                  </select>
+
+                  {/* Search Query Input */}
+                  <div className="relative flex-1 sm:w-[260px]">
+                    <input
+                      type="text"
+                      placeholder="Tìm theo tên hoặc địa điểm..."
+                      value={hotelSearchQuery}
+                      onChange={(e) => setHotelSearchQuery(e.target.value)}
+                      className="w-full h-[40px] pl-9 pr-4 rounded-xl border border-[#e8e8ed] text-xs bg-white focus:outline-none focus:border-[#0066cc]"
+                    />
+                    <span className="absolute left-3 top-2.5 text-xs text-[#86868b]">🔍</span>
+                  </div>
+                </div>
+
                 <button
                   onClick={handleCreateHotelClick}
-                  className="h-[40px] px-5 rounded-xl bg-indigo-600 text-white text-xs font-bold hover:brightness-105 active:scale-95 transition-all shadow-sm flex items-center gap-1.5 cursor-pointer"
+                  className="h-[40px] px-5 rounded-xl bg-indigo-600 text-white text-xs font-bold hover:brightness-105 active:scale-95 transition-all shadow-sm flex items-center gap-1.5 cursor-pointer whitespace-nowrap"
                 >
                   <span>➕</span> Add Hotel
                 </button>
@@ -1773,7 +1838,7 @@ export default function AdminDashboardPage() {
                   </div>
                 ) : hotels.length === 0 ? (
                   <div className="text-center py-20 text-[#86868b] apple-body">
-                    No hotels found. Create a new one to get started.
+                    No hotels match current filter or search criteria.
                   </div>
                 ) : (
                   <table className="w-full text-left border-collapse">
@@ -1783,7 +1848,7 @@ export default function AdminDashboardPage() {
                         <th className="p-4 text-xs font-semibold uppercase text-[#86868b] tracking-wider">Hotel Name</th>
                         <th className="p-4 text-xs font-semibold uppercase text-[#86868b] tracking-wider">Location</th>
                         <th className="p-4 text-xs font-semibold uppercase text-[#86868b] tracking-wider">Description</th>
-                        <th className="p-4 text-xs font-semibold uppercase text-[#86868b] tracking-wider w-[120px]">Status</th>
+                        <th className="p-4 text-xs font-semibold uppercase text-[#86868b] tracking-wider w-[140px]">Status</th>
                         <th className="p-4 text-xs font-semibold uppercase text-[#86868b] tracking-wider text-right w-[180px]">Actions</th>
                       </tr>
                     </thead>
@@ -1804,7 +1869,7 @@ export default function AdminDashboardPage() {
                               <span className={`text-xs font-semibold ${
                                 hotel.isActive ? 'text-green-600' : 'text-red-600'
                               }`}>
-                                {hotel.isActive ? 'ACTIVE' : 'INACTIVE'}
+                                {hotel.isActive ? 'HOẠT ĐỘNG' : 'TẠM KHOÁ'}
                               </span>
                             </div>
                           </td>
@@ -1817,10 +1882,17 @@ export default function AdminDashboardPage() {
                                 Edit
                               </button>
                               <button
-                                onClick={() => handleDeleteHotel(hotel.hotelId)}
-                                className="px-3 py-1.5 rounded-full text-xs font-semibold bg-rose-50 text-rose-600 hover:bg-rose-100 active:scale-95 transition-all cursor-pointer"
+                                onClick={() => handleToggleHotelStatus(hotel.hotelId, hotel.isActive)}
+                                disabled={actionLoadingId === hotel.hotelId}
+                                className={`px-3 py-1.5 rounded-full text-xs font-semibold active:scale-95 transition-all cursor-pointer disabled:opacity-50 ${
+                                  hotel.isActive
+                                    ? 'bg-amber-50 text-amber-700 hover:bg-amber-100 border border-amber-200'
+                                    : 'bg-green-50 text-green-700 hover:bg-green-100 border border-green-200'
+                                }`}
                               >
-                                Delete
+                                {actionLoadingId === hotel.hotelId 
+                                  ? 'Đang xử lý...' 
+                                  : hotel.isActive ? '🔒 Khoá' : '🔓 Mở khoá'}
                               </button>
                             </div>
                           </td>
@@ -1836,27 +1908,61 @@ export default function AdminDashboardPage() {
           {/* Tab Content: Rooms */}
           {activeTab === 'rooms' && (
             <div className="animate-fadeIn">
-              {/* Hotel Selector Dropdown */}
-              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
-                <div className="flex items-center gap-3">
-                  <label className="text-xs font-bold text-[#86868b] uppercase tracking-wider">Select Hotel:</label>
-                  <select
-                    className="h-[40px] px-4 rounded-xl border border-[#e8e8ed] text-sm font-semibold bg-white focus:outline-none focus:border-[#0066cc]"
-                    value={selectedHotelId}
-                    onChange={(e) => setSelectedHotelId(e.target.value)}
-                  >
-                    <option value="">-- Choose Hotel --</option>
-                    {hotels.map(h => (
-                      <option key={h.hotelId} value={h.hotelId}>{h.name} ({h.location})</option>
-                    ))}
-                  </select>
+              {/* Controls Bar: Hotel Selector, Room Status Filter, Room Search & Add Room */}
+              <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 mb-6">
+                <div className="flex flex-wrap items-center gap-3 w-full lg:w-auto">
+                  {/* Select Hotel */}
+                  <div className="flex items-center gap-2">
+                    <label className="text-xs font-bold text-[#86868b] uppercase tracking-wider whitespace-nowrap">Khách sạn:</label>
+                    <select
+                      className="h-[40px] px-3.5 rounded-xl border border-[#e8e8ed] text-xs font-semibold bg-white focus:outline-none focus:border-[#0066cc]"
+                      value={selectedHotelId}
+                      onChange={(e) => setSelectedHotelId(e.target.value)}
+                    >
+                      <option value="">-- Chọn khách sạn --</option>
+                      {hotels.map(h => (
+                        <option key={h.hotelId} value={h.hotelId}>{h.name} ({h.location})</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Room Status Filter */}
+                  {selectedHotelId && (
+                    <div className="flex items-center gap-2">
+                      <label className="text-xs font-bold text-[#86868b] uppercase tracking-wider whitespace-nowrap">Trạng thái phòng:</label>
+                      <select
+                        className="h-[40px] px-3.5 rounded-xl border border-[#e8e8ed] text-xs font-semibold bg-white focus:outline-none focus:border-[#0066cc]"
+                        value={roomStatusFilter}
+                        onChange={(e) => setRoomStatusFilter(e.target.value)}
+                      >
+                        <option value="ALL">Tất cả trạng thái</option>
+                        <option value="AVAILABLE">🟢 Trạng thái Trống (AVAILABLE)</option>
+                        <option value="UNAVAILABLE">🔴 Đã khoá / Tạm ngưng (UNAVAILABLE)</option>
+                      </select>
+                    </div>
+                  )}
+
+                  {/* Room Search Query Input */}
+                  {selectedHotelId && (
+                    <div className="relative flex-1 sm:w-[220px]">
+                      <input
+                        type="text"
+                        placeholder="Tìm số phòng / loại phòng..."
+                        value={roomSearchQuery}
+                        onChange={(e) => setRoomSearchQuery(e.target.value)}
+                        className="w-full h-[40px] pl-9 pr-4 rounded-xl border border-[#e8e8ed] text-xs bg-white focus:outline-none focus:border-[#0066cc]"
+                      />
+                      <span className="absolute left-3 top-2.5 text-xs text-[#86868b]">🔍</span>
+                    </div>
+                  )}
                 </div>
+
                 {selectedHotelId && (
                   <button
                     onClick={handleCreateRoomClick}
-                    className="h-[40px] px-5 rounded-xl bg-indigo-600 text-white text-xs font-bold hover:brightness-105 active:scale-95 transition-all shadow-sm flex items-center gap-1.5 cursor-pointer"
+                    className="h-[40px] px-5 rounded-xl bg-indigo-600 text-white text-xs font-bold hover:brightness-105 active:scale-95 transition-all shadow-sm flex items-center gap-1.5 cursor-pointer whitespace-nowrap"
                   >
-                    <span>➕</span> Add Room
+                    <span>➕</span> Thêm Phòng Mới
                   </button>
                 )}
               </div>
@@ -1865,15 +1971,15 @@ export default function AdminDashboardPage() {
               <div className="overflow-x-auto border border-[#e8e8ed] rounded-xl">
                 {!selectedHotelId ? (
                   <div className="text-center py-20 text-[#86868b] apple-body">
-                    Please select a hotel above to view and manage its rooms.
+                    Vui lòng chọn một khách sạn ở trên để xem và quản lý danh sách phòng.
                   </div>
                 ) : roomsLoading ? (
                   <div className="text-center py-20 text-[#86868b] apple-body">
-                    Loading hotel rooms...
+                    Đang tải danh sách phòng...
                   </div>
-                ) : rooms.length === 0 ? (
+                ) : filteredRooms.length === 0 ? (
                   <div className="text-center py-20 text-[#86868b] apple-body">
-                    No rooms found for this hotel. Add a room to get started.
+                    Không tìm thấy phòng nào phù hợp với bộ lọc trạng thái hoặc tìm kiếm.
                   </div>
                 ) : (
                   <table className="w-full text-left border-collapse">
@@ -1883,12 +1989,12 @@ export default function AdminDashboardPage() {
                         <th className="p-4 text-xs font-semibold uppercase text-[#86868b] tracking-wider">Room Number</th>
                         <th className="p-4 text-xs font-semibold uppercase text-[#86868b] tracking-wider">Room Type</th>
                         <th className="p-4 text-xs font-semibold uppercase text-[#86868b] tracking-wider">Price per Night</th>
-                        <th className="p-4 text-xs font-semibold uppercase text-[#86868b] tracking-wider w-[120px]">Availability</th>
+                        <th className="p-4 text-xs font-semibold uppercase text-[#86868b] tracking-wider w-[150px]">Status / Availability</th>
                         <th className="p-4 text-xs font-semibold uppercase text-[#86868b] tracking-wider text-right w-[200px]">Actions</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-[#e8e8ed]">
-                      {rooms.map((room) => (
+                      {filteredRooms.map((room) => (
                         <tr key={room.roomId} className="hover:bg-[#fafafc] transition-colors">
                           <td className="p-4 text-sm font-semibold text-[#1d1d1f]">#{room.roomId}</td>
                           <td className="p-4 text-sm font-bold text-indigo-600 font-mono">{room.roomNumber}</td>

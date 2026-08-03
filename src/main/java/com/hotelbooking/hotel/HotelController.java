@@ -102,7 +102,20 @@ public class HotelController {
     }
 
     /**
-     * UC-27: Delete a hotel (Admin only)
+     * Lock or Unlock hotel status (Admin only)
+     */
+    @PatchMapping("/{id}/status")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<HotelResponse> toggleHotelStatus(
+            @PathVariable("id") Long id,
+            @RequestParam("active") boolean active) {
+        log.info("Received admin request to toggle status for hotel ID: {} to active={}", id, active);
+        HotelResponse response = hotelService.toggleHotelStatus(id, active);
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * UC-27: Delete a hotel (Disabled for Admin - only lock/unlock allowed)
      */
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")

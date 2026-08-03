@@ -100,6 +100,21 @@ function HotelDetailPage() {
     { id: 10, fullName: 'Lý Thị K', idNumber: '001200999555', type: 'ADULT', roomAllocated: 'Phòng G105', mealPackage: 'BUFFET_BOTH' }
   ]);
 
+  // Meal Ticket Booker Modal States
+  const [showMealModal, setShowMealModal] = useState(false);
+  const [selectedMealPackage, setSelectedMealPackage] = useState(null);
+  const [mealTicketQuantity, setMealTicketQuantity] = useState(1);
+  const [mealDiningDate, setMealDiningDate] = useState(() => new Date().toISOString().split('T')[0]);
+  const [mealSession, setMealSession] = useState('BREAKFAST');
+  const [mealBookerName, setMealBookerName] = useState('');
+  const [mealBookerPhone, setMealBookerPhone] = useState('');
+  const [mealBookerEmail, setMealBookerEmail] = useState('');
+  const [mealBookerIdNumber, setMealBookerIdNumber] = useState('');
+  const [mealSpecialRequests, setMealSpecialRequests] = useState('');
+  const [mealBookingError, setMealBookingError] = useState('');
+  const [mealBookingSuccess, setMealBookingSuccess] = useState(null);
+  const [isSubmittingMealTicket, setIsSubmittingMealTicket] = useState(false);
+
   const handleGroupRoomCountChange = (count) => {
     const newCount = Math.max(5, parseInt(count) || 5);
     setGroupRoomCount(newCount);
@@ -252,6 +267,138 @@ function HotelDetailPage() {
     return { errors, warnings, totalAdults, totalChildren };
   };
 
+  const handleOpenMealModal = async (mealPackage) => {
+    setSelectedMealPackage(mealPackage);
+    setMealTicketQuantity(1);
+    setMealDiningDate(new Date().toISOString().split('T')[0]);
+    setMealSession(mealPackage.defaultSession || 'BREAKFAST');
+    setMealSpecialRequests('');
+    setMealBookingError('');
+    setMealBookingSuccess(null);
+
+    try {
+      if (isAuthenticated) {
+        const profile = await AuthService.getProfile();
+        setMealBookerName(profile.fullName || '');
+        setMealBookerEmail(profile.email || '');
+        setMealBookerPhone(profile.phoneNumber || '');
+        setMealBookerIdNumber(profile.identificationNumber || '');
+      }
+    } catch (err) {
+      console.warn("Could not prefill profile details:", err);
+    }
+
+    setShowMealModal(true);
+  };
+
+  const handleConfirmMealTicketOrder = async (e) => {
+    if (e) e.preventDefault();
+    setMealBookingError('');
+
+    // Full validation
+    if (!mealBookerName || !mealBookerName.trim()) {
+      setMealBookingError("Vui lòng nhập Họ và tên người đặt vé ăn.");
+      return;
+    }
+    if (mealBookerName.trim().length < 2) {
+      setMealBookingError("Họ và tên quá ngắn (Tối thiểu 2 ký tự).");
+      return;
+    }
+
+    if (!mealBookerPhone || !mealBookerPhone.trim()) {
+      setMealBookingError("Vui lòng nhập Số điện thoại người đặt vé.");
+      return;
+    }
+    if (!/^(0[3|5|7|8|9])[0-9]{8}$/.test(mealBookerPhone.trim())) {
+      setMealBookingError("Số điện thoại không hợp lệ. Vui lòng nhập số điện thoại Việt Nam gồm 10 chữ số (VD: 0912345678).");
+      return;
+    }
+
+    if (!mealBookerEmail || !mealBookerEmail.trim()) {
+      setMealBookingError("Vui lòng nhập Địa chỉ Email nhận mã vé.");
+      return;
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(mealBookerEmail.trim())) {
+      setMealBookingError("Địa chỉ email không đúng định dạng (VD: name@domain.com).");
+      return;
+    }
+
+    if (!mealBookerIdNumber || !mealBookerIdNumber.trim()) {
+      setMealBookingError("Vui lòng nhập Số CCCD / CMND / Hộ chiếu.");
+      return;
+    }
+    if (!/^[0-9]{9,12}$/.test(mealBookerIdNumber.trim())) {
+      setMealBookingError("Số CCCD / CMND không hợp lệ (Phải chứa từ 9 đến 12 chữ số).");
+      return;
+    }
+
+    const today = new Date().toISOString().split('T')[0];
+    if (!mealDiningDate || mealDiningDate < today) {
+      setMealBookingError("Ngày sử dụng vé ăn không được ở trong quá khứ.");
+      return;
+    }
+
+    if (!mealTicketQuantity || mealTicketQuantity < 1 || mealTicketQuantity > 50) {
+      setMealBookingError("Số lượng vé đặt phải từ 1 đến 50 vé.");
+      return;
+    }
+
+    setIsSubmittingMealTicket(true);
+    try {
+      const totalPrice = selectedMealPackage.price * mealTicketQuantity;
+      const orderCode = "BUFFET-" + Math.floor(100000 + Math.random() * 900000);
+      const ticketResult = {
+        orderCode,
+        packageName: selectedMealPackage.name,
+        packageType: selectedMealPackage.type,
+        quantity: mealTicketQuantity,
+        totalPrice,
+        diningDate: mealDiningDate,
+        session: mealSession === 'BREAKFAST' ? 'Ca Sáng (06:00 - 10:00)' : mealSession === 'LUNCH' ? 'Ca Trưa (11:30 - 14:00)' : 'Ca Tối (18:00 - 21:30)',
+        bookerName: mealBookerName.trim(),
+        bookerPhone: mealBookerPhone.trim(),
+        bookerEmail: mealBookerEmail.trim(),
+        bookerIdNumber: mealBookerIdNumber.trim(),
+        specialRequests: mealSpecialRequests.trim(),
+        qrCodeUrl: `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${orderCode}`
+      };
+
+      const newTicketObj = {
+        ticketId: Math.floor(10000 + Math.random() * 90000),
+        ticketTypeName: selectedMealPackage.name,
+        ticketType: selectedMealPackage.type,
+        userFullName: mealBookerName.trim(),
+        bookerPhone: mealBookerPhone.trim(),
+        bookerEmail: mealBookerEmail.trim(),
+        bookerIdNumber: mealBookerIdNumber.trim(),
+        quantity: mealTicketQuantity,
+        totalPrice,
+        status: 'UNUSED',
+        expiresAt: mealDiningDate,
+        diningDate: mealDiningDate,
+        session: mealSession === 'BREAKFAST' ? 'Ca Sáng (06:00 - 10:00)' : mealSession === 'LUNCH' ? 'Ca Trưa (11:30 - 14:00)' : 'Ca Tối (18:00 - 21:30)',
+        orderCode,
+        qrCodeUrl: `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${orderCode}`,
+        createdAt: new Date().toISOString()
+      };
+
+      try {
+        const storedStr = localStorage.getItem("my_purchased_meal_tickets");
+        const storedTickets = storedStr ? JSON.parse(storedStr) : [];
+        storedTickets.unshift(newTicketObj);
+        localStorage.setItem("my_purchased_meal_tickets", JSON.stringify(storedTickets));
+      } catch (e) {
+        console.error("Failed to save ticket to localStorage:", e);
+      }
+
+      setMealBookingSuccess(ticketResult);
+    } catch (err) {
+      setMealBookingError("Xác nhận đặt vé thất bại: " + err.message);
+    } finally {
+      setIsSubmittingMealTicket(false);
+    }
+  };
+
   // Reviews states
   const [reviews, setReviews] = useState([]);
   const [reviewsLoading, setReviewsLoading] = useState(false);
@@ -352,17 +499,40 @@ function HotelDetailPage() {
     return isNaN(diffDays) ? 0 : diffDays;
   };
 
-  // Handle checking room vacancies
+  // Handle checking room vacancies with validation
   const handleCheckAvailability = async (e) => {
     if (e) e.preventDefault();
     setRoomsLoading(true);
     setRoomsError('');
     setBookingSuccess('');
+
+    const today = new Date().toISOString().split('T')[0];
+    if (!checkIn) {
+      setRoomsError('Vui lòng chọn ngày nhận phòng (Check-in).');
+      setRoomsLoading(false);
+      return;
+    }
+    if (checkIn < today) {
+      setRoomsError('Ngày nhận phòng (Check-in) không được ở trong quá khứ.');
+      setRoomsLoading(false);
+      return;
+    }
+    if (!checkOut) {
+      setRoomsError('Vui lòng chọn ngày trả phòng (Check-out).');
+      setRoomsLoading(false);
+      return;
+    }
+    if (checkOut <= checkIn) {
+      setRoomsError('Ngày trả phòng (Check-out) phải diễn ra sau ngày nhận phòng (Check-in).');
+      setRoomsLoading(false);
+      return;
+    }
+
     try {
       const availableRooms = await HotelService.searchAvailableRooms(id, checkIn, checkOut);
       setRooms(availableRooms);
     } catch (err) {
-      setRoomsError(err.message || "Could not check vacancies. Verify date formats.");
+      setRoomsError(err.message || "Không thể kiểm tra phòng trống. Vui lòng kiểm tra định dạng ngày.");
     } finally {
       setRoomsLoading(false);
     }
@@ -419,16 +589,20 @@ function HotelDetailPage() {
   };
 
   const handleConfirmBookingCreation = async () => {
-    if (!guestName.trim()) {
-      setBookingError("Full Name is required.");
+    if (!guestName || !guestName.trim()) {
+      setBookingError("Họ và tên người đặt phòng không được để trống.");
       return;
     }
-    if (!guestPhone.trim()) {
-      setBookingError("Phone Number is required.");
+    if (!guestPhone || !guestPhone.trim() || !/^(0[3|5|7|8|9])[0-9]{8}$/.test(guestPhone.trim())) {
+      setBookingError("Số điện thoại không hợp lệ. Vui lòng nhập số điện thoại Việt Nam gồm 10 chữ số (VD: 0912345678).");
       return;
     }
-    if (!guestIdNumber.trim()) {
-      setBookingError("ID / Passport Number is required.");
+    if (guestEmail && guestEmail.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(guestEmail.trim())) {
+      setBookingError("Địa chỉ email không đúng định dạng.");
+      return;
+    }
+    if (!guestIdNumber || !guestIdNumber.trim() || !/^[0-9]{9,12}$/.test(guestIdNumber.trim())) {
+      setBookingError("Số CCCD / CMND / Hộ chiếu không hợp lệ (Phải chứa từ 9 đến 12 chữ số).");
       return;
     }
 
@@ -948,8 +1122,15 @@ function HotelDetailPage() {
                     <span className="text-lg font-extrabold text-amber-600">$15 / vé</span>
                     <button
                       type="button"
-                      onClick={() => alert("Đã thêm 1 Vé Buffet Sáng vào giỏ vé của bạn. Vui lòng nhấn Thanh toán!")}
-                      className="px-4 py-2 rounded-xl bg-amber-500 text-white text-xs font-bold hover:bg-amber-600 transition-colors"
+                      onClick={() => handleOpenMealModal({
+                        id: 'BUFFET_BREAKFAST',
+                        name: 'Suất Buffet Sáng Tự Chọn',
+                        price: 15,
+                        description: 'Phục vụ từ 06:00 - 10:00. Hơn 50 món Á-Âu cao cấp.',
+                        type: 'BUFFET_SANG',
+                        defaultSession: 'BREAKFAST'
+                      })}
+                      className="px-4 py-2 rounded-xl bg-amber-500 text-white text-xs font-bold hover:bg-amber-600 active:scale-95 transition-all shadow-sm cursor-pointer"
                     >
                       Mua Vé Ngay
                     </button>
@@ -966,8 +1147,15 @@ function HotelDetailPage() {
                     <span className="text-lg font-extrabold text-amber-600">$35 / vé</span>
                     <button
                       type="button"
-                      onClick={() => alert("Đã thêm 1 Vé Buffet Tối Hải Sản vào giỏ vé của bạn!")}
-                      className="px-4 py-2 rounded-xl bg-amber-500 text-white text-xs font-bold hover:bg-amber-600 transition-colors"
+                      onClick={() => handleOpenMealModal({
+                        id: 'BUFFET_DINNER',
+                        name: 'Suất Buffet Tối Premium',
+                        price: 35,
+                        description: 'Phục vụ từ 18:00 - 21:30. Hải sản nướng tươi sống & Rượu vang nhẹ.',
+                        type: 'BUFFET_TOI',
+                        defaultSession: 'DINNER'
+                      })}
+                      className="px-4 py-2 rounded-xl bg-amber-500 text-white text-xs font-bold hover:bg-amber-600 active:scale-95 transition-all shadow-sm cursor-pointer"
                     >
                       Mua Vé Ngay
                     </button>
@@ -984,8 +1172,15 @@ function HotelDetailPage() {
                     <span className="text-lg font-extrabold text-amber-600">$180 / bàn</span>
                     <button
                       type="button"
-                      onClick={() => alert("Đã đăng ký Set Menu Tiệc Đoàn. Nhân viên sẽ liên hệ xác nhận bàn!")}
-                      className="px-4 py-2 rounded-xl bg-amber-500 text-white text-xs font-bold hover:bg-amber-600 transition-colors"
+                      onClick={() => handleOpenMealModal({
+                        id: 'SET_MENU_10',
+                        name: 'Set Tiệc Bàn 10 Khách',
+                        price: 180,
+                        description: 'Bàn tiệc dành cho đoàn 10 người, thực đơn riêng cao cấp.',
+                        type: 'SET_TIEC',
+                        defaultSession: 'DINNER'
+                      })}
+                      className="px-4 py-2 rounded-xl bg-amber-500 text-white text-xs font-bold hover:bg-amber-600 active:scale-95 transition-all shadow-sm cursor-pointer"
                     >
                       Đặt Bàn Tiệc
                     </button>
@@ -1735,6 +1930,269 @@ function HotelDetailPage() {
 
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Buffet Meal Ticket Booker Modal Screen */}
+      {showMealModal && selectedMealPackage && (
+        <div className="fixed inset-0 z-[120] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto animate-fade-in">
+          <div className="bg-white rounded-3xl max-w-2xl w-full border border-amber-200 shadow-2xl overflow-hidden my-8">
+            
+            {/* Modal Header */}
+            <div className="bg-gradient-to-r from-amber-500 via-amber-600 to-amber-500 px-6 py-5 text-white flex justify-between items-center">
+              <div>
+                <span className="text-[10px] font-black tracking-widest uppercase bg-amber-700/60 px-2.5 py-0.5 rounded-full block w-max">
+                  Vé Ăn Buffet & Đặt Bàn Nhà Hàng
+                </span>
+                <h3 className="text-xl font-extrabold mt-1 tracking-tight">
+                  {selectedMealPackage.name}
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowMealModal(false)}
+                className="w-9 h-9 rounded-full bg-white/20 hover:bg-white/30 text-white font-bold flex items-center justify-center transition-colors cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            {!mealBookingSuccess ? (
+              <form onSubmit={handleConfirmMealTicketOrder} className="p-6 space-y-6">
+                
+                {/* Package summary & Quantity Selection */}
+                <div className="p-4 rounded-2xl bg-amber-50/70 border border-amber-200/80 space-y-4">
+                  <div className="flex justify-between items-baseline">
+                    <span className="text-xs font-bold text-amber-900 uppercase tracking-wider">Đơn giá: ${selectedMealPackage.price} / vé</span>
+                    <span className="text-sm font-extrabold text-amber-700 font-mono">
+                      Tổng tiền: ${(selectedMealPackage.price * mealTicketQuantity).toFixed(2)}
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2 border-t border-amber-200/50">
+                    <div>
+                      <label className="text-[11px] font-bold text-slate-700 uppercase block mb-1">Số lượng vé (1-50)</label>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setMealTicketQuantity(Math.max(1, mealTicketQuantity - 1))}
+                          className="w-9 h-9 rounded-xl bg-white border border-slate-300 font-bold text-slate-700 hover:bg-slate-100"
+                        >
+                          -
+                        </button>
+                        <input
+                          type="number"
+                          min="1"
+                          max="50"
+                          value={mealTicketQuantity}
+                          onChange={(e) => setMealTicketQuantity(Math.min(50, Math.max(1, parseInt(e.target.value) || 1)))}
+                          className="w-12 h-9 text-center bg-white border border-slate-300 rounded-xl font-extrabold text-sm text-slate-800"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setMealTicketQuantity(Math.min(50, mealTicketQuantity + 1))}
+                          className="w-9 h-9 rounded-xl bg-white border border-slate-300 font-bold text-slate-700 hover:bg-slate-100"
+                        >
+                          +
+                        </button>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="text-[11px] font-bold text-slate-700 uppercase block mb-1">Ngày sử dụng</label>
+                      <input
+                        type="date"
+                        min={new Date().toISOString().split('T')[0]}
+                        value={mealDiningDate}
+                        onChange={(e) => setMealDiningDate(e.target.value)}
+                        className="w-full h-9 px-3 rounded-xl bg-white border border-slate-300 text-xs font-semibold text-slate-800 focus:outline-none focus:border-amber-500"
+                        required
+                      />
+                    </div>
+
+                    <div>
+                      <label className="text-[11px] font-bold text-slate-700 uppercase block mb-1">Ca sử dụng</label>
+                      <select
+                        value={mealSession}
+                        onChange={(e) => setMealSession(e.target.value)}
+                        className="w-full h-9 px-2 rounded-xl bg-white border border-slate-300 text-xs font-semibold text-slate-800 focus:outline-none focus:border-amber-500 cursor-pointer"
+                      >
+                        <option value="BREAKFAST">Ca Sáng (06:00 - 10:00)</option>
+                        <option value="LUNCH">Ca Trưa (11:30 - 14:00)</option>
+                        <option value="DINNER">Ca Tối (18:00 - 21:30)</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Booker Information Form Header */}
+                <div className="border-t border-slate-100 pt-2">
+                  <h4 className="text-sm font-extrabold text-slate-900 flex items-center gap-2">
+                    <span>👤</span> THÔNG TIN NGƯỜI ĐẶT VÉ BUFFET (BẮT BUỘC)
+                  </h4>
+                  <p className="text-xs text-slate-500 mt-0.5">Vui lòng điền chính xác thông tin để nhận mã QR Code suất ăn & đối soát tại nhà hàng.</p>
+                </div>
+
+                {/* Booker Form Inputs */}
+                <div className="space-y-4">
+                  {/* Full Name */}
+                  <div>
+                    <label className="text-xs font-bold text-slate-700 uppercase tracking-wide block mb-1.5">
+                      Họ và tên người đặt vé <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="Ví dụ: Nguyễn Văn A"
+                      value={mealBookerName}
+                      onChange={(e) => setMealBookerName(e.target.value)}
+                      className="w-full px-4 py-2.5 rounded-xl border border-slate-300 text-sm focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition-all font-medium"
+                      required
+                    />
+                  </div>
+
+                  {/* Phone & ID Number in 2 columns */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-xs font-bold text-slate-700 uppercase tracking-wide block mb-1.5">
+                        Số điện thoại người đặt <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="tel"
+                        placeholder="Ví dụ: 0912345678"
+                        value={mealBookerPhone}
+                        onChange={(e) => setMealBookerPhone(e.target.value)}
+                        className="w-full px-4 py-2.5 rounded-xl border border-slate-300 text-sm focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition-all font-medium font-mono"
+                        required
+                      />
+                    </div>
+
+                    <div>
+                      <label className="text-xs font-bold text-slate-700 uppercase tracking-wide block mb-1.5">
+                        Số CCCD / CMND / Hộ chiếu <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="Ví dụ: 001202001122"
+                        value={mealBookerIdNumber}
+                        onChange={(e) => setMealBookerIdNumber(e.target.value)}
+                        className="w-full px-4 py-2.5 rounded-xl border border-slate-300 text-sm focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition-all font-medium font-mono"
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  {/* Email */}
+                  <div>
+                    <label className="text-xs font-bold text-slate-700 uppercase tracking-wide block mb-1.5">
+                      Địa chỉ Email nhận mã vé <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="email"
+                      placeholder="Ví dụ: nguyenvana@gmail.com"
+                      value={mealBookerEmail}
+                      onChange={(e) => setMealBookerEmail(e.target.value)}
+                      className="w-full px-4 py-2.5 rounded-xl border border-slate-300 text-sm focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition-all font-medium"
+                      required
+                    />
+                  </div>
+
+                  {/* Special requests */}
+                  <div>
+                    <label className="text-xs font-bold text-slate-700 uppercase tracking-wide block mb-1.5">
+                      Ghi chú / Yêu cầu đặc biệt (Không bắt buộc)
+                    </label>
+                    <textarea
+                      rows="2"
+                      placeholder="Ví dụ: Cần xếp bàn cạnh cửa sổ, người dùng ăn chay hoặc dị ứng hải sản..."
+                      value={mealSpecialRequests}
+                      onChange={(e) => setMealSpecialRequests(e.target.value)}
+                      className="w-full px-4 py-2.5 rounded-xl border border-slate-300 text-xs focus:outline-none focus:border-amber-500 transition-all"
+                    />
+                  </div>
+                </div>
+
+                {/* Error Banner */}
+                {mealBookingError && (
+                  <div className="p-4 rounded-xl bg-red-50 border border-red-200 text-red-600 text-xs font-bold animate-shake">
+                    ⚠️ {mealBookingError}
+                  </div>
+                )}
+
+                {/* Actions */}
+                <div className="flex gap-4 pt-4 border-t border-slate-100">
+                  <button
+                    type="button"
+                    onClick={() => setShowMealModal(false)}
+                    className="w-1/3 py-3.5 rounded-xl bg-slate-100 text-slate-700 font-bold text-xs hover:bg-slate-200 transition-colors"
+                  >
+                    Hủy bỏ
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isSubmittingMealTicket}
+                    className="w-2/3 py-3.5 rounded-xl bg-amber-500 text-white font-extrabold text-xs uppercase tracking-wider shadow-lg hover:bg-amber-600 active:scale-[0.98] transition-all disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer"
+                  >
+                    {isSubmittingMealTicket ? 'Đang xử lý...' : `🚀 Xác Nhận Đặt Vé & Thanh Toán ($${(selectedMealPackage.price * mealTicketQuantity).toFixed(0)})`}
+                  </button>
+                </div>
+              </form>
+            ) : (
+              /* Success View showing Ticket Summary & QR Code */
+              <div className="p-8 space-y-6 text-center animate-fade-in">
+                <div className="w-16 h-16 bg-emerald-50 text-emerald-500 rounded-full flex items-center justify-center text-3xl mx-auto border border-emerald-200">
+                  ✓
+                </div>
+
+                <div>
+                  <span className="text-xs font-bold text-emerald-600 uppercase tracking-widest block">Đặt vé ăn thành công!</span>
+                  <h4 className="text-2xl font-black text-slate-900 mt-1">{mealBookingSuccess.packageName}</h4>
+                  <p className="text-xs text-slate-500 mt-1">Mã suất ăn của bạn đã được khởi tạo và sẵn sàng quét tại nhà hàng.</p>
+                </div>
+
+                {/* QR Code image display */}
+                <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 inline-block mx-auto shadow-inner">
+                  <img
+                    src={mealBookingSuccess.qrCodeUrl}
+                    alt="Mã QR Code vé ăn"
+                    className="w-44 h-44 mx-auto rounded-lg"
+                  />
+                  <div className="mt-2 text-sm font-black text-amber-700 font-mono tracking-widest">
+                    {mealBookingSuccess.orderCode}
+                  </div>
+                </div>
+
+                {/* Booker details summary box */}
+                <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 text-left space-y-2 text-xs text-slate-700">
+                  <div className="grid grid-cols-2 gap-2">
+                    <div><span className="text-slate-400 font-bold">Người đặt:</span> <span className="font-bold text-slate-900">{mealBookingSuccess.bookerName}</span></div>
+                    <div><span className="text-slate-400 font-bold">Số ĐT:</span> <span className="font-mono font-bold text-slate-900">{mealBookingSuccess.bookerPhone}</span></div>
+                    <div><span className="text-slate-400 font-bold">Email:</span> <span className="font-medium text-slate-900">{mealBookingSuccess.bookerEmail}</span></div>
+                    <div><span className="text-slate-400 font-bold">Số CCCD:</span> <span className="font-mono font-bold text-slate-900">{mealBookingSuccess.bookerIdNumber}</span></div>
+                  </div>
+                  <div className="pt-2 border-t border-slate-200/80 flex justify-between items-center text-xs">
+                    <span><span className="text-slate-400 font-bold">Ngày sử dụng:</span> {mealBookingSuccess.diningDate} ({mealBookingSuccess.session})</span>
+                    <span className="font-extrabold text-amber-700">{mealBookingSuccess.quantity} vé - Total: ${mealBookingSuccess.totalPrice}</span>
+                  </div>
+                  {mealBookingSuccess.specialRequests && (
+                    <div className="pt-1 text-[11px] italic text-slate-500">
+                      Ghi chú: "{mealBookingSuccess.specialRequests}"
+                    </div>
+                  )}
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowMealModal(false);
+                    setMealBookingSuccess(null);
+                  }}
+                  className="w-full max-w-xs py-3.5 rounded-xl bg-slate-900 text-white font-bold text-xs uppercase tracking-wider hover:bg-slate-800 transition-colors mx-auto block cursor-pointer"
+                >
+                  Hoàn thành & Đóng
+                </button>
+              </div>
+            )}
           </div>
         </div>
       )}
