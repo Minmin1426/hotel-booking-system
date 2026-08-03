@@ -288,6 +288,5 @@ export const BookingService = {
       throw new Error(data.message || "Failed to resend ticket email");
     }
     return data;
->>>>>>> origin/vu
   }
 };

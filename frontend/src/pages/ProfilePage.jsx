@@ -209,40 +209,35 @@ export default function ProfilePage() {
   const loadTickets = async () => {
     setTicketsLoading(true);
     setError(null);
+    let apiTickets = [];
     try {
       const token = sessionStorage.getItem("accessToken");
-      if (!token) {
-        setWristbands([]);
-        return;
-      }
-      const baseApiUrl = import.meta.env.VITE_API_URL || (window.location.origin.includes("localhost") ? "http://localhost:8080/api/v1" : "https://hotel-booking-system-0wv2.onrender.com/api/v1");
-      const response = await fetch(`${baseApiUrl}/bookings/my-bookings`, {
-        headers: { "Authorization": `Bearer ${token}` }
-      });
-      if (response.ok) {
-        const data = await response.json();
-        const bookings = data.data?.content || data.content || (Array.isArray(data.data) ? data.data : []);
-        let allWbs = [];
-        for (const b of bookings) {
-          try {
-            const wbRes = await fetch(`${baseApiUrl}/admin/wristbands/booking/${b.bookingId}`, {
-              headers: { "Authorization": `Bearer ${token}` }
-            });
-            if (wbRes.ok) {
-              const wbData = await wbRes.json();
-              if (wbData.data) allWbs = allWbs.concat(wbData.data);
-            }
-          } catch (e) {}
+      if (token) {
+        const baseApiUrl = import.meta.env.VITE_API_URL || (window.location.origin.includes("localhost") ? "http://localhost:8080/api/v1" : "https://hotel-booking-system-0wv2.onrender.com/api/v1");
+        const response = await fetch(`${baseApiUrl}/bookings/my-bookings`, {
+          headers: { "Authorization": `Bearer ${token}` }
+        });
+        if (response.ok) {
+          const data = await response.json();
+          const bookings = data.data?.content || data.content || (Array.isArray(data.data) ? data.data : []);
+          let allWbs = [];
+          for (const b of bookings) {
+            try {
+              const wbRes = await fetch(`${baseApiUrl}/admin/wristbands/booking/${b.bookingId}`, {
+                headers: { "Authorization": `Bearer ${token}` }
+              });
+              if (wbRes.ok) {
+                const wbData = await wbRes.json();
+                if (wbData.data) allWbs = allWbs.concat(wbData.data);
+              }
+            } catch (e) {}
+          }
+          setWristbands(allWbs);
         }
-        setWristbands(allWbs);
       }
     } catch (err) {
       console.warn("Could not fetch tickets or wristbands:", err);
       setWristbands([]);
-    } finally {
-      setTicketsLoading(false);
-    }
-  };
     }
 
     let localTickets = [];

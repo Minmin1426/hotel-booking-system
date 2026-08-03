@@ -1775,15 +1775,7 @@ function HotelDetailPage() {
                                     <span>⚠️</span> {guestIdNumberError}
                                   </p>
                                 )}
-=======
-                                <input type="text" className="w-full px-5 py-3.5 rounded-xl border border-slate-300 text-sm focus:outline-none focus:border-[#1A3B85] focus:ring-1 focus:ring-[#1A3B85] transition-all" value={guestPhone} onChange={(e) => setGuestPhone(e.target.value)} required placeholder="e.g. 0912345678" />
-                                <p className="text-[10px] text-slate-400 mt-1">VD: 0912345678 hoặc +84912345678</p>
-                              </div>
-                              <div>
-                                <label className="text-xs font-bold text-slate-700 uppercase tracking-wide block mb-2">ID / Passport Number</label>
-                                <input type="text" className="w-full px-5 py-3.5 rounded-xl border border-slate-300 text-sm focus:outline-none focus:border-[#1A3B85] focus:ring-1 focus:ring-[#1A3B85] transition-all" value={guestIdNumber} onChange={(e) => setGuestIdNumber(e.target.value)} required placeholder="CCCD 12 số / CMND 9 số / Hộ chiếu" />
                                 <p className="text-[10px] text-slate-400 mt-1">CCCD (12 số), CMND (9 số) hoặc Hộ chiếu</p>
->>>>>>> origin/NNM
                               </div>
                             </div>
                             <div>
@@ -2385,6 +2377,7 @@ function HotelDetailPage() {
                            ? bookingDetails.finalPrice.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) 
                            : (getSubtotalAmount() * 1.15 - getEstimatedDiscount()).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
                        </span>
+                     </div>
                      {isDeposit && (
                        <div className="pt-4 mt-4 border-t border-dashed border-slate-200">
                          <div className="flex justify-between items-center text-sm font-bold text-amber-700 bg-amber-50 border border-amber-200 p-3.5 rounded-xl">
@@ -2655,8 +2648,6 @@ function HotelDetailPage() {
       {showGroupWarningModal && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[200] flex items-center justify-center p-4 animate-fade-in">
           <div className="bg-white rounded-3xl max-w-md w-full p-8 shadow-2xl border border-slate-100 space-y-6 text-center">
-            </div>
-            
             <div className="space-y-2">
               <h3 className="font-extrabold text-slate-800 text-lg">Thông báo Đặt phòng theo đoàn</h3>
               <p className="text-xs text-slate-500 leading-relaxed font-medium">
@@ -2680,15 +2671,6 @@ function HotelDetailPage() {
                 Không đồng ý (Giới hạn tối đa 4 phòng)
               </button>
             </div>
-=======
-                  onClick={() => setDiningModalOpen(false)}
-                  className="w-full py-3 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs transition-colors cursor-pointer"
-                >
-                  Đóng & Hoàn Tất
-                </button>
-              </div>
-            )}
->>>>>>> origin/NNM
           </div>
         </div>
       )}
