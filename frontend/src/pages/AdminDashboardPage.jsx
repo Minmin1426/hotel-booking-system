@@ -2534,7 +2534,7 @@ export default function AdminDashboardPage() {
 
                 {editingUser && (
                   <>
-                    <div>
+                    <div className="col-span-2 sm:col-span-1">
                       <label className="block text-xs font-bold text-[#86868b] mb-1.5 uppercase tracking-wider">Loyalty Tier</label>
                       <select
                         disabled
@@ -2557,28 +2557,29 @@ export default function AdminDashboardPage() {
                     </div>
 
                     {/* Add Points Section */}
-                    <div className="mt-4 p-4 bg-indigo-50 rounded-xl border border-indigo-100">
-                      <label className="block text-xs font-bold text-indigo-700 mb-1.5 uppercase tracking-wider">Add Loyalty Points</label>
-                      <div className="flex gap-3">
+                    <div className="col-span-2 mt-2 p-4 bg-indigo-50 rounded-xl border border-indigo-100">
+                      <label className="block text-xs font-bold text-indigo-700 mb-2 uppercase tracking-wider">Add Loyalty Points</label>
+                      <div className="flex flex-col sm:flex-row gap-2.5">
                         <input
                           type="number"
                           min="1"
-                          className="flex-1 h-[44px] px-4 rounded-xl border border-[#e8e8ed] text-sm focus:outline-none focus:border-[#0066cc] bg-white"
+                          className="flex-1 min-w-0 h-[44px] px-3.5 rounded-xl border border-[#e8e8ed] text-sm focus:outline-none focus:border-[#0066cc] bg-white"
                           value={addPointsAmount}
                           onChange={(e) => setAddPointsAmount(e.target.value)}
-                          placeholder="Points to add (e.g. 5000)"
+                          placeholder="Points (e.g. 5000)"
                         />
                         <input
                           type="text"
-                          className="flex-1 h-[44px] px-4 rounded-xl border border-[#e8e8ed] text-sm focus:outline-none focus:border-[#0066cc] bg-white"
+                          className="flex-[1.5] min-w-0 h-[44px] px-3.5 rounded-xl border border-[#e8e8ed] text-sm focus:outline-none focus:border-[#0066cc] bg-white"
                           value={addPointsReason}
                           onChange={(e) => setAddPointsReason(e.target.value)}
                           placeholder="Reason (optional)"
                         />
                         <button
+                          type="button"
                           onClick={handleAddPoints}
                           disabled={addPointsLoading || !addPointsAmount}
-                          className="h-[44px] px-5 rounded-xl bg-indigo-600 text-white text-xs font-bold hover:brightness-105 active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                          className="h-[44px] px-4 rounded-xl bg-indigo-600 text-white text-xs font-bold hover:brightness-105 active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer whitespace-nowrap shrink-0"
                         >
                           {addPointsLoading ? '...' : '+ Add'}
                         </button>

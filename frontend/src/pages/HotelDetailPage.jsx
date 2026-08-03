@@ -53,6 +53,45 @@ function HotelDetailPage() {
   const [rooms, setRooms] = useState([]);
   const [roomsLoading, setRoomsLoading] = useState(false);
   const [roomsError, setRoomsError] = useState('');
+  const [hasSearchedRooms, setHasSearchedRooms] = useState(false);
+  const [priceSortOrder, setPriceSortOrder] = useState('asc'); // 'asc' | 'desc'
+
+  // Selection Sort algorithm to sort room list by price
+  const selectionSortRoomsByPrice = (roomList, order = 'asc') => {
+    if (!roomList || roomList.length <= 1) return roomList;
+    const arr = [...roomList];
+    const n = arr.length;
+    for (let i = 0; i < n - 1; i++) {
+      let targetIdx = i;
+      for (let j = i + 1; j < n; j++) {
+        const priceJ = Number(arr[j].pricePerNight || arr[j].price || 0);
+        const priceTarget = Number(arr[targetIdx].pricePerNight || arr[targetIdx].price || 0);
+        if (order === 'asc') {
+          if (priceJ < priceTarget) {
+            targetIdx = j;
+          }
+        } else if (order === 'desc') {
+          if (priceJ > priceTarget) {
+            targetIdx = j;
+          }
+        }
+      }
+      if (targetIdx !== i) {
+        const temp = arr[i];
+        arr[i] = arr[targetIdx];
+        arr[targetIdx] = temp;
+      }
+    }
+    return arr;
+  };
+
+  const handleSortOrderChange = (newOrder) => {
+    setPriceSortOrder(newOrder);
+    if (rooms && rooms.length > 0) {
+      const sorted = selectionSortRoomsByPrice(rooms, newOrder);
+      setRooms(sorted);
+    }
+  };
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -619,7 +658,7 @@ function HotelDetailPage() {
   const [reviewsTotalPages, setReviewsTotalPages] = useState(0);
   const [reviewsTotalElements, setReviewsTotalElements] = useState(0);
 
-  // Fetch hotel details and available rooms on load
+  // Fetch hotel details on load
   useEffect(() => {
     const fetchDetail = async () => {
       try {
@@ -627,12 +666,6 @@ function HotelDetailPage() {
         setHotel(data);
         if (data.images && data.images.length > 0) {
           setActiveImage(data.images[0].imageUrl);
-        }
-        try {
-          const availableRooms = await HotelService.searchAvailableRooms(id, todayStr, tomorrowStr);
-          setRooms(availableRooms || []);
-        } catch (e) {
-          console.error("Auto load rooms failed:", e);
         }
       } catch (err) {
         setError(err.message || "Failed to load hotel profile.");
@@ -781,6 +814,7 @@ function HotelDetailPage() {
   };
   const handleCheckAvailability = async (e) => {
     if (e) e.preventDefault();
+    setHasSearchedRooms(true);
     setRoomsLoading(true);
     setRoomsError('');
     setBookingSuccess('');
@@ -809,7 +843,8 @@ function HotelDetailPage() {
 
     try {
       const availableRooms = await HotelService.searchAvailableRooms(id, checkIn, checkOut);
-      setRooms(availableRooms);
+      const sorted = selectionSortRoomsByPrice(availableRooms || [], priceSortOrder);
+      setRooms(sorted);
     } catch (err) {
       setRoomsError(err.message || "Không thể kiểm tra phòng trống. Vui lòng kiểm tra định dạng ngày.");
     } finally {
@@ -849,11 +884,11 @@ function HotelDetailPage() {
     setIsBookingInProgress(true);
     try {
       const profileData = await AuthService.getProfile();
-      // Do not pre-fill existing values; leave all guest fields blank initially as requested
-      setGuestName('');
-      setGuestEmail(profileData.email || '');
-      setGuestPhone('');
-      setGuestIdNumber('');
+      // Auto-assign customer details to guest information; if missing, leave empty
+      setGuestName(profileData?.fullName || sessionStorage.getItem("userFullName") || '');
+      setGuestEmail(profileData?.email || sessionStorage.getItem("userEmail") || '');
+      setGuestPhone(profileData?.phoneNumber || profileData?.phone || '');
+      setGuestIdNumber(profileData?.identificationNumber || profileData?.identNumber || profileData?.idNumber || '');
       
       try {
         const vouchersData = await BookingService.getActiveVouchers();
@@ -865,6 +900,10 @@ function HotelDetailPage() {
       setShowBookingModal(true);
       setBookingError('');
     } catch (err) {
+      setGuestName(sessionStorage.getItem("userFullName") || '');
+      setGuestEmail(sessionStorage.getItem("userEmail") || '');
+      setGuestPhone('');
+      setGuestIdNumber('');
       setBookingError("Failed to retrieve your profile details. Please try again.");
       setShowBookingModal(true);
     } finally {
@@ -874,7 +913,8 @@ function HotelDetailPage() {
 
   const handleVoucherSelect = async (v) => {
     if (v.isUsed) return;
-    if (voucherCode === v.code) {
+    const vCode = v.voucherCode || v.code;
+    if (voucherCode === vCode) {
       setVoucherCode('');
       return;
     }
@@ -882,7 +922,7 @@ function HotelDetailPage() {
       setBookingError('');
       setIsBookingInProgress(true);
       try {
-        await BookingService.claimVoucher(v.code);
+        await BookingService.claimVoucher(vCode);
         setAvailableVouchers(prev =>
           prev.map(item =>
             item.voucherId === v.voucherId
@@ -890,14 +930,14 @@ function HotelDetailPage() {
               : item
           )
         );
-        setVoucherCode(v.code);
+        setVoucherCode(vCode);
       } catch (err) {
         setBookingError(err.message || "Failed to claim voucher. Please try again.");
       } finally {
         setIsBookingInProgress(false);
       }
     } else {
-      setVoucherCode(v.code);
+      setVoucherCode(vCode);
     }
   };
 
@@ -909,19 +949,19 @@ function HotelDetailPage() {
 
   const getEstimatedDiscount = () => {
     if (!voucherCode) return 0;
-    const matchedVoucher = availableVouchers.find(v => v.code === voucherCode);
+    const matchedVoucher = availableVouchers.find(v => (v.voucherCode || v.code) === voucherCode);
     if (!matchedVoucher) return 0;
     
     const subtotal = getSubtotalAmount();
     let discount = 0;
     if (matchedVoucher.discountType === 'PERCENTAGE') {
-      const percentage = matchedVoucher.discountValue / 100;
+      const percentage = Number(matchedVoucher.discountValue) / 100;
       discount = subtotal * percentage;
-      if (matchedVoucher.maxDiscount && discount > matchedVoucher.maxDiscount) {
-        discount = matchedVoucher.maxDiscount;
+      if (matchedVoucher.maxDiscount && discount > Number(matchedVoucher.maxDiscount)) {
+        discount = Number(matchedVoucher.maxDiscount);
       }
     } else {
-      discount = matchedVoucher.discountValue;
+      discount = Number(matchedVoucher.discountValue);
     }
     
     if (discount > subtotal) {
@@ -1349,8 +1389,27 @@ function HotelDetailPage() {
 
               {/* Vacant Rooms Results Grid */}
               <div className="space-y-4 pt-4">
-                {rooms.length > 0 && (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {hasSearchedRooms && rooms.length > 0 && (
+                  <div className="space-y-4">
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between bg-slate-50 p-4 rounded-xl border border-slate-200 gap-3">
+                      <div className="text-xs font-bold text-slate-700 flex items-center gap-2">
+                        <span className="text-sm">📊</span>
+                        <span>Tìm thấy {rooms.length} phòng khả dụng</span>
+                      </div>
+                      <div className="flex items-center gap-2.5">
+                        <label className="text-xs font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">Sắp xếp theo giá:</label>
+                        <select
+                          value={priceSortOrder}
+                          onChange={(e) => handleSortOrderChange(e.target.value)}
+                          className="px-3.5 py-1.5 rounded-xl border border-slate-300 text-xs font-semibold text-slate-800 bg-white focus:outline-none focus:border-cyan-500 shadow-sm cursor-pointer"
+                        >
+                          <option value="asc">Giá: Thấp đến Cao (Selection Sort)</option>
+                          <option value="desc">Giá: Cao đến Thấp (Selection Sort)</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {rooms.map((room) => (
                       <div
                         key={room.roomId}
@@ -1379,10 +1438,17 @@ function HotelDetailPage() {
                         </div>
                       </div>
                     ))}
+                    </div>
                   </div>
                 )}
 
-                {!roomsLoading && rooms.length === 0 && !roomsError && (
+                {hasSearchedRooms && !roomsLoading && rooms.length === 0 && !roomsError && (
+                  <div className="py-12 text-center rounded-2xl border border-dashed border-slate-250 text-slate-500 text-xs bg-slate-50/50">
+                    Không tìm thấy phòng trống phù hợp trong khoảng thời gian này. Vui lòng thử chọn ngày khác.
+                  </div>
+                )}
+
+                {!hasSearchedRooms && !roomsLoading && (
                   <div className="py-12 text-center rounded-2xl border border-dashed border-slate-250 text-slate-500 text-xs bg-slate-50/50">
                     Chưa chọn ngày tra cứu. Vui lòng chọn ngày Check-in/Check-out ở trên và nhấn Tra Cứu Phòng Trống.
                   </div>
@@ -1818,7 +1884,7 @@ function HotelDetailPage() {
                                     if (!code) {
                                       setVoucherCode('');
                                     } else {
-                                      const selectedVoucher = availableVouchers.find(v => v.code === code);
+                                      const selectedVoucher = availableVouchers.find(v => (v.voucherCode || v.code) === code);
                                       if (selectedVoucher) {
                                         handleVoucherSelect(selectedVoucher);
                                       }
@@ -1828,12 +1894,13 @@ function HotelDetailPage() {
                                 >
                                   <option value="">-- Chọn Voucher --</option>
                                   {availableVouchers && availableVouchers.map(v => {
+                                    const vCode = v.voucherCode || v.code;
                                     const isExpired = v.endDate && new Date(v.endDate) < new Date();
                                     const isFullyUsed = v.maxUsage !== null && v.currentUsage >= v.maxUsage;
                                     
                                     const subtotal = getSubtotalAmount() * 1.15;
 
-                                    const isMinSpendMet = !v.minBookingValue || subtotal >= v.minBookingValue;
+                                    const isMinSpendMet = !v.minBookingValue || subtotal >= Number(v.minBookingValue);
                                     const isInvalid = isExpired || isFullyUsed || !isMinSpendMet || v.isUsed;
                                     
                                     // Hide fully used, expired, or already used vouchers
@@ -1845,11 +1912,11 @@ function HotelDetailPage() {
                                     
                                     return (
                                       <option
-                                        key={v.voucherId}
-                                        value={v.code}
+                                        key={v.voucherId || v.id || vCode}
+                                        value={vCode}
                                         disabled={isInvalid}
                                       >
-                                        {v.code} - {discountText}{spendText}{claimText}
+                                        {vCode} - {discountText}{spendText}{claimText}
                                       </option>
                                     );
                                   })}

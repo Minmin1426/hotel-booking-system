@@ -1046,7 +1046,7 @@ export default function ProfilePage() {
                   )}
 
                   {/* Already at max tier */}
-                  {!tierInfo.nextTier && (
+                  {!tierInfo.nextTier && tierInfo.currentTier === 'PLATINUM' && (
                     <div className="bg-gradient-to-r from-amber-50 to-amber-100 rounded-2xl p-5 mb-6 border border-amber-200 text-center">
                       <div className="text-2xl mb-1">🎉</div>
                       <div className="text-sm font-bold text-amber-800">You're at the highest tier!</div>
