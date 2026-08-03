@@ -347,4 +347,77 @@ class BookingServiceImplTest {
             () -> bookingService.createBooking(request, "test@example.com"));
         assertTrue(exception.getMessage().contains("Total children exceed the maximum capacity"));
     }
+
+    @Test
+    void processBooking_checkIn_success() {
+        Booking booking = Booking.builder()
+                .bookingId(10L)
+                .bookingCode("BK-TEST")
+                .user(testUser)
+                .hotel(testHotel)
+                .status("CONFIRMED")
+                .build();
+
+        Payment payment = Payment.builder()
+                .paymentId(100L)
+                .booking(booking)
+                .paymentMethod("ONLINE")
+                .status("SUCCESS")
+                .amount(BigDecimal.valueOf(200.00))
+                .build();
+
+        UpdateBookingStatusRequest request = new UpdateBookingStatusRequest("CHECKED_IN");
+
+        when(bookingRepository.findById(10L)).thenReturn(Optional.of(booking));
+        when(paymentRepository.findByBookingBookingId(10L)).thenReturn(List.of(payment));
+
+        AdminBookingResponse response = bookingService.processBooking(10L, request);
+
+        assertEquals("CHECKED_IN", response.status());
+        assertEquals("SUCCESS", response.paymentStatus());
+    }
+
+    @Test
+    void processBooking_checkOut_success() {
+        Room room = Room.builder()
+                .roomId(101L)
+                .roomNumber("P.101")
+                .status("AVAILABLE")
+                .build();
+
+        BookingRoom br = BookingRoom.builder()
+                .room(room)
+                .quantity(1)
+                .build();
+
+        Booking booking = Booking.builder()
+                .bookingId(10L)
+                .bookingCode("BK-TEST")
+                .user(testUser)
+                .hotel(testHotel)
+                .status("CHECKED_IN")
+                .bookingRooms(List.of(br))
+                .build();
+
+        Payment payment = Payment.builder()
+                .paymentId(100L)
+                .booking(booking)
+                .paymentMethod("ONLINE")
+                .status("SUCCESS")
+                .amount(BigDecimal.valueOf(200.00))
+                .build();
+
+        UpdateBookingStatusRequest request = new UpdateBookingStatusRequest("CHECKED_OUT");
+
+        when(bookingRepository.findById(10L)).thenReturn(Optional.of(booking));
+        when(paymentRepository.findByBookingBookingId(10L)).thenReturn(List.of(payment));
+
+        AdminBookingResponse response = bookingService.processBooking(10L, request);
+
+        assertEquals("CHECKED_OUT", response.status());
+        assertEquals("COMPLETED", response.paymentStatus());
+        assertEquals("UNAVAILABLE", room.getStatus());
+        verify(roomRepository).save(room);
+    }
 }
+

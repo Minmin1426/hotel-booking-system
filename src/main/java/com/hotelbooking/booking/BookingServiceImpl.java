@@ -434,48 +434,74 @@ public class BookingServiceImpl implements BookingService {
         }
         Payment payment = payments.get(0);
 
-        if (!"PENDING".equalsIgnoreCase(booking.getStatus())) {
-            throw new BusinessException("Only pending bookings can be processed");
-        }
-
-        String paymentMethod = payment.getPaymentMethod().toUpperCase();
-        if (!"CASH".equals(paymentMethod) && !"BANK_TRANSFER".equals(paymentMethod)) {
-            throw new BusinessException("Only manual/offline bookings can be processed manually by admin");
-        }
-
         String targetStatus = request.status().toUpperCase();
         String targetPaymentStatus = payment.getStatus();
 
-        if ("CONFIRMED".equals(targetStatus)) {
-            booking.setStatus("CONFIRMED");
-            booking.setConfirmedAt(LocalDateTime.now());
-            targetPaymentStatus = "COMPLETED";
-        } else if ("CANCELLED".equals(targetStatus)) {
-            booking.setStatus("CANCELLED");
-            targetPaymentStatus = "FAILED";
+        if ("CONFIRMED".equals(targetStatus) || "CANCELLED".equals(targetStatus)) {
+            if (!"PENDING".equalsIgnoreCase(booking.getStatus())) {
+                throw new BusinessException("Only pending bookings can be processed");
+            }
 
-            // Revert Voucher usage if booking had a voucher and it was used
-            if (booking.getVoucher() != null) {
-                Voucher voucher = booking.getVoucher();
-                java.util.Optional<UserVoucher> uvOpt = userVoucherRepository.findByUserUserIdAndVoucherVoucherId(
-                    booking.getUser().getUserId(), 
-                    voucher.getVoucherId()
-                );
-                if (uvOpt.isPresent()) {
-                    UserVoucher uv = uvOpt.get();
-                    if (Boolean.TRUE.equals(uv.getIsUsed())) {
-                        uv.setIsUsed(false);
-                        uv.setUsedAt(null);
-                        uv.setBooking(null);
-                        userVoucherRepository.save(uv);
-                        
-                        if (voucher.getCurrentUsage() != null && voucher.getCurrentUsage() > 0) {
-                            voucher.setCurrentUsage(voucher.getCurrentUsage() - 1);
-                            voucherRepository.save(voucher);
+            String paymentMethod = payment.getPaymentMethod().toUpperCase();
+            if (!"CASH".equals(paymentMethod) && !"BANK_TRANSFER".equals(paymentMethod)) {
+                throw new BusinessException("Only manual/offline bookings can be processed manually by admin");
+            }
+
+            if ("CONFIRMED".equals(targetStatus)) {
+                booking.setStatus("CONFIRMED");
+                booking.setConfirmedAt(LocalDateTime.now());
+                targetPaymentStatus = "COMPLETED";
+            } else if ("CANCELLED".equals(targetStatus)) {
+                booking.setStatus("CANCELLED");
+                targetPaymentStatus = "FAILED";
+
+                // Revert Voucher usage if booking had a voucher and it was used
+                if (booking.getVoucher() != null) {
+                    Voucher voucher = booking.getVoucher();
+                    java.util.Optional<UserVoucher> uvOpt = userVoucherRepository.findByUserUserIdAndVoucherVoucherId(
+                        booking.getUser().getUserId(), 
+                        voucher.getVoucherId()
+                    );
+                    if (uvOpt.isPresent()) {
+                        UserVoucher uv = uvOpt.get();
+                        if (Boolean.TRUE.equals(uv.getIsUsed())) {
+                            uv.setIsUsed(false);
+                            uv.setUsedAt(null);
+                            uv.setBooking(null);
+                            userVoucherRepository.save(uv);
+                            
+                            if (voucher.getCurrentUsage() != null && voucher.getCurrentUsage() > 0) {
+                                voucher.setCurrentUsage(voucher.getCurrentUsage() - 1);
+                                voucherRepository.save(voucher);
+                            }
                         }
                     }
                 }
             }
+        } else if ("CHECKED_IN".equals(targetStatus)) {
+            if (!"CONFIRMED".equalsIgnoreCase(booking.getStatus())) {
+                throw new BusinessException("Only confirmed bookings can be checked in");
+            }
+            booking.setStatus("CHECKED_IN");
+        } else if ("CHECKED_OUT".equals(targetStatus)) {
+            if (!"CHECKED_IN".equalsIgnoreCase(booking.getStatus())) {
+                throw new BusinessException("Only checked-in bookings can be checked out");
+            }
+            booking.setStatus("CHECKED_OUT");
+            targetPaymentStatus = "COMPLETED";
+
+            // Mark rooms of this booking as UNAVAILABLE (Needs cleaning / dirty)
+            if (booking.getBookingRooms() != null) {
+                for (BookingRoom br : booking.getBookingRooms()) {
+                    if (br.getRoom() != null) {
+                        Room room = br.getRoom();
+                        room.setStatus("UNAVAILABLE");
+                        roomRepository.save(room);
+                    }
+                }
+            }
+        } else {
+            throw new BusinessException("Unsupported booking status: " + targetStatus);
         }
 
         payment.setStatus(targetPaymentStatus);

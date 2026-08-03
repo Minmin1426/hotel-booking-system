@@ -10,47 +10,9 @@ export default function StaffRestaurantPage() {
 
   // Restaurant Table Hold Reservations State
   const [lookupQuery, setLookupQuery] = useState('');
-  const [activeReservations, setActiveReservations] = useState([
-    {
-      resCode: 'RES-889012',
-      guestName: 'Nguyễn Nhật Minh',
-      guestPhone: '0912345678',
-      pkgTitle: 'Suất Buffet Tối Premium ($35)',
-      date: '2026-08-01',
-      time: '19:00',
-      holdLimit: '19:15',
-      guests: 2,
-      price: 70,
-      status: 'HOLDING', // 'HOLDING' | 'ARRIVED' | 'RELEASED' | 'PAID'
-      notes: 'Bàn gần cửa sổ'
-    },
-    {
-      resCode: 'RES-772045',
-      guestName: 'Trần Văn Nam',
-      guestPhone: '0987654321',
-      pkgTitle: 'Set Tiệc Bàn 10 Khách ($180)',
-      date: '2026-08-01',
-      time: '18:30',
-      holdLimit: '18:45',
-      guests: 1, // 1 bàn tiệc
-      price: 180,
-      status: 'ARRIVED',
-      notes: 'Cần 2 ghế cho bé nhỏ'
-    },
-    {
-      resCode: 'RES-663011',
-      guestName: 'Lê Thị Thu',
-      guestPhone: '0933112233',
-      pkgTitle: 'Suất Buffet Sáng Tự Chọn ($15)',
-      date: '2026-08-01',
-      time: '08:30',
-      holdLimit: '08:45',
-      guests: 4,
-      price: 60,
-      status: 'RELEASED', // Quá 15p No-Show
-      notes: ''
-    }
-  ]);
+  const [activeReservations, setActiveReservations] = useState([]);
+  const [reservationsLoading, setReservationsLoading] = useState(false);
+  const [reservationsError, setReservationsError] = useState(null);
 
   // Physical Wristband Verification State (For Resident Guests)
   const [wbLookupCode, setWbLookupCode] = useState('');
@@ -60,19 +22,58 @@ export default function StaffRestaurantPage() {
 
   const [activeTab, setActiveTab] = useState('RESERVATIONS'); // 'RESERVATIONS' | 'VERIFY_WRISTBAND'
 
+  const loadReservations = async () => {
+    setReservationsLoading(true);
+    setReservationsError(null);
+    try {
+      const token = sessionStorage.getItem("accessToken");
+      const baseApiUrl = import.meta.env.VITE_API_URL || (window.location.origin.includes("localhost") ? "http://localhost:8080/api/v1" : "https://hotel-booking-system-0wv2.onrender.com/api/v1");
+      const res = await fetch(`${baseApiUrl}/restaurant/reservations`, {
+        headers: { "Authorization": `Bearer ${token}` }
+      });
+      if (!res.ok) {
+        throw new Error("Failed to load restaurant reservations");
+      }
+      const data = await res.json();
+      setActiveReservations(data.data || []);
+    } catch (err) {
+      console.error(err);
+      setReservationsError(err.message);
+    } finally {
+      setReservationsLoading(false);
+    }
+  };
+
   useEffect(() => {
     const role = sessionStorage.getItem("userRole");
     setUserRole(role || '');
     if (!role || (role !== 'RESTAURANT_STAFF' && role !== 'STAFF' && role !== 'ADMIN')) {
       alert("⚠️ Bạn không có quyền truy cập cổng Quản lý Nhà hàng. Chỉ Nhân viên Nhà hàng mới được phép truy cập.");
       navigate('/');
+    } else {
+      loadReservations();
     }
   }, [navigate]);
 
-  const handleUpdateStatus = (resCode, newStatus) => {
-    setActiveReservations(prev =>
-      prev.map(r => r.resCode === resCode ? { ...r, status: newStatus } : r)
-    );
+  const handleUpdateStatus = async (resCode, newStatus) => {
+    try {
+      const token = sessionStorage.getItem("accessToken");
+      const baseApiUrl = import.meta.env.VITE_API_URL || (window.location.origin.includes("localhost") ? "http://localhost:8080/api/v1" : "https://hotel-booking-system-0wv2.onrender.com/api/v1");
+      const res = await fetch(`${baseApiUrl}/restaurant/reservations/${resCode}/status`, {
+        method: 'PATCH',
+        headers: {
+          "Authorization": `Bearer ${token}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ status: newStatus })
+      });
+      if (!res.ok) {
+        throw new Error("Cập nhật trạng thái thất bại");
+      }
+      loadReservations();
+    } catch (err) {
+      alert("⚠️ Lỗi cập nhật trạng thái: " + err.message);
+    }
   };
 
   const handleVerifyWristband = async (e) => {
@@ -143,9 +144,9 @@ export default function StaffRestaurantPage() {
   };
 
   const filteredReservations = activeReservations.filter(r =>
-    r.resCode.toLowerCase().includes(lookupQuery.toLowerCase()) ||
-    r.guestName.toLowerCase().includes(lookupQuery.toLowerCase()) ||
-    r.guestPhone.includes(lookupQuery)
+    (r.resCode || '').toLowerCase().includes(lookupQuery.toLowerCase()) ||
+    (r.guestName || '').toLowerCase().includes(lookupQuery.toLowerCase()) ||
+    (r.guestPhone || '').includes(lookupQuery)
   );
 
   return (
@@ -218,67 +219,84 @@ export default function StaffRestaurantPage() {
             </div>
 
             {/* Reservations List */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-              {filteredReservations.map(r => (
-                <div key={r.resCode} className="bg-white rounded-2xl p-6 border border-[#e8e8ed] shadow-sm hover:shadow-md transition-all space-y-4 flex flex-col justify-between">
-                  <div>
-                    <div className="flex justify-between items-start border-b border-slate-100 pb-3 mb-3">
-                      <div>
-                        <span className="font-mono font-black text-amber-600 text-sm">{r.resCode}</span>
-                        <h4 className="text-base font-bold text-slate-900 mt-0.5">{r.guestName}</h4>
-                        <p className="text-xs text-slate-400 font-mono">{r.guestPhone}</p>
+            {reservationsLoading && (
+              <div className="text-center py-12 text-slate-500 font-medium">
+                ⏳ Đang tải dữ liệu đặt bàn từ hệ thống...
+              </div>
+            )}
+            {reservationsError && (
+              <div className="text-center py-12 text-red-500 font-medium bg-red-50 border border-red-200 rounded-2xl">
+                ⚠️ Lỗi tải dữ liệu: {reservationsError}
+              </div>
+            )}
+            {!reservationsLoading && !reservationsError && filteredReservations.length === 0 && (
+              <div className="text-center py-12 text-slate-400 font-medium bg-white rounded-2xl border border-dashed border-slate-200">
+                📭 Không tìm thấy đơn đặt bàn nào hợp lệ.
+              </div>
+            )}
+            {!reservationsLoading && !reservationsError && filteredReservations.length > 0 && (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                {filteredReservations.map(r => (
+                  <div key={r.resCode} className="bg-white rounded-2xl p-6 border border-[#e8e8ed] shadow-sm hover:shadow-md transition-all space-y-4 flex flex-col justify-between">
+                    <div>
+                      <div className="flex justify-between items-start border-b border-slate-100 pb-3 mb-3">
+                        <div>
+                          <span className="font-mono font-black text-amber-600 text-sm">{r.resCode}</span>
+                          <h4 className="text-base font-bold text-slate-900 mt-0.5">{r.guestName}</h4>
+                          <p className="text-xs text-slate-400 font-mono">{r.guestPhone}</p>
+                        </div>
+                        <div>
+                          {r.status === 'HOLDING' && <span className="px-2.5 py-1 rounded-full text-[10px] font-black uppercase bg-amber-100 text-amber-800 border border-amber-300">⏱️ GIỮ BÀN (15P)</span>}
+                          {r.status === 'ARRIVED' && <span className="px-2.5 py-1 rounded-full text-[10px] font-black uppercase bg-emerald-100 text-emerald-800 border border-emerald-300">🟢 ĐÃ ĐẾN MỞ BÀN</span>}
+                          {r.status === 'RELEASED' && <span className="px-2.5 py-1 rounded-full text-[10px] font-black uppercase bg-red-100 text-red-700 border border-red-200">❌ ĐÃ HỦY NO-SHOW</span>}
+                          {r.status === 'PAID' && <span className="px-2.5 py-1 rounded-full text-[10px] font-black uppercase bg-blue-100 text-blue-800 border border-blue-200">💳 ĐÃ THANH TOÁN</span>}
+                        </div>
                       </div>
-                      <div>
-                        {r.status === 'HOLDING' && <span className="px-2.5 py-1 rounded-full text-[10px] font-black uppercase bg-amber-100 text-amber-800 border border-amber-300">⏱️ GIỮ BÀN (15P)</span>}
-                        {r.status === 'ARRIVED' && <span className="px-2.5 py-1 rounded-full text-[10px] font-black uppercase bg-emerald-100 text-emerald-800 border border-emerald-300">🟢 ĐÃ ĐẾN MỞ BÀN</span>}
-                        {r.status === 'RELEASED' && <span className="px-2.5 py-1 rounded-full text-[10px] font-black uppercase bg-red-100 text-red-700 border border-red-200">❌ ĐÃ HỦY NO-SHOW</span>}
-                        {r.status === 'PAID' && <span className="px-2.5 py-1 rounded-full text-[10px] font-black uppercase bg-blue-100 text-blue-800 border border-blue-200">💳 ĐÃ THANH TOÁN</span>}
+
+                      <div className="space-y-2 text-xs text-slate-600">
+                        <p><strong className="text-slate-800">Gói ăn:</strong> {r.pkgTitle}</p>
+                        <p><strong className="text-slate-800">Số lượng:</strong> {r.guests} {r.pkgTitle.includes('Tiệc') ? 'bàn tiệc' : 'suất ăn'}</p>
+                        <p><strong className="text-slate-800">Giờ hẹn:</strong> <span className="text-blue-600 font-bold">{r.time}</span> (Giữ bàn tối đa đến <span className="text-amber-700 font-bold">{r.holdLimit}</span>)</p>
+                        {r.notes && <p className="bg-slate-50 p-2 rounded-lg border border-slate-100 text-slate-500 italic">💬 Ghi chú: {r.notes}</p>}
                       </div>
                     </div>
 
-                    <div className="space-y-2 text-xs text-slate-600">
-                      <p><strong className="text-slate-800">Gói ăn:</strong> {r.pkgTitle}</p>
-                      <p><strong className="text-slate-800">Số lượng:</strong> {r.guests} {r.pkgTitle.includes('Tiệc') ? 'bàn tiệc' : 'suất ăn'}</p>
-                      <p><strong className="text-slate-800">Giờ hẹn:</strong> <span className="text-blue-600 font-bold">{r.time}</span> (Giữ bàn tối đa đến <span className="text-amber-700 font-bold">{r.holdLimit}</span>)</p>
-                      {r.notes && <p className="bg-slate-50 p-2 rounded-lg border border-slate-100 text-slate-500 italic">💬 Ghi chú: {r.notes}</p>}
+                    <div className="pt-4 border-t border-slate-100 space-y-2">
+                      <div className="flex justify-between items-center text-xs mb-2">
+                        <span className="text-slate-400 font-bold">Thanh toán tại bàn:</span>
+                        <span className="text-base font-black text-amber-600">${r.price}</span>
+                      </div>
+
+                      {r.status === 'HOLDING' && (
+                        <div className="grid grid-cols-2 gap-2">
+                          <button
+                            onClick={() => handleUpdateStatus(r.resCode, 'ARRIVED')}
+                            className="w-full py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs transition-colors cursor-pointer"
+                          >
+                            🟢 Khách Đến Mở Bàn
+                          </button>
+                          <button
+                            onClick={() => handleUpdateStatus(r.resCode, 'RELEASED')}
+                            className="w-full py-2 rounded-xl bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 font-bold text-xs transition-colors cursor-pointer"
+                          >
+                            ❌ Hủy No-Show
+                          </button>
+                        </div>
+                      )}
+
+                      {r.status === 'ARRIVED' && (
+                        <button
+                          onClick={() => handleUpdateStatus(r.resCode, 'PAID')}
+                          className="w-full py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs transition-colors cursor-pointer"
+                        >
+                          💳 Khách Ăn Xong - Thu Tiền
+                        </button>
+                      )}
                     </div>
                   </div>
-
-                  <div className="pt-4 border-t border-slate-100 space-y-2">
-                    <div className="flex justify-between items-center text-xs mb-2">
-                      <span className="text-slate-400 font-bold">Thanh toán tại bàn:</span>
-                      <span className="text-base font-black text-amber-600">${r.price}</span>
-                    </div>
-
-                    {r.status === 'HOLDING' && (
-                      <div className="grid grid-cols-2 gap-2">
-                        <button
-                          onClick={() => handleUpdateStatus(r.resCode, 'ARRIVED')}
-                          className="w-full py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs transition-colors cursor-pointer"
-                        >
-                          🟢 Khách Đến Mở Bàn
-                        </button>
-                        <button
-                          onClick={() => handleUpdateStatus(r.resCode, 'RELEASED')}
-                          className="w-full py-2 rounded-xl bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 font-bold text-xs transition-colors cursor-pointer"
-                        >
-                          ❌ Hủy No-Show
-                        </button>
-                      </div>
-                    )}
-
-                    {r.status === 'ARRIVED' && (
-                      <button
-                        onClick={() => handleUpdateStatus(r.resCode, 'PAID')}
-                        className="w-full py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs transition-colors cursor-pointer"
-                      >
-                        💳 Khách Ăn Xong - Thu Tiền
-                      </button>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
 
