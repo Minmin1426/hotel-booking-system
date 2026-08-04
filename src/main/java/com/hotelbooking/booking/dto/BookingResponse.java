@@ -31,6 +31,7 @@ public class BookingResponse {
     private Integer adults;
     private Integer children;
     private Boolean isReviewed;
+    private String paymentMethod;
     private String paymentStatus;
     private BigDecimal paidAmount;
 }

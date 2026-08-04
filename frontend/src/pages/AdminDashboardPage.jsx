@@ -715,8 +715,9 @@ export default function AdminDashboardPage() {
       
       // Look up payment details if available
       const payments = detail.payments || [];
-      const paymentMethod = payments.length > 0 ? payments[0].paymentMethod : 'ONLINE';
-      const paymentStatus = payments.length > 0 ? payments[0].status : 'PENDING';
+      const rawMethod = detail.paymentMethod || booking.paymentMethod || (payments.length > 0 ? payments[0].paymentMethod : 'CASH');
+      const paymentMethod = (rawMethod === 'ONLINE' || rawMethod === 'VNPAY') ? 'VNPAY' : (rawMethod === 'CARD' ? 'CARD' : 'CASH');
+      const paymentStatus = detail.paymentStatus || booking.paymentStatus || (payments.length > 0 ? payments[0].status : 'PENDING');
       
       setBookingPaymentMethod(paymentMethod);
       setBookingPaymentStatus(paymentStatus);

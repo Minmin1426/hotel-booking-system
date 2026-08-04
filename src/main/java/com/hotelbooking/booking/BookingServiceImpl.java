@@ -672,6 +672,9 @@ public class BookingServiceImpl implements BookingService {
 
         boolean reviewed = reviewRepository.existsByBookingBookingId(booking.getBookingId());
 
+        List<Payment> payments = paymentRepository.findByBookingBookingId(booking.getBookingId());
+        String paymentMethod = payments.isEmpty() ? "CASH" : payments.get(0).getPaymentMethod();
+
         return BookingResponse.builder()
                 .bookingId(booking.getBookingId())
                 .bookingCode(booking.getBookingCode())
@@ -691,6 +694,7 @@ public class BookingServiceImpl implements BookingService {
                 .adults(booking.getAdults())
                 .children(booking.getChildren())
                 .isReviewed(reviewed)
+                .paymentMethod(paymentMethod)
                 .paymentStatus(booking.getPaymentStatus())
                 .paidAmount(getPaidAmount(booking))
                 .build();

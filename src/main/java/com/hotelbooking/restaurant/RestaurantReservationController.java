@@ -13,7 +13,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/v1/restaurant/reservations")
-@PreAuthorize("hasAnyRole('STAFF', 'ADMIN', 'RESTAURANT_STAFF')")
+@PreAuthorize("hasAnyRole('STAFF', 'ADMIN', 'RESTAURANT_STAFF', 'RECEPTIONIST', 'DIRECTOR')")
 @RequiredArgsConstructor
 @Slf4j
 public class RestaurantReservationController {

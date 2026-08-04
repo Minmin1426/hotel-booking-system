@@ -22,17 +22,31 @@ export default function StaffRestaurantPage() {
 
   const [activeTab, setActiveTab] = useState('RESERVATIONS'); // 'RESERVATIONS' | 'VERIFY_WRISTBAND'
 
+  const getBaseApiUrl = () => {
+    if (import.meta.env.VITE_API_URL) return import.meta.env.VITE_API_URL;
+    const origin = window.location.origin;
+    if (origin.includes("localhost") || origin.includes("127.0.0.1")) {
+      return "http://localhost:8080/api/v1";
+    }
+    return "https://hotel-booking-system-0wv2.onrender.com/api/v1";
+  };
+
   const loadReservations = async () => {
     setReservationsLoading(true);
     setReservationsError(null);
     try {
       const token = sessionStorage.getItem("accessToken");
-      const baseApiUrl = import.meta.env.VITE_API_URL || (window.location.origin.includes("localhost") ? "http://localhost:8080/api/v1" : "https://hotel-booking-system-0wv2.onrender.com/api/v1");
+      const baseApiUrl = getBaseApiUrl();
       const res = await fetch(`${baseApiUrl}/restaurant/reservations`, {
         headers: { "Authorization": `Bearer ${token}` }
       });
       if (!res.ok) {
-        throw new Error("Failed to load restaurant reservations");
+        let errorMsg = "Failed to load restaurant reservations";
+        try {
+          const errData = await res.json();
+          if (errData && errData.message) errorMsg = errData.message;
+        } catch (e) {}
+        throw new Error(errorMsg);
       }
       const data = await res.json();
       setActiveReservations(data.data || []);
@@ -47,7 +61,8 @@ export default function StaffRestaurantPage() {
   useEffect(() => {
     const role = sessionStorage.getItem("userRole");
     setUserRole(role || '');
-    if (!role || (role !== 'RESTAURANT_STAFF' && role !== 'STAFF' && role !== 'ADMIN')) {
+    const allowedRoles = ['RESTAURANT_STAFF', 'STAFF', 'ADMIN', 'RECEPTIONIST', 'DIRECTOR'];
+    if (!role || !allowedRoles.includes(role)) {
       alert("⚠️ Bạn không có quyền truy cập cổng Quản lý Nhà hàng. Chỉ Nhân viên Nhà hàng mới được phép truy cập.");
       navigate('/');
     } else {
@@ -58,7 +73,7 @@ export default function StaffRestaurantPage() {
   const handleUpdateStatus = async (resCode, newStatus) => {
     try {
       const token = sessionStorage.getItem("accessToken");
-      const baseApiUrl = import.meta.env.VITE_API_URL || (window.location.origin.includes("localhost") ? "http://localhost:8080/api/v1" : "https://hotel-booking-system-0wv2.onrender.com/api/v1");
+      const baseApiUrl = getBaseApiUrl();
       const res = await fetch(`${baseApiUrl}/restaurant/reservations/${resCode}/status`, {
         method: 'PATCH',
         headers: {
@@ -127,7 +142,7 @@ export default function StaffRestaurantPage() {
     // 2. If not found locally, fetch from backend API as fallback
     try {
       const token = sessionStorage.getItem("accessToken");
-      const baseApiUrl = import.meta.env.VITE_API_URL || (window.location.origin.includes("localhost") ? "http://localhost:8080/api/v1" : "https://hotel-booking-system-0wv2.onrender.com/api/v1");
+      const baseApiUrl = getBaseApiUrl();
       const res = await fetch(`${baseApiUrl}/admin/wristbands/verify/${wbLookupCode.trim()}`, {
         headers: { "Authorization": `Bearer ${token}` }
       });
