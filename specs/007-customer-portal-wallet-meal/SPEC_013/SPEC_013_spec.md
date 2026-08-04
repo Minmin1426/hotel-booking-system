@@ -2,7 +2,7 @@
 
 **Feature Branch**: `013-wallet-topup-spending-limits`
 **Created**: 2026-07-23
-**Status**: Draft
+**Status**: Approved & Completed
 **Primary Actor(s)**: Customer, CorporateMember, GroupOwner, Admin
 **Related Use Cases**: SCR-106
 

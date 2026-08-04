@@ -2,7 +2,7 @@
 
 **Feature Branch**: `009-refund-policy-engine`
 **Created**: 2026-07-23
-**Status**: Draft
+**Status**: Approved & Completed
 **Primary Actor(s)**: System, Customer, CorporateMember, Admin, Receptionist
 **Related Use Cases**: SCR-108, UC-06 (booking cancellation)
 

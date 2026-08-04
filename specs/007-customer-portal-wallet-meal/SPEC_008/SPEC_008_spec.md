@@ -2,7 +2,7 @@
 
 **Feature Branch**: `008-block-booking-excel-import`
 **Created**: 2026-07-23
-**Status**: Draft
+**Status**: Approved & Completed
 **Primary Actor(s)**: CorporateMember, Admin, Receptionist
 **Related Use Cases**: SCR-103
 

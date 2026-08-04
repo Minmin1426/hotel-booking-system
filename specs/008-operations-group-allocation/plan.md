@@ -2,7 +2,7 @@
 
 **Feature Branch:** `008-operations-group-allocation`  
 **Created:** 2026-07-26  
-**Status:** DRAFT | PROPOSED  
+**Status:** APPROVED | COMPLETED  
 **Spec Reference:** [spec.md](spec.md)  
 
 ---

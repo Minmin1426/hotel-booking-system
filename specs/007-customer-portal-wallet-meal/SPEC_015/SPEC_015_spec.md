@@ -2,7 +2,7 @@
 
 **Feature Branch**: `015-admin-customer-management`
 **Created**: 2026-07-23
-**Status**: Draft
+**Status**: Approved & Completed
 **Primary Actor(s)**: Admin, Receptionist, CorporateMember
 **Related Use Cases**: SCR-110
 

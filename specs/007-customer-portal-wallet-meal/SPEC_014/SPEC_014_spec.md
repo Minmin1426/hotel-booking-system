@@ -2,7 +2,7 @@
 
 **Feature Branch**: `014-meal-ticket-wallet`
 **Created**: 2026-07-23
-**Status**: Draft
+**Status**: Approved & Completed
 **Primary Actor(s)**: Customer, CorporateMember, Receptionist, Admin
 **Related Use Cases**: SCR-107
 

@@ -2,7 +2,7 @@
 
 **Feature Branch**: `007-customer-portal-profile`
 **Created**: 2026-07-23
-**Status**: Draft
+**Status**: Approved & Completed
 **Primary Actor(s)**: Customer, CorporateMember, Admin
 **Related Use Cases**: UC-01 (extended), UC-05 (extended), SCR-101, SCR-102
 

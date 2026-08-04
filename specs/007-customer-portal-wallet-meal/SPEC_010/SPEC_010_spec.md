@@ -2,7 +2,7 @@
 
 **Feature Branch**: `010-voucher-store-front`
 **Created**: 2026-07-23
-**Status**: Draft
+**Status**: Approved & Completed
 **Primary Actor(s)**: Customer, CorporateMember, Admin
 **Related Use Cases**: SCR-109, SCR-110, UC-15
 

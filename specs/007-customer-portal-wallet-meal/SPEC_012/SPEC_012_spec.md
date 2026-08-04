@@ -2,7 +2,7 @@
 
 **Feature Branch**: `012-customer-wallet`
 **Created**: 2026-07-23
-**Status**: Draft
+**Status**: Approved & Completed
 **Primary Actor(s)**: Customer, CorporateMember, Admin
 **Related Use Cases**: SCR-105
 
