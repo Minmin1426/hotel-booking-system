@@ -1,4 +1,4 @@
--- V48: Ensure payment_audit_logs columns match the JPA Entity mappings dynamically
+-- V50: Ensure payment_audit_logs columns match the JPA Entity mappings dynamically
 -- Handles cases where columns were not correctly renamed in previous migration runs
 
 DO $$

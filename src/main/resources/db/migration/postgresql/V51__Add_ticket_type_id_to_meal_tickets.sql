@@ -1,4 +1,4 @@
--- V49__Add_ticket_type_id_to_meal_tickets.sql
+-- V51__Add_ticket_type_id_to_meal_tickets.sql
 -- Add missing ticket_type_id column, populate it from ticket_type, then drop the old redundant ticket_type column.
 
 ALTER TABLE meal_tickets ADD COLUMN IF NOT EXISTS ticket_type_id BIGINT REFERENCES meal_ticket_types(type_id);

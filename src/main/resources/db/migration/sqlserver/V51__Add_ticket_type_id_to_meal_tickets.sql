@@ -1,4 +1,4 @@
--- V49__Add_ticket_type_id_to_meal_tickets.sql (SQL Server)
+-- V51__Add_ticket_type_id_to_meal_tickets.sql (SQL Server)
 -- Add missing ticket_type_id column and populate it from ticket_type
 
 IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('meal_tickets') AND name = 'ticket_type_id')

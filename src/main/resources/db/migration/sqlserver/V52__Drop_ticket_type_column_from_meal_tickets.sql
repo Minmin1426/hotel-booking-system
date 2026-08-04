@@ -1,4 +1,4 @@
--- V50__Drop_ticket_type_column_from_meal_tickets.sql (SQL Server)
+-- V52__Drop_ticket_type_column_from_meal_tickets.sql (SQL Server)
 -- Drop the redundant ticket_type column from meal_tickets table
 
 IF EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('meal_tickets') AND name = 'ticket_type')

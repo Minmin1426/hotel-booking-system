@@ -1,4 +1,4 @@
--- V48: Ensure payment_audit_logs columns match the JPA Entity mappings dynamically (SQL Server)
+-- V50: Ensure payment_audit_logs columns match the JPA Entity mappings dynamically (SQL Server)
 -- Handles cases where columns were not correctly renamed in previous migration runs
 
 IF EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('payment_audit_logs') AND name = 'request_payload')

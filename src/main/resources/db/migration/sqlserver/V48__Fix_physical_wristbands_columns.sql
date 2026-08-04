@@ -1,4 +1,4 @@
--- V47__Fix_physical_wristbands_columns.sql (SQL Server)
+-- V48__Fix_physical_wristbands_columns.sql (SQL Server)
 IF EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('physical_wristbands') AND name = 'guest_name')
 BEGIN
     ALTER TABLE physical_wristbands DROP COLUMN guest_name;
